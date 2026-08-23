@@ -62,6 +62,8 @@ impl DiceManager {
 
         let dice = Dice::new(peripheral, write_char, notify_char);
         dice.spawn_notification_task().await?;
+        dice.spawn_led_debounce_task();
+        dice.spawn_connection_monitor();
 
         Ok(dice)
     }

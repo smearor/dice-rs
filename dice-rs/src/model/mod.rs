@@ -9,3 +9,4 @@ pub mod dice_type;
 pub mod face;
 pub mod led;
 pub mod state;
+pub mod system_status;

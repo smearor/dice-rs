@@ -1,3 +1,4 @@
+use crate::ble::command_error::CommandError;
 use std::time::Duration;
 
 /// Errors that can occur when interacting with a GoDice.
@@ -50,7 +51,7 @@ pub enum DiceError {
     Parse(#[from] crate::ble::parse_error::ParseError),
     /// A command could not be encoded or decoded.
     #[error("command error: {0}")]
-    Command(#[from] crate::ble::command::CommandError),
+    Command(#[from] CommandError),
     /// An invalid dice color byte was encountered.
     #[error("invalid dice color: {0}")]
     InvalidColor(u8),

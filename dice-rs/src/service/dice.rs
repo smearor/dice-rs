@@ -16,13 +16,13 @@ use crate::model::acceleration_offset::AccelerationOffset;
 use crate::model::color::DieColor;
 use crate::model::dice_type::DiceType;
 use crate::model::led::LedColor;
+use crate::model::system_status::SystemStatus;
 use crate::service::dice_event::DiceEvent;
 use crate::service::dice_inner::DiceInner;
 use crate::service::interpreter::interpret::interpret;
 
 /// Minimum interval between consecutive LED writes (milliseconds).
 /// Rapid calls within this window are coalesced into a single write.
-#[allow(dead_code)]
 const LED_DEBOUNCE_MS: u64 = 30;
 
 /// Timeout for request-response BLE queries (battery, color, calibration).
@@ -32,8 +32,8 @@ const LED_DEBOUNCE_MS: u64 = 30;
 /// purge it from the FIFO queue before matching the next response.
 const RESPONSE_TIMEOUT_SECS: u64 = 5;
 
-/// Tentative calibration opcode — protocol not yet confirmed.
-const CALIBRATION_OPCODE: u8 = 0x13;
+/// Interval for the periodic connection health check.
+const CONNECTION_MONITOR_INTERVAL_SECS: u64 = 5;
 
 /// Handle to a connected GoDice device.
 ///
@@ -70,11 +70,57 @@ impl Dice {
         Self { inner }
     }
 
-    /// Set both RGB LEDs.
+    /// Set both RGB LEDs to the given colors.
+    ///
+    /// Rapid successive calls are coalesced: if `set_leds` is called
+    /// again within `LED_DEBOUNCE_MS`, only the most recent colors are
+    /// written. This prevents BlueZ/DBus socket buffer overflow when an
+    /// application fires many color changes in quick succession.
     pub async fn set_leds(&self, led1: LedColor, led2: LedColor) -> Result<()> {
+        {
+            let mut throttle = self.inner.led_throttle.lock().map_err(|_| DiceError::LockPoisoned)?;
+            throttle.pending = Some((led1, led2));
+            throttle.last_update = Some(tokio::time::Instant::now());
+        }
+        self.inner.led_notify.notify_one();
+        Ok(())
+    }
+
+    /// Set both LEDs without debounce — writes immediately.
+    ///
+    /// Use this for one-shot LED commands where coalescing is undesirable
+    /// (e.g. CLI commands, calibration sequences).
+    pub async fn set_leds_immediate(&self, led1: LedColor, led2: LedColor) -> Result<()> {
         let command = Command::SetLeds { led1, led2 };
         let data = command.encode();
         self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithoutResponse).await
+    }
+
+    /// Flush a pending LED write immediately, bypassing the debounce.
+    ///
+    /// Called by the debounce background task after the quiet window
+    /// has elapsed.
+    async fn flush_led(&self) -> Result<()> {
+        let (led1, led2) = {
+            let mut throttle = self.inner.led_throttle.lock().map_err(|_| DiceError::LockPoisoned)?;
+            match throttle.pending.take() {
+                Some(colors) => colors,
+                None => return Ok(()),
+            }
+        };
+        let command = Command::SetLeds { led1, led2 };
+        let data = command.encode();
+        self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithoutResponse).await
+    }
+
+    /// Set both LEDs to the same color.
+    pub async fn set_led(&self, color: LedColor) -> Result<()> {
+        self.set_leds(color, color).await
+    }
+
+    /// Turn both LEDs off.
+    pub async fn turn_off_leds(&self) -> Result<()> {
+        self.set_leds(LedColor::OFF, LedColor::OFF).await
     }
 
     /// Pulse both LEDs with a color.
@@ -87,6 +133,13 @@ impl Dice {
         };
         let data = command.encode();
         self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithoutResponse).await
+    }
+
+    /// Pulse both LEDs with a color using a single pulse.
+    ///
+    /// Convenience method equivalent to `pulse_leds(1, on_time, off_time, color)`.
+    pub async fn pulse_once(&self, on_time: u8, off_time: u8, color: LedColor) -> Result<()> {
+        self.pulse_leds(1, on_time, off_time, color).await
     }
 
     /// Request battery level (0–100 percent).
@@ -143,6 +196,18 @@ impl Dice {
         Ok(props.and_then(|p| p.rssi))
     }
 
+    /// Get comprehensive system status in a single call.
+    /// Performs battery level and color queries concurrently.
+    pub async fn system_status(&self) -> Result<SystemStatus> {
+        let (battery, color) = tokio::try_join!(self.get_battery_level(), self.get_color(),)?;
+        Ok(SystemStatus {
+            battery_level: battery,
+            color,
+            connected: self.is_connected().await?,
+            rssi: self.rssi().await?,
+        })
+    }
+
     /// Disconnect from the dice.
     ///
     /// Aborts the notification and connection monitor tasks, then
@@ -176,6 +241,8 @@ impl Dice {
         self.abort_tasks();
         self.inner.peripheral.subscribe(&self.inner.notify_char).await?;
         self.spawn_notification_task().await?;
+        self.spawn_led_debounce_task();
+        self.spawn_connection_monitor();
         Ok(())
     }
 
@@ -270,14 +337,74 @@ impl Dice {
         Ok(())
     }
 
+    /// Spawn the LED debounce background task.
+    ///
+    /// Waits for a quiet window of `LED_DEBOUNCE_MS` with no new `set_leds`
+    /// calls, then flushes the most recent pending color to the BLE transport.
+    pub(crate) fn spawn_led_debounce_task(&self) {
+        let dice = self.clone();
+        let handle = tokio::spawn(async move {
+            let debounce = Duration::from_millis(LED_DEBOUNCE_MS);
+            loop {
+                let has_pending = {
+                    let throttle = dice.inner.led_throttle.lock();
+                    match throttle {
+                        Ok(throttle) => throttle.pending.is_some(),
+                        Err(_) => break,
+                    }
+                };
+
+                if !has_pending {
+                    dice.inner.led_notify.notified().await;
+                }
+
+                tokio::time::sleep(debounce).await;
+
+                if let Err(error) = dice.flush_led().await {
+                    debug!(error = %error, "failed to flush debounced LED write");
+                }
+            }
+        });
+
+        if let Ok(mut guard) = self.inner.led_debounce_handle.lock() {
+            *guard = Some(handle);
+        }
+    }
+
+    /// Spawn a background task that periodically checks connection state
+    /// and emits `DiceEvent::Disconnected` if the BLE link is lost.
+    pub(crate) fn spawn_connection_monitor(&self) {
+        let dice = self.clone();
+        let event_sender = self.inner.event_sender.clone();
+        let interval = Duration::from_secs(CONNECTION_MONITOR_INTERVAL_SECS);
+        let handle = tokio::spawn(async move {
+            let mut ticker = tokio::time::interval(interval);
+            loop {
+                ticker.tick().await;
+                match dice.is_connected().await {
+                    Ok(true) => {}
+                    Ok(false) | Err(_) => {
+                        if event_sender.send(DiceEvent::Disconnected).is_err() {
+                            debug!("no subscribers for Disconnected event");
+                        }
+                        break;
+                    }
+                }
+            }
+        });
+
+        if let Ok(mut guard) = self.inner.monitor_handle.lock() {
+            *guard = Some(handle);
+        }
+    }
+
     /// Hardware calibration via BLE (tentative — opcode unconfirmed).
     pub async fn calibrate(&self) -> Result<()> {
         let (tx, rx) = oneshot::channel();
         self.inner.pending_calibration.lock().map_err(|_| DiceError::LockPoisoned)?.push_back(tx);
-        self.inner
-            .peripheral
-            .write(&self.inner.write_char, &[CALIBRATION_OPCODE], WriteType::WithoutResponse)
-            .await?;
+        let command = Command::Calibrate;
+        let data = command.encode();
+        self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithoutResponse).await?;
         let timeout = Duration::from_secs(RESPONSE_TIMEOUT_SECS);
         let success = match tokio::time::timeout(timeout, rx).await {
             Ok(Ok(success)) => success,

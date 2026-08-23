@@ -1,5 +1,9 @@
+use crate::ble::command_error::CommandError;
 use crate::error::Result;
 use crate::model::led::LedColor;
+
+/// Tentative calibration opcode — protocol not yet confirmed.
+const CALIBRATION_OPCODE: u8 = 0x13;
 
 /// Commands sent to the GoDice via the NUS write characteristic.
 #[derive(Debug, Clone, PartialEq)]
@@ -17,6 +21,9 @@ pub enum Command {
     },
     /// Request dice color. Response: `Event::DiceColor`.
     GetDiceColor,
+    /// Hardware calibration (tentative — opcode 0x13 unconfirmed).
+    /// Response: `Event::Calibrated`.
+    Calibrate,
 }
 
 impl Command {
@@ -36,6 +43,7 @@ impl Command {
                 vec![0x10, *pulse_count, *on_time, *off_time, color.r, color.g, color.b, 1, 0]
             }
             Self::GetDiceColor => vec![0x17],
+            Self::Calibrate => vec![CALIBRATION_OPCODE],
         }
     }
 
@@ -58,23 +66,10 @@ impl Command {
                 color: LedColor::new(data[4], data[5], data[6]),
             }),
             0x17 if data.len() == 1 => Ok(Self::GetDiceColor),
+            CALIBRATION_OPCODE if data.len() == 1 => Ok(Self::Calibrate),
             opcode => Err(CommandError::UnknownOpcode { opcode, length: data.len() }.into()),
         }
     }
-}
-
-/// Errors that can occur when encoding or decoding commands.
-#[derive(Debug, Clone, PartialEq, thiserror::Error)]
-pub enum CommandError {
-    /// The packet is empty.
-    #[error("empty packet")]
-    EmptyPacket,
-    /// The opcode is not a known command.
-    #[error("unknown opcode: 0x{opcode:02X} (length {length})")]
-    UnknownOpcode { opcode: u8, length: usize },
-    /// The packet length does not match the expected payload size.
-    #[error("invalid payload length: expected {expected}, got {actual}")]
-    InvalidLength { expected: usize, actual: usize },
 }
 
 #[cfg(test)]
@@ -125,5 +120,36 @@ mod tests {
     #[test]
     fn decode_unknown_opcode() {
         assert!(Command::decode(&[0xFF]).is_err());
+    }
+
+    #[test]
+    fn decode_invalid_length_set_leds() {
+        assert!(Command::decode(&[0x08, 1, 2, 3]).is_err());
+    }
+
+    #[test]
+    fn decode_invalid_length_pulse_leds() {
+        assert!(Command::decode(&[0x10, 5, 10, 10, 0, 255, 0]).is_err());
+    }
+
+    #[test]
+    fn led_color_constants() {
+        assert!(LedColor::OFF.is_off());
+        assert!(!LedColor::RED.is_off());
+        assert_eq!(LedColor::from_hex(0xFF8800), LedColor::new(255, 136, 0));
+        assert_eq!(LedColor::RED.to_string(), "#FF0000");
+    }
+
+    #[test]
+    fn calibrate_encode() {
+        assert_eq!(Command::Calibrate.encode(), vec![CALIBRATION_OPCODE]);
+    }
+
+    #[test]
+    fn calibrate_round_trip() {
+        let command = Command::Calibrate;
+        let encoded = command.encode();
+        let decoded = Command::decode(&encoded).unwrap();
+        assert_eq!(decoded, command);
     }
 }
