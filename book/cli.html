@@ -3,8 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>dice-rs Documentation</title>
-        <meta name="robots" content="noindex">
+        <title>CLI Tool - dice-rs Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -178,37 +177,19 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h1>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="architecture"><a class="header" href="#architecture">Architecture</a></h1>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="ble-protocol"><a class="header" href="#ble-protocol">BLE Protocol</a></h1>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="scanning--connecting"><a class="header" href="#scanning--connecting">Scanning &amp; Connecting</a></h1>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="dice-events"><a class="header" href="#dice-events">Dice Events</a></h1>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="led-control"><a class="header" href="#led-control">LED Control</a></h1>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="battery--status"><a class="header" href="#battery--status">Battery &amp; Status</a></h1>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="calibration"><a class="header" href="#calibration">Calibration</a></h1>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="cli-tool"><a class="header" href="#cli-tool">CLI Tool</a></h1>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="controller"><a class="header" href="#controller">Controller</a></h1>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="websocket-server"><a class="header" href="#websocket-server">WebSocket Server</a></h1>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="platform-notes"><a class="header" href="#platform-notes">Platform Notes</a></h1>
+                        <h1 id="cli-tool"><a class="header" href="#cli-tool">CLI Tool</a></h1>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="calibration.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
 
+                            <a rel="next prefetch" href="controller.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -216,7 +197,13 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="calibration.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
 
+                    <a rel="next prefetch" href="controller.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
             </nav>
 
         </div>
@@ -246,11 +233,6 @@
         <script src="mermaid-eefea253.min.js"></script>
         <script src="mermaid-init-ccf746f1.js"></script>
 
-        <script>
-        window.addEventListener('load', function() {
-            window.setTimeout(window.print, 100);
-        });
-        </script>
 
 
     </div>
