@@ -40,9 +40,11 @@ pub fn print_devices(devices: &[DiceDevice], format: OutputFormat) {
             let json: Vec<_> = devices
                 .iter()
                 .map(|d| {
+                    let color = d.color().map(|c| c.to_string()).unwrap_or_else(|_| "Unknown".into());
                     serde_json::json!({
                         "address": d.address.to_string(),
                         "name": d.name,
+                        "color": color,
                         "rssi": d.rssi,
                     })
                 })
@@ -51,7 +53,8 @@ pub fn print_devices(devices: &[DiceDevice], format: OutputFormat) {
         }
         OutputFormat::Plain => {
             for d in devices {
-                println!("{} {} {}", d.address, d.name, d.rssi.map(|r| format!("{r}")).unwrap_or_else(|| "N/A".into()));
+                let color = d.color().map(|c| c.to_string()).unwrap_or_else(|_| "Unknown".into());
+                println!("{} {} {} {}", d.address, d.name, color, d.rssi.map(|r| format!("{r}")).unwrap_or_else(|| "N/A".into()));
             }
         }
     }

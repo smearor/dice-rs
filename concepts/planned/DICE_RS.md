@@ -170,6 +170,27 @@ use ASCII prefix bytes for identification.
 | 4     | Yellow  |
 | 5     | Orange  |
 
+#### Device Name Color Encoding
+
+The physical dice color is encoded in the BLE advertising name. The name
+follows the format `GoDice_{HEXID}_{COLOR}_v{VERSION}`, where `{COLOR}`
+is a single uppercase letter:
+
+| Letter | Color   |
+|--------|---------|
+| `K`    | Black   |
+| `R`    | Red     |
+| `G`    | Green   |
+| `B`    | Blue    |
+| `Y`    | Yellow  |
+| `O`    | Orange  |
+
+Example: `GoDice_0D89BF_K_v04` → Black, `GoDice_7D8E7D_O_v04` → Orange.
+
+This allows identifying a dice by color without establishing a BLE
+connection. The `DiceDevice::color()` method parses this letter via
+`DiceColor::try_from(char)` and returns the corresponding `DiceColor`.
+
 #### Dice Types (Shells)
 
 | Value | Type  | Vector Table |
@@ -1938,6 +1959,19 @@ sequenceDiagram
 ```
 
 ##### StabilityDescriptor Mapping
+
+GoDice emits different stability events depending on how the dice came to
+rest. Each event carries accelerometer data (XYZ) from which a face value
+is derived. Understanding the distinction is important for applications
+that need to validate rolls or filter out non-roll events:
+
+| Event         | BLE Prefix | Description                                                                 |
+|---------------|------------|-----------------------------------------------------------------------------|
+| `RollStart`   | `0x52` (`R`)  | Dice has started moving (acceleration exceeded the roll threshold). No face value is available yet. |
+| `Stable`      | `0x53` (`S`)  | Dice is flat and stationary after a genuine roll. This is the canonical "result landed" event. |
+| `TiltStable`  | `0x54 0x53` (`TS`) | Dice is stationary but resting on an edge or at an angle (not flat on a face). The face value is derived from the tilted orientation. |
+| `FakeStable`  | `0x46 0x53` (`FS`) | Dice was placed down manually rather than rolled (e.g. user set it on a face). The dice detected insufficient movement for a real roll but still reports a stable position. Applications may want to reject these as non-roll results. |
+| `MoveStable`  | `0x4D 0x53` (`MS`) | Dice was picked up and placed back down with a small movement (face rotation without a full roll). Useful for "tilt" interactions where the user turns the dice to a specific face without rolling it. |
 
 The Python API defines a `StabilityDescriptor` enum. `dice-rs` maps the raw
 events to this descriptor so applications can distinguish stability types

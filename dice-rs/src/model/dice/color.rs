@@ -42,6 +42,27 @@ impl From<DiceColor> for u8 {
     }
 }
 
+/// Parse a dice color from a single character code.
+///
+/// Used to extract the color from a GoDice device name (e.g. `GoDice_0D89BF_K_v04`).
+/// Accepts: `K`=Black, `R`=Red, `G`=Green, `B`=Blue, `Y`=Yellow, `O`=Orange.
+/// Case-insensitive.
+impl TryFrom<char> for DiceColor {
+    type Error = DiceColorError;
+
+    fn try_from(ch: char) -> Result<Self, Self::Error> {
+        match ch.to_ascii_uppercase() {
+            'K' => Ok(Self::Black),
+            'R' => Ok(Self::Red),
+            'G' => Ok(Self::Green),
+            'B' => Ok(Self::Blue),
+            'Y' => Ok(Self::Yellow),
+            'O' => Ok(Self::Orange),
+            _ => Err(DiceColorError::InvalidCharacter(ch)),
+        }
+    }
+}
+
 impl std::fmt::Display for DiceColor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -81,5 +102,28 @@ mod tests {
     #[test]
     fn display() {
         assert_eq!(DiceColor::Red.to_string(), "Red");
+    }
+
+    #[test]
+    fn try_from_char_valid() {
+        assert_eq!(DiceColor::try_from('K'), Ok(DiceColor::Black));
+        assert_eq!(DiceColor::try_from('R'), Ok(DiceColor::Red));
+        assert_eq!(DiceColor::try_from('G'), Ok(DiceColor::Green));
+        assert_eq!(DiceColor::try_from('B'), Ok(DiceColor::Blue));
+        assert_eq!(DiceColor::try_from('Y'), Ok(DiceColor::Yellow));
+        assert_eq!(DiceColor::try_from('O'), Ok(DiceColor::Orange));
+    }
+
+    #[test]
+    fn try_from_char_case_insensitive() {
+        assert_eq!(DiceColor::try_from('k'), Ok(DiceColor::Black));
+        assert_eq!(DiceColor::try_from('r'), Ok(DiceColor::Red));
+        assert_eq!(DiceColor::try_from('o'), Ok(DiceColor::Orange));
+    }
+
+    #[test]
+    fn try_from_char_invalid() {
+        assert!(DiceColor::try_from('X').is_err());
+        assert!(DiceColor::try_from('1').is_err());
     }
 }
