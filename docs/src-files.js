@@ -1,0 +1,2 @@
+createSrcSidebar('[["dice_rs",["",[["ble",[],["command.rs","event.rs","mod.rs","transport.rs","uuids.rs"]],["model",[],["color.rs","dice_type.rs","face.rs","led.rs","mod.rs","state.rs"]],["service",[["interpreter",[],["interpret.rs","mod.rs","transforms.rs","vectors.rs"]]],["dice.rs","manager.rs","mod.rs","scanner.rs"]]],["lib.rs"]]],["dice_rs",["",[],["main.rs"]]],["dice_rs_controller",["",[],["main.rs"]]],["dice_rs_ws",["",[],["main.rs"]]]]');
+//{"start":19,"fragment_lengths":[316,32,43,35]}
