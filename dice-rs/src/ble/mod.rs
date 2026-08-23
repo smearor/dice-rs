@@ -2,5 +2,6 @@
 
 pub mod command;
 pub mod event;
+pub mod parse_error;
 pub mod transport;
 pub mod uuids;

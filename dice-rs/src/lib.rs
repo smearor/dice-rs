@@ -5,5 +5,6 @@
 //! devices over Bluetooth Low Energy.
 
 pub mod ble;
+pub mod error;
 pub mod model;
 pub mod service;
