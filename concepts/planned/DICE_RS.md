@@ -435,7 +435,16 @@ tokio::spawn(async move {
 Battery level and dice color are request-response: the host sends a command
 byte, and the dice responds with a notification. The Python API uses
 `asyncio.Queue` to match responses to requests. `dice-rs` uses
-`tokio::sync::oneshot` channels stored in a pending-request map:
+`tokio::sync::oneshot` channels stored in FIFO queues (`VecDeque`) for
+pending requests. This avoids a race condition where a second concurrent
+request would overwrite the first request's sender. When a response
+notification arrives, canceled senders are purged (`queue.retain(|s|
+!s.is_canceled())`), then the oldest pending sender is dequeued
+(`pop_front`) and delivered the result. Callers wrap `rx.await` in
+`tokio::time::timeout` (`RESPONSE_TIMEOUT_SECS` = 5 s); on timeout the
+receiver is dropped, which marks the sender as canceled so the
+notification task can purge it before matching the next response. This
+prevents FIFO desynchronization when a BLE packet is lost:
 
 ```mermaid
 sequenceDiagram
@@ -486,15 +495,20 @@ Rationale:
 - **Channel-based events**: Each `Dice` handle exposes a
   `tokio::sync::broadcast::Receiver<DiceEvent>` for streaming events to the
   caller. Multiple consumers can subscribe to the same dice's events.
-- **Request-response via oneshot**: Battery and color queries use
-  `tokio::sync::oneshot` channels matched against pending requests in the
-  notification task.
+- **Request-response via oneshot**: Battery, color, and calibration queries
+  use `tokio::sync::oneshot` channels stored in `VecDeque` FIFO queues,
+  matched against pending requests in the notification task. The queue
+  ensures concurrent requests do not overwrite each other.
 - **Error handling**: `thiserror` for library errors, `miette` for CLI/WS
   user-facing diagnostics.
 - **Thread safety**: `Dice` handles are `Clone + Send + Sync`, backed by
   `Arc<Mutex<...>>` for shared connection state.
 - **WriteType**: Default `WriteType::WithoutResponse` for low latency;
   configurable to `WithResponse` for reliability.
+- **LED write throttling**: Rapid `set_leds` calls are coalesced via a
+  debounce task (`LED_DEBOUNCE_MS` = 30 ms). Only the most recent color
+  is written after a quiet window, preventing BlueZ/DBus socket buffer
+  overflow from high-frequency color changes (e.g. slider drags).
 
 ---
 
@@ -705,8 +719,15 @@ shell transform tables are defined as `const` arrays in the
 
 ```rust
 /// Determines the face value from accelerometer data for a given dice type.
-pub fn interpret(acceleration: Acceleration, dice_type: DiceType) -> FaceValue {
-    let (x, y, z) = (acceleration.x as i32, acceleration.y as i32, acceleration.z as i32);
+/// If an `AccelerationOffset` is provided, it is subtracted from the
+/// raw acceleration before distance calculation.
+pub fn interpret(
+    acceleration: Acceleration,
+    dice_type: DiceType,
+    offset: Option<AccelerationOffset>,
+) -> FaceValue {
+    let corrected = offset.map_or(acceleration, |o| o.apply(acceleration));
+    let (x, y, z) = (corrected.x as i32, corrected.y as i32, corrected.z as i32);
 
     let (table, transform) = match dice_type {
         DiceType::D6 => (&D6_VECTORS, None),
@@ -743,12 +764,137 @@ The `Dice` struct is the primary user-facing handle for a connected GoDice.
 It is `Clone + Send + Sync` and wraps shared connection state in `Arc`.
 
 ```rust
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::Arc;
+
 /// Handle to a connected GoDice device.
 #[derive(Clone)]
 pub struct Dice {
     inner: Arc<DiceInner>,
 }
 
+/// Internal shared state for a connected dice.
+/// Stored behind `Arc` so all `Dice` clones share the same state.
+pub struct DiceInner {
+    /// BLE transport for write operations.
+    transport: Box<dyn BleTransport>,
+    /// Write characteristic UUID (NUS RX).
+    write_char: Uuid,
+    /// Broadcast sender for `DiceEvent` stream.
+    event_sender: broadcast::Sender<DiceEvent>,
+    /// Current dice type stored as `AtomicU8` for lock-free reads.
+    /// Converted to `DiceType` via `TryFrom<u8>` at use site.
+    /// This avoids async lock overhead in the notification task hot path.
+    /// `Arc`-wrapped so it can be cloned into the notification task.
+    dice_type: Arc<AtomicU8>,
+    /// FIFO queue of pending battery level request senders.
+    pending_battery: Arc<Mutex<VecDeque<oneshot::Sender<u8>>>>,
+    /// FIFO queue of pending dice color request senders.
+    pending_color: Arc<Mutex<VecDeque<oneshot::Sender<DieColor>>>>,
+    /// FIFO queue of pending calibration request senders.
+    pending_calibration: Arc<Mutex<VecDeque<oneshot::Sender<bool>>>>,
+    /// JoinHandle of the notification parsing task.
+    /// Aborted on disconnect/reconnect to prevent orphaned tasks.
+    notification_handle: Mutex<Option<JoinHandle<()>>>,
+    /// JoinHandle of the connection monitor task.
+    /// Aborted on disconnect/reconnect to prevent orphaned tasks.
+    monitor_handle: Mutex<Option<JoinHandle<()>>>,
+    /// LED write throttle state for coalescing rapid `set_leds` calls.
+    /// Prevents BlueZ/DBus socket buffer overflow when an application
+    /// fires many color changes in quick succession (e.g. color slider drag).
+    led_throttle: Mutex<LedThrottleState>,
+    /// JoinHandle of the LED debounce task.
+    /// Aborted on disconnect/reconnect alongside other background tasks.
+    led_debounce_handle: Mutex<Option<JoinHandle<()>>>,
+    /// Notify the LED debounce task that a new color is pending.
+    /// Stored separately from `LedThrottleState` so the debounce task
+    /// can await notifications without holding the throttle mutex
+    /// across an `.await` point.
+    led_notify: Arc<tokio::sync::Notify>,
+    /// Software calibration offset applied to accelerometer readings
+    /// before face value interpretation. `None` when no software
+    /// calibration has been performed.
+    ///
+    /// Uses `std::sync::RwLock` (not `tokio::sync::RwLock`) because the
+    /// lock is only held for a trivial copy — never across `.await`.
+    /// This avoids unnecessary task-scheduling overhead on every
+    /// sensor event in the notification task.
+    /// `Arc`-wrapped so it can be cloned into the notification task.
+    calibration_offset: Arc<std::sync::RwLock<Option<AccelerationOffset>>>,
+}
+
+/// Coalescing debounce state for LED write commands.
+///
+/// When `set_leds` is called repeatedly within `LED_DEBOUNCE_MS`,
+/// only the most recent color is written to the BLE transport.
+/// A pending write is deferred until no new `set_leds` call arrives
+/// for the debounce window, then flushed by a background task.
+pub struct LedThrottleState {
+    /// Most recent LED colors requested.
+    pending: Option<(LedColor, LedColor)>,
+    /// Instant of the last `set_leds` call.
+    last_update: Option<tokio::time::Instant>,
+}
+
+/// Minimum interval between consecutive LED writes (milliseconds).
+/// Rapid calls within this window are coalesced into a single write.
+const LED_DEBOUNCE_MS: u64 = 30;
+
+/// Timeout for request-response BLE queries (battery, color, calibration).
+/// If the dice does not respond within this window, the caller receives
+/// `Error::ResponseTimeout` and the pending sender is dropped, which
+/// causes `is_canceled()` to return true so the notification task can
+/// purge it from the FIFO queue before matching the next response.
+const RESPONSE_TIMEOUT_SECS: u64 = 5;
+
+/// Software calibration offset computed from a resting accelerometer sample.
+///
+/// When the firmware does not support hardware calibration via BLE,
+/// `calibrate_software()` captures the current XYZ reading and computes
+/// the deviation from the expected gravity vector. The offset is subtracted
+/// from all subsequent accelerometer readings before face value interpretation.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct AccelerationOffset {
+    /// X-axis deviation from the expected resting vector.
+    pub dx: i8,
+    /// Y-axis deviation from the expected resting vector.
+    pub dy: i8,
+    /// Z-axis deviation from the expected resting vector.
+    pub dz: i8,
+}
+
+impl AccelerationOffset {
+    /// Compute the offset between a measured acceleration and the
+    /// expected ideal gravity vector for the given dice type.
+    ///
+    /// The expected vector is the closest reference vector from the
+    /// dice type's vector table. The offset is `measured - expected`.
+    pub fn from_measured(acceleration: Acceleration, dice_type: DiceType) -> Self {
+        let expected = closest_vector(acceleration, dice_type);
+        Self {
+            dx: acceleration.x - expected[0],
+            dy: acceleration.y - expected[1],
+            dz: acceleration.z - expected[2],
+        }
+    }
+
+    /// Apply the offset to an acceleration reading, clamping to i8 range.
+    pub fn apply(&self, acceleration: Acceleration) -> Acceleration {
+        Acceleration {
+            x: acceleration.x.saturating_sub(self.dx),
+            y: acceleration.y.saturating_sub(self.dy),
+            z: acceleration.z.saturating_sub(self.dz),
+        }
+    }
+}
+```
+
+The `notification_handle` and `monitor_handle` fields ensure that old
+background tasks are cleanly aborted before new ones are spawned during
+reconnect. Without this, a stale notification task could linger and race
+with the new task for the same `event_sender`.
+
+```rust
 impl Dice {
     /// Set both RGB LEDs.
     pub async fn set_leds(&self, led1: LedColor, led2: LedColor) -> Result<()>;
@@ -775,7 +921,79 @@ impl Dice {
     pub fn set_dice_type(&self, dice_type: DiceType);
 
     /// Disconnect from the dice.
-    pub async fn disconnect(&self) -> Result<()>;
+    ///
+    /// Aborts the notification and connection monitor tasks, then
+    /// calls `peripheral.disconnect()`. After this call, the `Dice`
+    /// handle is no longer usable for BLE operations.
+    pub async fn disconnect(&self) -> Result<()> {
+        self.abort_tasks();
+        self.inner.transport.disconnect().await
+    }
+
+    /// Abort the notification and connection monitor tasks.
+    ///
+    /// Called by `disconnect()` and `reconnect_internal()` to ensure
+    /// no orphaned background tasks remain.
+    fn abort_tasks(&self) {
+        if let Ok(mut handle) = self.inner.notification_handle.lock() {
+            if let Some(task) = handle.take() {
+                task.abort();
+            }
+        }
+        if let Ok(mut handle) = self.inner.monitor_handle.lock() {
+            if let Some(task) = handle.take() {
+                task.abort();
+            }
+        }
+        if let Ok(mut handle) = self.inner.led_debounce_handle.lock() {
+            if let Some(task) = handle.take() {
+                task.abort();
+            }
+        }
+    }
+
+    /// Internal reconnect: re-subscribe and re-spawn tasks.
+    ///
+    /// Aborts old tasks before spawning new ones to prevent orphans.
+    async fn reconnect_internal(&self) -> Result<()> {
+        // Abort old background tasks from the previous connection.
+        self.abort_tasks();
+
+        // Re-subscribe to notifications.
+        self.inner.transport.subscribe(&self.notify_char).await?;
+
+        // Spawn new notification task with fresh stream.
+        let notifications = self.inner.transport.notifications().await;
+        let handle = spawn_notification_task(
+            notifications,
+            self.inner.dice_type.clone(),
+            self.inner.event_sender.clone(),
+            self.inner.pending_battery.clone(),
+            self.inner.pending_color.clone(),
+            self.inner.calibration_offset.clone(),
+        );
+        if let Ok(mut guard) = self.inner.notification_handle.lock() {
+            *guard = Some(handle);
+        }
+
+        // Spawn new connection monitor.
+        let monitor = spawn_connection_monitor(
+            self.clone(),
+            Duration::from_secs(5),
+            self.inner.event_sender.clone(),
+        );
+        if let Ok(mut guard) = self.inner.monitor_handle.lock() {
+            *guard = Some(monitor);
+        }
+
+        // Spawn LED debounce task.
+        let debounce = spawn_led_debounce_task(self.clone());
+        if let Ok(mut guard) = self.inner.led_debounce_handle.lock() {
+            *guard = Some(debounce);
+        }
+
+        Ok(())
+    }
 }
 ```
 
@@ -1138,16 +1356,20 @@ impl Dice {
     /// Returns level as percentage (0–100).
     pub async fn get_battery_level(&self) -> Result<u8> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.inner.pending_battery.store(Some(tx));
+        self.inner.pending_battery.lock().map_err(|_| Error::LockPoisoned)?.push_back(tx);
         self.transport.write(&self.write_char, &[0x03], WriteType::WithoutResponse).await?;
-        let level = rx.await.map_err(|_| Error::ResponseTimeout)?;
+        let timeout = Duration::from_secs(RESPONSE_TIMEOUT_SECS);
+        let level = tokio::time::timeout(timeout, rx.await)
+            .await
+            .map_err(|_| Error::ResponseTimeout(timeout))?
+            .map_err(|_| Error::ResponseTimeout(timeout))?;
         Ok(level)
     }
 }
 ```
 
 The notification task matches `Event::BatteryLevel { level }` against the
-pending oneshot sender and delivers the result.
+oldest pending oneshot sender (FIFO `pop_front`) and delivers the result.
 
 **RSSI** is read from `PeripheralProperties::rssi` (an `Option<i16>`).
 This is platform-dependent and may not be available on all platforms.
@@ -1193,7 +1415,9 @@ flowchart LR
 ##### Reconnect Logic
 
 The JS API's `attemptReconnect` retries connection in a loop with 1-second
-delay. `dice-rs` implements this with exponential backoff:
+delay. `dice-rs` implements this with exponential backoff. Each call to
+`reconnect_internal()` aborts the old notification and connection monitor
+tasks before spawning fresh ones, preventing orphaned background tasks:
 
 ```rust
 impl DiceManager {
@@ -1229,6 +1453,8 @@ impl DiceManager {
 | `DiceScanner`    | `service/scanner.rs`            | Scanner with name-prefix filtering              |
 | `DiceManager`    | `service/manager.rs`            | Multi-dice connection manager                   |
 | `Dice`           | `service/dice.rs`               | Handle to a connected dice                      |
+| `DiceInner`      | `service/dice_inner.rs`         | Shared inner state (transport, queues, handles) |
+| `LedThrottleState` | `service/led_throttle_state.rs` | LED debounce state (pending color, Notify) |
 | `DiceError`      | `error.rs`                      | Error enum (`thiserror`)                        |
 
 #### Phase 2 — Dice and Motion Events
@@ -1319,7 +1545,8 @@ pub enum ParseError {
 A spawned tokio task reads from the `btleplug` notification stream, parses
 each packet into an `Event`, then transforms it into a `DiceEvent` (with
 face value) and broadcasts it to all subscribers. It also matches
-request-response events (battery, color) against pending oneshot senders.
+request-response events (battery, color, calibration) against pending
+oneshot senders from FIFO queues.
 
 ```mermaid
 flowchart TB
@@ -1337,7 +1564,7 @@ flowchart TB
 
     interpret["interpret(accel, dice_type)\n→ FaceValue"]
     broadcast["broadcast::send(DiceEvent)"]
-    oneshot["oneshot::send(level/color)\nto pending request"]
+    oneshot["oneshot::send(level/color)\nto oldest pending request\n(pop_front)"]
 
     stream --> parse --> matchEvent
     matchEvent -->|RollStart| rollStart --> broadcast
@@ -1355,45 +1582,70 @@ Notification task implementation:
 /// Spawns the notification parsing task for a connected dice.
 fn spawn_notification_task(
     mut notifications: BoxStream<'static, ValueNotification>,
-    dice_type: Arc<RwLock<DiceType>>,
+    dice_type: Arc<AtomicU8>,
     event_sender: broadcast::Sender<DiceEvent>,
-    pending_battery: Arc<Mutex<Option<oneshot::Sender<u8>>>>,
-    pending_color: Arc<Mutex<Option<oneshot::Sender<DieColor>>>>,
+    pending_battery: Arc<Mutex<VecDeque<oneshot::Sender<u8>>>>,
+    pending_color: Arc<Mutex<VecDeque<oneshot::Sender<DieColor>>>>,
+    calibration_offset: Arc<std::sync::RwLock<Option<AccelerationOffset>>>,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         while let Some(notification) = notifications.next().await {
             match Event::parse(&notification.value) {
                 Ok(Event::RollStart) => {
-                    let _ = event_sender.send(DiceEvent::RollStart);
+                    if event_sender.send(DiceEvent::RollStart).is_err() {
+                        debug!("no subscribers for RollStart event");
+                    }
                 }
                 Ok(Event::Stable { acceleration }) => {
-                    let dice_type = *dice_type.read().await;
-                    let face = interpret(acceleration, dice_type);
-                    let _ = event_sender.send(DiceEvent::Stable { face, acceleration });
+                    let dice_type = DiceType::try_from(dice_type.load(Ordering::Relaxed)).unwrap_or(DiceType::D6);
+                    let offset = *calibration_offset.read().unwrap_or_default();
+                    let face = interpret(acceleration, dice_type, offset);
+                    if event_sender.send(DiceEvent::Stable { face, acceleration }).is_err() {
+                        debug!("no subscribers for Stable event");
+                    }
                 }
                 Ok(Event::FakeStable { acceleration }) => {
-                    let dice_type = *dice_type.read().await;
-                    let face = interpret(acceleration, dice_type);
-                    let _ = event_sender.send(DiceEvent::FakeStable { face, acceleration });
+                    let dice_type = DiceType::try_from(dice_type.load(Ordering::Relaxed)).unwrap_or(DiceType::D6);
+                    let offset = *calibration_offset.read().unwrap_or_default();
+                    let face = interpret(acceleration, dice_type, offset);
+                    if event_sender.send(DiceEvent::FakeStable { face, acceleration }).is_err() {
+                        debug!("no subscribers for FakeStable event");
+                    }
                 }
                 Ok(Event::TiltStable { acceleration }) => {
-                    let dice_type = *dice_type.read().await;
-                    let face = interpret(acceleration, dice_type);
-                    let _ = event_sender.send(DiceEvent::TiltStable { face, acceleration });
+                    let dice_type = DiceType::try_from(dice_type.load(Ordering::Relaxed)).unwrap_or(DiceType::D6);
+                    let offset = *calibration_offset.read().unwrap_or_default();
+                    let face = interpret(acceleration, dice_type, offset);
+                    if event_sender.send(DiceEvent::TiltStable { face, acceleration }).is_err() {
+                        debug!("no subscribers for TiltStable event");
+                    }
                 }
                 Ok(Event::MoveStable { acceleration }) => {
-                    let dice_type = *dice_type.read().await;
-                    let face = interpret(acceleration, dice_type);
-                    let _ = event_sender.send(DiceEvent::MoveStable { face, acceleration });
+                    let dice_type = DiceType::try_from(dice_type.load(Ordering::Relaxed)).unwrap_or(DiceType::D6);
+                    let offset = *calibration_offset.read().unwrap_or_default();
+                    let face = interpret(acceleration, dice_type, offset);
+                    if event_sender.send(DiceEvent::MoveStable { face, acceleration }).is_err() {
+                        debug!("no subscribers for MoveStable event");
+                    }
                 }
                 Ok(Event::BatteryLevel { level }) => {
-                    if let Some(sender) = pending_battery.lock().unwrap().take() {
-                        let _ = sender.send(level);
+                    if let Ok(mut queue) = pending_battery.lock() {
+                        queue.retain(|s| !s.is_canceled());
+                        if let Some(sender) = queue.pop_front() {
+                            if sender.send(level).is_err() {
+                                debug!("battery level response dropped: receiver gone");
+                            }
+                        }
                     }
                 }
                 Ok(Event::DiceColor { color }) => {
-                    if let Some(sender) = pending_color.lock().unwrap().take() {
-                        let _ = sender.send(color);
+                    if let Ok(mut queue) = pending_color.lock() {
+                        queue.retain(|s| !s.is_canceled());
+                        if let Some(sender) = queue.pop_front() {
+                            if sender.send(color).is_err() {
+                                debug!("dice color response dropped: receiver gone");
+                            }
+                        }
                     }
                 }
                 Err(error) => {
@@ -1401,7 +1653,9 @@ fn spawn_notification_task(
                 }
             }
         }
-        let _ = event_sender.send(DiceEvent::Disconnected);
+        if event_sender.send(DiceEvent::Disconnected).is_err() {
+            debug!("no subscribers for Disconnected event");
+        }
     })
 }
 ```
@@ -1417,7 +1671,11 @@ to the dice.
 ///
 /// Determines which vector table and shell transform are used to interpret
 /// accelerometer data into a face value.
+///
+/// `#[repr(u8)]` allows storage as `AtomicU8` for lock-free reads
+/// in the notification task hot path.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[repr(u8)]
 pub enum DiceType {
     /// Standard 6-sided die (default).
     #[default]
@@ -1434,6 +1692,28 @@ pub enum DiceType {
     D8,
     /// 12-sided die.
     D12,
+}
+
+impl From<DiceType> for u8 {
+    fn from(dt: DiceType) -> Self {
+        dt as u8
+    }
+}
+
+impl TryFrom<u8> for DiceType {
+    type Error = Error;
+    fn try_from(value: u8) -> Result<Self> {
+        match value {
+            0 => Ok(Self::D6),
+            1 => Ok(Self::D20),
+            2 => Ok(Self::D10),
+            3 => Ok(Self::D10X),
+            4 => Ok(Self::D4),
+            5 => Ok(Self::D8),
+            6 => Ok(Self::D12),
+            _ => Err(Error::InvalidDiceType(value)),
+        }
+    }
 }
 
 impl DiceType {
@@ -1494,25 +1774,96 @@ pub const D6_VECTORS: [(i32, i32, i32); 6] = [
 ];
 
 /// D20 reference vectors (20 entries, ported from JS API d20Vectors).
-pub const D20_VECTORS: [(i32, i32, i32); 20] = [ /* ... */ ];
+/// Index 0 = face 1, index 19 = face 20.
+pub const D20_VECTORS: [(i32, i32, i32); 20] = [
+    (-64, 0, -22),    // face 1
+    (42, -42, 40),    // face 2
+    (0, 22, -64),     // face 3
+    (0, 22, 64),      // face 4
+    (-42, -42, 42),   // face 5
+    (22, 64, 0),      // face 6
+    (-42, -42, -42),  // face 7
+    (64, 0, -22),     // face 8
+    (-22, 64, 0),     // face 9
+    (42, -42, -42),   // face 10
+    (-42, 42, 42),    // face 11
+    (22, -64, 0),     // face 12
+    (-64, 0, 22),     // face 13
+    (42, 42, 42),     // face 14
+    (-22, -64, 0),    // face 15
+    (42, 42, -42),    // face 16
+    (0, -22, -64),    // face 17
+    (0, -22, 64),     // face 18
+    (-42, 42, -42),   // face 19
+    (64, 0, 22),      // face 20
+];
 
 /// D24 reference vectors (24 entries, ported from JS API d24Vectors).
-pub const D24_VECTORS: [(i32, i32, i32); 24] = [ /* ... */ ];
+/// Index 0 = face 1, index 23 = face 24.
+pub const D24_VECTORS: [(i32, i32, i32); 24] = [
+    (20, -60, -20),   // face 1
+    (20, 0, 60),      // face 2
+    (-40, -40, 40),   // face 3
+    (-60, 0, 20),     // face 4
+    (40, 20, 40),     // face 5
+    (-20, -60, -20),  // face 6
+    (20, 60, 20),     // face 7
+    (-40, 20, -40),   // face 8
+    (-40, 40, 40),    // face 9
+    (-20, 0, 60),     // face 10
+    (-20, -60, 20),   // face 11
+    (60, 0, 20),      // face 12
+    (-60, 0, -20),    // face 13
+    (20, 60, -20),    // face 14
+    (20, 0, -60),     // face 15
+    (40, -20, -40),   // face 16
+    (-20, 60, -20),   // face 17
+    (-40, -40, -40),  // face 18
+    (40, -20, 40),    // face 19
+    (20, -60, 20),    // face 20
+    (60, 0, -20),     // face 21
+    (40, 20, -40),    // face 22
+    (-20, 0, -60),    // face 23
+    (-20, 60, 20),    // face 24
+];
 
 /// D10 shell transform: maps D20 vector index → D10 face value.
-pub const D10_TRANSFORM: [u8; 20] = [ /* ... */ ];
+/// Ported from JS API d10Transform.
+pub const D10_TRANSFORM: [u8; 20] = [
+    8, 2, 6, 1, 4, 3, 9, 0, 7, 5,
+    5, 7, 0, 9, 3, 4, 1, 6, 2, 8,
+];
 
 /// D10X shell transform: maps D20 vector index → D10X face value.
-pub const D10X_TRANSFORM: [u8; 20] = [ /* ... */ ];
+/// Ported from JS API d10XTransform.
+pub const D10X_TRANSFORM: [u8; 20] = [
+    80, 20, 60, 10, 40, 30, 90, 0, 70, 50,
+    50, 70, 0, 90, 30, 40, 10, 60, 20, 80,
+];
 
 /// D4 shell transform: maps D24 vector index → D4 face value.
-pub const D4_TRANSFORM: [u8; 24] = [ /* ... */ ];
+/// Ported from JS API d4Transform.
+pub const D4_TRANSFORM: [u8; 24] = [
+    3, 1, 4, 1, 4, 4, 1, 4, 2, 3,
+    1, 1, 1, 4, 2, 3, 3, 2, 2, 2,
+    4, 1, 3, 2,
+];
 
 /// D8 shell transform: maps D24 vector index → D8 face value.
-pub const D8_TRANSFORM: [u8; 24] = [ /* ... */ ];
+/// Ported from JS API d8Transform.
+pub const D8_TRANSFORM: [u8; 24] = [
+    3, 3, 6, 1, 2, 8, 1, 1, 4, 7,
+    5, 5, 4, 4, 2, 5, 7, 7, 8, 2,
+    8, 3, 6, 6,
+];
 
 /// D12 shell transform: maps D24 vector index → D12 face value.
-pub const D12_TRANSFORM: [u8; 24] = [ /* ... */ ];
+/// Ported from JS API d12Transform.
+pub const D12_TRANSFORM: [u8; 24] = [
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+    11, 12, 1, 2, 3, 4, 5, 6, 7, 8,
+    9, 10, 11, 12,
+];
 ```
 
 ##### FaceValue Type
@@ -1559,11 +1910,9 @@ impl Dice {
 
     /// Set the dice type for face value interpretation.
     /// This is a client-side setting; no BLE command is sent.
+    /// Synchronous — uses `AtomicU8::store` instead of an async lock.
     pub fn set_dice_type(&self, dice_type: DiceType) {
-        let inner = self.inner.dice_type.clone();
-        tokio::spawn(async move {
-            *inner.write().await = dice_type;
-        });
+        self.inner.dice_type.store(dice_type.into(), Ordering::Relaxed);
     }
 }
 ```
@@ -1822,7 +2171,46 @@ impl Dice {
     ///
     /// Sends `[0x08, R1, G1, B1, R2, G2, B2]` to the write characteristic.
     /// Use `LedColor::OFF` to turn an individual LED off.
+    ///
+    /// Rapid successive calls are coalesced: if `set_leds` is called
+    /// again within `LED_DEBOUNCE_MS`, only the most recent colors are
+    /// written. This prevents BlueZ/DBus socket buffer overflow when an
+    /// application fires many color changes in quick succession (e.g.
+    /// a color slider drag in the GTK controller).
     pub async fn set_leds(&self, led1: LedColor, led2: LedColor) -> Result<()> {
+        {
+            let throttle = self.inner.led_throttle.lock().map_err(|_| Error::LockPoisoned)?;
+            throttle.pending = Some((led1, led2));
+            throttle.last_update = Some(tokio::time::Instant::now());
+        }
+        self.inner.led_notify.notify_one();
+        Ok(())
+    }
+
+    /// Flush a pending LED write immediately, bypassing the debounce.
+    ///
+    /// Called by the debounce background task after the quiet window
+    /// has elapsed, or by `set_leds_immediate` for explicit non-throttled writes.
+    async fn flush_led(&self) -> Result<()> {
+        let (led1, led2) = {
+            let throttle = self.inner.led_throttle.lock().map_err(|_| Error::LockPoisoned)?;
+            match throttle.pending.take() {
+                Some(colors) => colors,
+                None => return Ok(()),
+            }
+        };
+        let command = Command::SetLeds { led1, led2 };
+        let data = command.encode();
+        self.transport
+            .write(&self.write_char, &data, WriteType::WithoutResponse)
+            .await
+    }
+
+    /// Set both LEDs without debounce — writes immediately.
+    ///
+    /// Use this for one-shot LED commands where coalescing is undesirable
+    /// (e.g. CLI commands, calibration sequences).
+    pub async fn set_leds_immediate(&self, led1: LedColor, led2: LedColor) -> Result<()> {
         let command = Command::SetLeds { led1, led2 };
         let data = command.encode();
         self.transport
@@ -1876,6 +2264,68 @@ impl Dice {
         self.pulse_leds(1, on_time, off_time, color).await
     }
 }
+```
+
+##### LED Write Debouncing
+
+Rapid `set_leds` calls (e.g. from a GTK color slider drag) are coalesced
+by a background debounce task. The task waits for a quiet window of
+`LED_DEBOUNCE_MS` with no new calls, then flushes the most recent color
+to the BLE transport. This prevents BlueZ/DBus socket buffer overflow
+from `WriteType::WithoutResponse` flooding.
+
+```rust
+/// Spawns a background task that flushes pending LED writes after
+/// a debounce window. Only the most recent color is sent.
+fn spawn_led_debounce_task(dice: Dice) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        let debounce = Duration::from_millis(LED_DEBOUNCE_MS);
+        loop {
+            // Check if a color is pending. The lock is released before
+            // any `.await` — `led_notify` is an `Arc<Notify>` stored
+            // separately in `DiceInner`, so no mutex guard is needed
+            // to wait for notifications.
+            let has_pending = {
+                let throttle = dice.inner.led_throttle.lock();
+                match throttle {
+                    Ok(throttle) => throttle.pending.is_some(),
+                    Err(_) => break,
+                }
+            };
+
+            if !has_pending {
+                // Wait for a new LED write request. No mutex held.
+                dice.inner.led_notify.notified().await;
+            }
+
+            // Sleep for the debounce window. If a new call arrives
+            // during this sleep, the Notify wakes us early and we
+            // restart the timer — only the last color survives.
+            tokio::time::sleep(debounce).await;
+
+            // Flush the most recent pending color to the BLE transport.
+            if let Err(error) = dice.flush_led().await {
+                debug!(error = %error, "failed to flush debounced LED write");
+            }
+        }
+    })
+}
+```
+
+```mermaid
+flowchart TB
+    call1["set_leds(red)"]
+    call2["set_leds(green)"]
+    call3["set_leds(blue)"]
+    pending["pending = blue\nlast_update = now"]
+    notify["led_notify.notify_one()"]
+    sleep["sleep(30ms)"]
+    flush["flush_led()\n→ write [0x08, B, B, B, B, B, B]"]
+
+    call1 --> pending
+    call2 --> pending
+    call3 --> pending
+    pending --> notify --> sleep --> flush
 ```
 
 LED command flow:
@@ -2086,16 +2536,72 @@ impl Dice {
     /// **WARNING**: Command opcode and response format are tentative.
     pub async fn calibrate(&self) -> Result<()> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.inner.pending_calibration.store(Some(tx));
+        self.inner.pending_calibration.lock().map_err(|_| Error::LockPoisoned)?.push_back(tx);
         self.transport
             .write(&self.write_char, &[CALIBRATION_OPCODE], WriteType::WithoutResponse)
             .await?;
-        let success = rx.await.map_err(|_| Error::ResponseTimeout)?;
+        let timeout = Duration::from_secs(RESPONSE_TIMEOUT_SECS);
+        let success = tokio::time::timeout(timeout, rx.await)
+            .await
+            .map_err(|_| Error::ResponseTimeout(timeout))?
+            .map_err(|_| Error::ResponseTimeout(timeout))?;
         if success {
             Ok(())
         } else {
             Err(Error::CalibrationFailed)
         }
+    }
+
+    /// Software-based calibration fallback.
+    ///
+    /// If the firmware does not support hardware calibration via BLE
+    /// (opcode `0x13` is unconfirmed), this method provides a pure
+    /// software alternative. The user places the dice on a flat,
+    /// stable surface, then calls this method.
+    ///
+    /// The library captures the next `Stable` event's accelerometer
+    /// reading and computes an `AccelerationOffset` — the deviation
+    /// from the expected ideal gravity vector. All subsequent
+    /// accelerometer readings have this offset subtracted before
+    /// face value interpretation.
+    ///
+    /// Returns the computed offset for inspection/logging.
+    pub async fn calibrate_software(&self) -> Result<AccelerationOffset> {
+        let mut receiver = self.subscribe();
+        // Wait for the next Stable event with accelerometer data.
+        loop {
+            match receiver.recv().await {
+                Ok(DiceEvent::Stable { acceleration, .. })
+                | Ok(DiceEvent::FakeStable { acceleration, .. })
+                | Ok(DiceEvent::TiltStable { acceleration, .. })
+                | Ok(DiceEvent::MoveStable { acceleration, .. }) => {
+                    let dice_type = DiceType::try_from(
+                        self.inner.dice_type.load(Ordering::Relaxed)
+                    ).unwrap_or(DiceType::D6);
+                    let offset = AccelerationOffset::from_measured(acceleration, dice_type);
+                    *self.inner.calibration_offset.write().map_err(|_| Error::LockPoisoned)? = Some(offset);
+                    return Ok(offset);
+                }
+                Ok(DiceEvent::RollStart) => {
+                    // Ignore roll events — wait for a stable reading.
+                }
+                Ok(DiceEvent::Disconnected) => {
+                    return Err(Error::ConnectionLost);
+                }
+                Err(broadcast::error::RecvError::Lagged(_)) => {
+                    // Catch up — keep waiting for a stable event.
+                }
+                Err(broadcast::error::RecvError::Closed) => {
+                    return Err(Error::ConnectionLost);
+                }
+            }
+        }
+    }
+
+    /// Clear any previously set software calibration offset.
+    pub fn clear_software_calibration(&self) -> Result<()> {
+        *self.inner.calibration_offset.write().map_err(|_| Error::LockPoisoned)? = None;
+        Ok(())
     }
 }
 ```
@@ -2112,7 +2618,7 @@ sequenceDiagram
     Note over App: Place dice on flat surface
 
     App->>Dice: calibrate()
-    Dice->>Dice: store pending oneshot::Sender
+    Dice->>Dice: enqueue pending oneshot::Sender
     Dice->>BLE: write [0x13] (TENTATIVE)
     BLE->>HW: calibration command
 
@@ -2127,6 +2633,35 @@ sequenceDiagram
     Dice-->>App: Err(Error::CalibrationFailed)
 ```
 
+Software calibration flow (fallback when firmware does not support BLE calibration):
+
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Dice as Dice handle
+    participant Task as Notification Task
+
+    Note over App: Place dice on flat surface
+
+    App->>Dice: calibrate_software()
+    Dice->>Dice: subscribe() → receiver
+    Dice->>Dice: loop: receiver.recv().await
+
+    Note over App: User rolls / taps dice to generate a Stable event
+
+    Task->>Task: Event::Stable { accel }
+    Task->>Task: interpret(accel, type, offset=None)
+    Task-->>Dice: DiceEvent::Stable { face, acceleration }
+
+    Dice->>Dice: AccelerationOffset::from_measured(accel, dice_type)
+    Dice->>Dice: calibration_offset = Some(offset)
+    Dice-->>App: Ok(AccelerationOffset { dx, dy, dz })
+
+    Note over App,Task: Subsequent events:
+    Task->>Task: interpret(accel, type, offset=Some(...))
+    Note over Task: Offset subtracted before distance calculation
+```
+
 ##### System Information API
 
 Phase 5 also consolidates system-level queries that were partially
@@ -2139,22 +2674,30 @@ impl Dice {
     /// Returns the physical color of the dice.
     pub async fn get_color(&self) -> Result<DieColor> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.inner.pending_color.lock().unwrap().replace(tx);
+        self.inner.pending_color.lock().map_err(|_| Error::LockPoisoned)?.push_back(tx);
         self.transport
             .write(&self.write_char, &[0x17], WriteType::WithoutResponse)
             .await?;
-        rx.await.map_err(|_| Error::ResponseTimeout)
+        let timeout = Duration::from_secs(RESPONSE_TIMEOUT_SECS);
+        tokio::time::timeout(timeout, rx.await)
+            .await
+            .map_err(|_| Error::ResponseTimeout(timeout))?
+            .map_err(|_| Error::ResponseTimeout(timeout))
     }
 
     /// Get the battery level. Sends command `0x03`, waits for `Bat` event.
     /// Returns level as percentage (0–100).
     pub async fn get_battery_level(&self) -> Result<u8> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.inner.pending_battery.lock().unwrap().replace(tx);
+        self.inner.pending_battery.lock().map_err(|_| Error::LockPoisoned)?.push_back(tx);
         self.transport
             .write(&self.write_char, &[0x03], WriteType::WithoutResponse)
             .await?;
-        rx.await.map_err(|_| Error::ResponseTimeout)
+        let timeout = Duration::from_secs(RESPONSE_TIMEOUT_SECS);
+        tokio::time::timeout(timeout, rx.await)
+            .await
+            .map_err(|_| Error::ResponseTimeout(timeout))?
+            .map_err(|_| Error::ResponseTimeout(timeout))
     }
 
     /// Get comprehensive system status in a single call.
@@ -2201,6 +2744,10 @@ The `DiceError` enum is extended with calibration-specific errors:
 pub enum DiceError {
     // ... existing errors (ConnectionFailed, WriteFailed, etc.) ...
 
+    /// A mutex lock was poisoned by a panicking thread.
+    #[error("lock poisoned")]
+    LockPoisoned,
+
     /// Calibration command failed. The dice reported a calibration error.
     #[error("calibration failed")]
     CalibrationFailed,
@@ -2213,6 +2760,14 @@ pub enum DiceError {
     /// A request-response query timed out before the dice responded.
     #[error("response timeout: no reply within {0:?}")]
     ResponseTimeout(Duration),
+
+    /// The BLE connection was lost during an operation.
+    #[error("connection lost")]
+    ConnectionLost,
+
+    /// An invalid dice type byte was encountered (e.g. from AtomicU8).
+    #[error("invalid dice type byte: {0}")]
+    InvalidDiceType(u8),
 }
 ```
 
@@ -2260,7 +2815,9 @@ fn spawn_connection_monitor(
             match dice.is_connected().await {
                 Ok(true) => {}
                 Ok(false) | Err(_) => {
-                    let _ = event_sender.send(DiceEvent::Disconnected);
+                    if event_sender.send(DiceEvent::Disconnected).is_err() {
+                        debug!("no subscribers for Disconnected event");
+                    }
                     break;
                 }
             }
@@ -2323,6 +2880,44 @@ fn calibrated_event_distinguishes_from_dice_color() {
 }
 
 #[test]
+fn acceleration_offset_from_measured_d6() {
+    // D6 resting on face 1: expected vector ~[0, 0, 64]
+    // Simulated reading with slight drift: [2, -1, 63]
+    let acceleration = Acceleration { x: 2, y: -1, z: 63 };
+    let offset = AccelerationOffset::from_measured(acceleration, DiceType::D6);
+    assert_eq!(offset, AccelerationOffset { dx: 2, dy: -1, dz: -1 });
+}
+
+#[test]
+fn acceleration_offset_apply_corrects_drift() {
+    let offset = AccelerationOffset { dx: 2, dy: -1, dz: -1 };
+    let acceleration = Acceleration { x: 2, y: -1, z: 63 };
+    let corrected = offset.apply(acceleration);
+    assert_eq!(corrected, Acceleration { x: 0, y: 0, z: 64 });
+}
+
+#[test]
+fn acceleration_offset_apply_saturates() {
+    let offset = AccelerationOffset { dx: 100, dy: -100, dz: 0 };
+    let acceleration = Acceleration { x: 1, y: -1, z: 50 };
+    let corrected = offset.apply(acceleration);
+    // i8::MIN = -128, i8::MAX = 127 — saturating_sub clamps
+    assert_eq!(corrected.x, i8::MIN);
+    assert_eq!(corrected.y, 99);
+    assert_eq!(corrected.z, 50);
+}
+
+#[test]
+fn interpret_with_offset_corrects_face_value() {
+    // Without offset: drifted reading [2, -1, 63] might still match face 1
+    // With offset: corrected to [0, 0, 64] — exact match to D6 vector
+    let offset = Some(AccelerationOffset { dx: 2, dy: -1, dz: -1 });
+    let acceleration = Acceleration { x: 2, y: -1, z: 63 };
+    let face = interpret(acceleration, DiceType::D6, offset);
+    assert_eq!(face, FaceValue::new(1).unwrap());
+}
+
+#[test]
 fn system_status_concurrent_queries() {
     // Mock transport returns battery=75, color=Green
     let status = dice.system_status().await.unwrap();
@@ -2338,9 +2933,10 @@ fn system_status_concurrent_queries() {
 |-------------------|-----------------------|------------------------------------------------------|
 | `SystemStatus`    | `model/system_status.rs` | Aggregated status (battery, color, connected, RSSI) |
 | `FirmwareVersion` | `model/firmware_version.rs` | Firmware version (stretch goal, if protocol found) |
+| `AccelerationOffset` | `model/acceleration_offset.rs` | Software calibration offset (dx, dy, dz) |
 | `Command::Calibrate` | `ble/command.rs`  | Calibration command variant (tentative opcode)       |
 | `Event::Calibrated` | `ble/event.rs`     | Calibration response event variant (tentative)       |
-| `DiceError` extensions | `error.rs`     | `CalibrationFailed`, `CalibrationNotConfirmed`, `ResponseTimeout` |
+| `DiceError` extensions | `error.rs`     | `CalibrationFailed`, `CalibrationNotConfirmed`, `ResponseTimeout`, `ConnectionLost` |
 
 #### Phase 6 — CLI Tool
 
@@ -2810,7 +3406,7 @@ async fn run_interactive(manager: &DiceManager) -> Result<()> {
                 println!("{table}");
             }
             cmd if cmd.starts_with("connect ") => {
-                let address = cmd.strip_prefix("connect ").unwrap();
+                let address = cmd.strip_prefix("connect ").unwrap_or(cmd);
                 let device = find_device_by_address(manager, address).await?;
                 dice = Some(manager.connect(&device).await?);
                 println!("Connected to {address}");
@@ -2835,7 +3431,7 @@ async fn run_interactive(manager: &DiceManager) -> Result<()> {
             }
             cmd if cmd.starts_with("led ") => {
                 if let Some(d) = &dice {
-                    let color_str = cmd.strip_prefix("led ").unwrap();
+                    let color_str = cmd.strip_prefix("led ").unwrap_or(cmd);
                     let color = parse_color(color_str)?;
                     d.set_led(color).await?;
                     println!("LEDs set to {color}");
@@ -2992,8 +3588,23 @@ fn scan_finds_device() {
 
 The `dice-rs-controller` crate is a graphical desktop application for
 controlling GoDice devices. It uses GTK 4 via the
-[`gtk4-rs`](https://gtk-rs.org/gtk4-rs/) bindings and
-[`librel`](https://gtk-rs.org/librel/) for 3D rendering via OpenGL.
+[`gtk4-rs`](https://gtk-rs.org/gtk4-rs/) bindings.
+
+3D dice rendering uses `gtk4::GLArea` (which provides an OpenGL context
+managed by GTK) with the [`glow`](https://github.com/grovesNL/glow) crate
+as a safe OpenGL wrapper. This is the simplest and most reliable approach
+for embedding GPU-accelerated 3D rendering inside a GTK 4 widget — `glow`
+wraps the GL function pointers from the `GLArea`'s context and provides
+type-safe OpenGL ES 3.0 calls.
+
+An alternative approach is [`wgpu`](https://wgpu.rs/) via an external GLES
+adapter bound to the `GLArea` framebuffer. This provides a modern,
+cross-platform GPU API but requires `unsafe` code to bridge the
+`GLArea`'s GL context into wgpu's HAL (`wgpu::hal::gles::Adapter::new_external`).
+This integration is not yet stabilized (see
+[wgpu#7581](https://github.com/gfx-rs/wgpu/issues/7581)). If wgpu matures
+its external framebuffer support, the rendering backend can be swapped
+without changing the `Dice3D` widget's public API.
 
 ```
 dice-rs-controller/
@@ -3012,7 +3623,9 @@ dice-rs-controller/
     ├── window.rs           # MainWindow struct
     ├── dice_row.rs         # DiceRow widget (list row for a dice)
     ├── face_display.rs     # FaceDisplay widget (shows current face)
-    ├── dice_3d.rs          # Dice3D widget (OpenGL 3D rendering)
+    ├── dice_3d.rs          # Dice3D widget (glow + GLArea + glam 3D rendering)
+    ├── dice_renderer.rs    # DiceRenderer (shaders, buffers, MVP matrix)
+    ├── dice_model.rs       # DiceModel (OBJ loading, vertex/normals data)
     ├── led_controls.rs     # LedControls widget (color picker + buttons)
     ├── battery_indicator.rs # BatteryIndicator widget (progress bar)
     ├── scan_dialog.rs      # ScanDialog (device discovery)
@@ -3032,7 +3645,7 @@ flowchart TB
     listBox["gtk4::ListBox\n(dice list)"]
     diceRow["DiceRow\n(per connected dice)"]
     faceDisplay["FaceDisplay\n(current face value)"]
-    dice3d["Dice3D\n(OpenGL 3D model)"]
+    dice3d["Dice3D\n(glow + GLArea + glam)"]
     ledControls["LedControls\n(color picker)"]
     batteryIndicator["BatteryIndicator\n(progress bar)"]
     eventController["EventController\n(tokio → GTK bridge)"]
@@ -3313,16 +3926,44 @@ impl FaceDisplay {
 
 ##### Dice3D Widget
 
-Renders a 3D dice model using GTK 4's `gtk4::GLArea` and OpenGL ES 3.0.
+Renders a 3D dice model using `gtk4::GLArea` for the OpenGL context and
+[`glow`](https://github.com/grovesNL/glow) as the safe GL wrapper. The
+`GLArea` provides an OpenGL ES 3.0 context managed by GTK; `glow` wraps
+the GL function pointers from that context for type-safe shader
+compilation, buffer management, and draw calls.
+
 The model is loaded from an OBJ file and rotated based on the accelerometer
 data to reflect the physical orientation of the dice.
 
+**Rendering backend**: `glow` (primary) — safe OpenGL ES 3.0 wrapper.
+The `Dice3D` widget encapsulates all GL calls behind a `DiceRenderer`
+struct, which owns the compiled shader program, vertex buffers, and
+texture. If `wgpu` external framebuffer support stabilizes in the future
+(see [wgpu#7581](https://github.com/gfx-rs/wgpu/issues/7581)), only
+`DiceRenderer` needs to be replaced — the widget's public API stays
+unchanged.
+
+**Math library**: [`glam`](https://github.com/bitshifter/glam) is used
+for all 3D math: `Quat` for orientation (avoids gimbal lock that
+Euler-angle pitch/roll would cause), `Mat4` for model-view-projection
+matrices passed as shader uniforms, and `Vec3` for light direction and
+normal calculations. `glam` is SIMD-optimized and the de-facto standard
+in the Rust graphics ecosystem.
+
 ```rust
-/// 3D dice rendering widget using OpenGL.
+/// 3D dice rendering widget using glow + gtk4::GLArea.
 pub struct Dice3D {
     gl_area: gtk4::GLArea,
+    /// GL context wrapper, initialized on first `create-context` signal.
+    gl: RefCell<Option<Rc<glow::Context>>>,
+    /// Renderer owning shaders, buffers, and model data.
+    renderer: RefCell<Option<DiceRenderer>>,
     model: RefCell<Option<DiceModel>>,
-    rotation: RefCell<(f32, f32, f32)>,
+    /// Current dice orientation as a quaternion (glam::Quat).
+    /// Converted from accelerometer data; avoids gimbal lock.
+    orientation: RefCell<Quat>,
+    /// Target orientation for smooth interpolation during rolling.
+    target_orientation: RefCell<Quat>,
     rolling: Cell<bool>,
 }
 
@@ -3337,8 +3978,11 @@ impl Dice3D {
 
         let widget = Self {
             gl_area,
+            gl: RefCell::new(None),
+            renderer: RefCell::new(None),
             model: RefCell::new(None),
-            rotation: RefCell::new((0.0, 0.0, 0.0)),
+            orientation: RefCell::new(Quat::IDENTITY),
+            target_orientation: RefCell::new(Quat::IDENTITY),
             rolling: Cell::new(false),
         };
 
@@ -3359,22 +4003,43 @@ impl Dice3D {
     }
 
     /// Update the dice orientation from accelerometer data.
+    ///
+    /// Converts the acceleration vector to a rotation quaternion that
+    /// aligns the 3D model with the physical dice orientation. The
+    /// acceleration vector is normalized and a quaternion is computed
+    /// that rotates the model's "up" axis (Y) to match the measured
+    /// gravity direction.
     pub fn set_orientation(&self, acceleration: Acceleration) {
         let (x, y, z) = acceleration.as_tuple();
-        let pitch = (x as f32 / 64.0).asin();
-        let roll = (y as f32 / 64.0).asin();
-        *self.rotation.borrow_mut() = (pitch, roll, 0.0);
+        let gravity = Vec3::new(x as f32, y as f32, z as f32);
+        let gravity = gravity.normalize_or_zero();
+        if gravity != Vec3::ZERO {
+            // Compute rotation from model-up (0, 1, 0) to gravity vector.
+            let quat = Quat::from_rotation_arc(Vec3::Y, gravity);
+            *self.orientation.borrow_mut() = quat;
+            *self.target_orientation.borrow_mut() = quat;
+        }
         self.gl_area.queue_render();
     }
 
-    /// Start the rolling animation (spinning).
+    /// Start the rolling animation (spinning with smooth slerp).
     pub fn start_rolling_animation(&self) {
         self.rolling.set(true);
+        // Generate a random spin target for visual effect.
+        let spin_axis = Vec3::new(1.0, 0.5, 0.3).normalize();
+        let spin = Quat::from_axis_angle(spin_axis, std::f32::consts::TAU);
+        *self.target_orientation.borrow_mut() = spin;
         glib::source::timeout_add_local(Duration::from_millis(16), {
             let gl_area = self.gl_area.clone();
+            let orientation = self.orientation.clone();
+            let target = self.target_orientation.clone();
             let rolling = Cell::new(true);
             move || {
                 if rolling.get() {
+                    // Slerp toward the target orientation for smooth spinning.
+                    let mut current = orientation.borrow_mut();
+                    let target = target.borrow();
+                    *current = current.slerp(*target, 0.1);
                     gl_area.queue_render();
                     glib::ControlFlow::Continue
                 } else {
@@ -3390,19 +4055,121 @@ impl Dice3D {
     }
 
     fn connect_signals(&self) {
+        // Initialize glow context when GLArea creates the GL context.
+        self.gl_area.connect_create_context({
+            let gl = self.gl.clone();
+            let renderer = self.renderer.clone();
+            move |_area| {
+                // Obtain GL function pointers from the current GLContext.
+                // glow::Context::from_loader_function wraps the GL calls.
+                let context = unsafe {
+                    glow::Context::from_loader_function(|symbol| {
+                        // Platform-specific GL function loading via epoxy/egl
+                        gl_loader::get_proc_address(symbol) as *const _
+                    })
+                };
+                let context = Rc::new(context);
+                *gl.borrow_mut() = Some(context.clone());
+                *renderer.borrow_mut() = Some(DiceRenderer::new(context));
+                None
+            }
+        });
+
+        // Render the dice model on each render signal.
         self.gl_area.connect_render({
+            let renderer = self.renderer.clone();
             let model = self.model.clone();
-            let rotation = self.rotation.clone();
+            let orientation = self.orientation.clone();
             move |_area, _context| {
+                let renderer = renderer.borrow();
                 let model = model.borrow();
-                let rotation = rotation.borrow();
-                if let Some(model) = model.as_ref() {
-                    // Render the model with the current rotation
-                    model.render(rotation.0, rotation.1, rotation.2);
+                let orientation = orientation.borrow();
+                if let (Some(renderer), Some(model)) = (renderer.as_ref(), model.as_ref()) {
+                    renderer.render(model, *orientation);
                 }
                 Inhibit(false)
             }
         });
+    }
+}
+```
+
+###### DiceRenderer
+
+The `DiceRenderer` owns the OpenGL state (shaders, buffers, textures) and
+performs the actual draw calls using `glam` for all matrix math:
+
+```rust
+/// OpenGL renderer for 3D dice models, using glow + glam.
+pub struct DiceRenderer {
+    gl: Rc<glow::Context>,
+    /// Compiled shader program (vertex + fragment).
+    program: <glow::Context as glow::HasContext>::Program,
+    /// Vertex array object for the dice model.
+    vao: <glow::Context as glow::HasContext>::VertexArray,
+    /// Vertex buffer with positions, normals, and UVs.
+    vbo: <glow::Context as glow::HasContext>::Buffer,
+    /// Index buffer for indexed drawing.
+    ebo: <glow::Context as glow::HasContext>::Buffer,
+    /// Number of indices to draw.
+    index_count: i32,
+    /// Diffuse texture handle.
+    texture: <glow::Context as glow::HasContext>::Texture,
+    /// Light direction for diffuse lighting (normalized).
+    light_dir: Vec3,
+}
+
+impl DiceRenderer {
+    /// Create a new renderer with the given GL context.
+    /// Compiles shaders, creates buffers, and sets up static uniforms.
+    pub fn new(gl: Rc<glow::Context>) -> Self {
+        // ... compile shaders, create VAO/VBO/EBO, load texture ...
+        Self {
+            gl,
+            program,
+            vao,
+            vbo,
+            ebo,
+            index_count: 0,
+            texture,
+            light_dir: Vec3::new(0.5, -1.0, 0.3).normalize(),
+        }
+    }
+
+    /// Render the dice model with the given orientation.
+    ///
+    /// Builds a model-view-projection matrix from the quaternion
+    /// orientation and passes it to the shader as a uniform.
+    /// Diffuse lighting is computed from `light_dir` and vertex normals.
+    pub fn render(&self, model: &DiceModel, orientation: Quat) {
+        let gl = &self.gl;
+
+        // Model matrix: rotation from quaternion, centered at origin.
+        let model_matrix = Mat4::from_quat(orientation);
+
+        // View matrix: camera looking at the dice from a fixed angle.
+        let view_matrix = Mat4::look_at_rh(
+            Vec3::new(0.0, 0.0, 5.0),  // eye
+            Vec3::ZERO,                 // target
+            Vec3::Y,                    // up
+        );
+
+        // Projection matrix: perspective with 45° FOV.
+        let aspect = 1.0; // updated on resize
+        let projection = Mat4::perspective_rh_gl(
+            std::f32::consts::FRAC_PI_4,
+            aspect,
+            0.1,  // near
+            100.0, // far
+        );
+
+        // MVP = Projection * View * Model
+        let mvp = projection * view_matrix * model_matrix;
+
+        // Normal matrix = transpose(inverse(model_matrix)) — for lighting.
+        let normal_matrix = model_matrix.inverse().transpose();
+
+        // ... set uniforms, bind VAO, draw elements ...
     }
 }
 ```
@@ -3412,13 +4179,16 @@ impl Dice3D {
 ```mermaid
 flowchart LR
     accel["Acceleration\n(x, y, z)"]
-    convert["Convert to\npitch/roll angles"]
+    normalize["glam::Vec3::normalize\n→ gravity direction"]
+    quat["Quat::from_rotation_arc\n→ orientation quaternion"]
     queue["gl_area.queue_render()"]
+    createContext["GLArea::create-context\n→ glow::Context::from_loader_function"]
     render["GLArea::render signal"]
-    draw["Draw model with\nrotation matrix"]
-    display["Display"]
+    mvp["DiceRenderer::render\nMVP = P * V * M (glam::Mat4)\nnormal_matrix for lighting"]
+    display["Display (composited\nby GTK scene graph)"]
 
-    accel --> convert --> queue --> render --> draw --> display
+    createContext --> render
+    accel --> normalize --> quat --> queue --> render --> mvp --> display
 ```
 
 ##### LedControls Widget
@@ -3468,7 +4238,9 @@ impl LedControls {
                 if let Some(dice) = dice.borrow().as_ref() {
                     let dice = dice.clone();
                     glib::spawn_future_local(async move {
-                        let _ = dice.set_led(color).await;
+                        if let Err(error) = dice.set_led(color).await {
+                            debug!(error = %error, "failed to set LED color");
+                        }
                     });
                 }
             }
@@ -3487,7 +4259,9 @@ impl LedControls {
                 if let Some(dice) = dice.borrow().as_ref() {
                     let dice = dice.clone();
                     glib::spawn_future_local(async move {
-                        let _ = dice.pulse_leds(5, 10, 10, color).await;
+                        if let Err(error) = dice.pulse_leds(5, 10, 10, color).await {
+                            debug!(error = %error, "failed to pulse LEDs");
+                        }
                     });
                 }
             }
@@ -3499,7 +4273,9 @@ impl LedControls {
                 if let Some(dice) = dice.borrow().as_ref() {
                     let dice = dice.clone();
                     glib::spawn_future_local(async move {
-                        let _ = dice.turn_off_leds().await;
+                        if let Err(error) = dice.turn_off_leds().await {
+                            debug!(error = %error, "failed to turn off LEDs");
+                        }
                     });
                 }
             }
@@ -3714,7 +4490,9 @@ fn full_app_connect_and_roll() {
 [dependencies]
 dice-rs = { path = "../dice-rs" }
 gtk4 = "0.9"
-librel = "0.9"
+glow = "0.16"
+gl_loader = "0.1"
+glam = "0.29"
 tokio = { version = "1", features = ["full"] }
 glib = "0.20"
 ```
@@ -3727,12 +4505,13 @@ glib = "0.20"
 | `MainWindow`       | `window.rs`           | Main application window                             |
 | `DiceRow`          | `dice_row.rs`         | List row widget for a connected dice                |
 | `FaceDisplay`      | `face_display.rs`     | Widget showing current face value                   |
-| `Dice3D`           | `dice_3d.rs`          | OpenGL 3D dice rendering widget                     |
+| `Dice3D`           | `dice_3d.rs`          | 3D dice rendering widget (glow + GLArea + glam)     |
+| `DiceRenderer`     | `dice_renderer.rs`    | OpenGL renderer (shaders, buffers, MVP matrix)      |
 | `LedControls`      | `led_controls.rs`     | LED color picker and pulse/off buttons              |
 | `BatteryIndicator` | `battery_indicator.rs`| Battery level progress bar widget                   |
 | `ScanDialog`       | `scan_dialog.rs`      | Device discovery and selection dialog               |
 | `EventController`  | `event_controller.rs` | Async-to-GTK event bridge                           |
-| `DiceModel`        | `dice_3d.rs`          | 3D model loaded from OBJ file (internal to Dice3D)  |
+| `DiceModel`        | `dice_model.rs`       | 3D model loaded from OBJ file (vertices, normals)   |
 
 #### Phase 8 — WebSocket Server
 
@@ -4793,7 +5572,11 @@ source code. The complete command and event reference is documented in the
   command. Phase 5 documents a tentative `Command::Calibrate` (opcode `0x13`)
   and `Event::Calibrated` (prefix `"Cal"`) based on protocol investigation,
   but the exact byte encoding remains unconfirmed. This may require Bluetooth
-  sniffing or contacting Particula support.
+  sniffing or contacting Particula support. If the firmware does not support
+  hardware calibration via BLE, Phase 5 provides a **software fallback**
+  (`calibrate_software()`) that computes an `AccelerationOffset` from the
+  next `Stable` event and subtracts it from all subsequent accelerometer
+  readings before face value interpretation.
 - **RSSI**: Neither API exposes RSSI directly. `btleplug`'s
   `PeripheralProperties` may include RSSI on Linux via BlueZ, but this is
   not guaranteed and depends on the adapter and BlueZ version.
