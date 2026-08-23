@@ -1,0 +1,16 @@
+[package]
+name = "dice-rs-ws"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "WebSocket server exposing GoDice dice events over a network API"
+
+[[bin]]
+name = "dice-rs-ws"
+path = "src/main.rs"
+
+[dependencies]
+dice-rs = { path = "../dice-rs" }

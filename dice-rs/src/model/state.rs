@@ -1,0 +1,1 @@
+//! Dice connection state enum.

@@ -1,0 +1,15 @@
+[workspace]
+members = [
+    "dice-rs",
+    "dice-rs-cli",
+    "dice-rs-controller",
+    "dice-rs-ws",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+authors = ["Andreas Schaeffer <hanack@nooblounge.net>"]
+repository = "https://github.com/smearor/dice-rs"
+homepage = "https://github.com/smearor/dice-rs"
