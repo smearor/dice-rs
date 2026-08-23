@@ -1,5 +1,4 @@
 use crate::ble::command_error::CommandError;
-use crate::error::Result;
 use crate::model::led::LedColor;
 
 /// Tentative calibration opcode — protocol not yet confirmed.
@@ -26,32 +25,37 @@ pub enum Command {
     Calibrate,
 }
 
-impl Command {
-    /// Encode the command to its byte representation.
-    pub fn encode(&self) -> Vec<u8> {
-        match self {
-            Self::GetBatteryLevel => vec![0x03],
-            Self::SetLeds { led1, led2 } => {
+/// Encode a `Command` into its BLE byte representation.
+impl From<Command> for Vec<u8> {
+    fn from(command: Command) -> Self {
+        match command {
+            Command::GetBatteryLevel => vec![0x03],
+            Command::SetLeds { led1, led2 } => {
                 vec![0x08, led1.r, led1.g, led1.b, led2.r, led2.g, led2.b]
             }
-            Self::PulseLeds {
+            Command::PulseLeds {
                 pulse_count,
                 on_time,
                 off_time,
                 color,
             } => {
-                vec![0x10, *pulse_count, *on_time, *off_time, color.r, color.g, color.b, 1, 0]
+                vec![0x10, pulse_count, on_time, off_time, color.r, color.g, color.b, 1, 0]
             }
-            Self::GetDiceColor => vec![0x17],
-            Self::Calibrate => vec![CALIBRATION_OPCODE],
+            Command::GetDiceColor => vec![0x17],
+            Command::Calibrate => vec![CALIBRATION_OPCODE],
         }
     }
+}
 
-    /// Decode a command from its byte representation.
-    /// Useful for testing and protocol debugging.
-    pub fn decode(data: &[u8]) -> Result<Self> {
+/// Decode a `Command` from its BLE byte representation.
+///
+/// Useful for testing and protocol debugging.
+impl TryFrom<&[u8]> for Command {
+    type Error = CommandError;
+
+    fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         if data.is_empty() {
-            return Err(CommandError::EmptyPacket.into());
+            return Err(CommandError::EmptyPacket);
         }
         match data[0] {
             0x03 if data.len() == 1 => Ok(Self::GetBatteryLevel),
@@ -67,7 +71,7 @@ impl Command {
             }),
             0x17 if data.len() == 1 => Ok(Self::GetDiceColor),
             CALIBRATION_OPCODE if data.len() == 1 => Ok(Self::Calibrate),
-            opcode => Err(CommandError::UnknownOpcode { opcode, length: data.len() }.into()),
+            opcode => Err(CommandError::UnknownOpcode { opcode, length: data.len() }),
         }
     }
 }
@@ -78,12 +82,14 @@ mod tests {
 
     #[test]
     fn get_battery_level_encode() {
-        assert_eq!(Command::GetBatteryLevel.encode(), vec![0x03]);
+        let data: Vec<u8> = Command::GetBatteryLevel.into();
+        assert_eq!(data, vec![0x03]);
     }
 
     #[test]
     fn get_dice_color_encode() {
-        assert_eq!(Command::GetDiceColor.encode(), vec![0x17]);
+        let data: Vec<u8> = Command::GetDiceColor.into();
+        assert_eq!(data, vec![0x17]);
     }
 
     #[test]
@@ -91,9 +97,9 @@ mod tests {
         let led1 = LedColor::new(255, 128, 0);
         let led2 = LedColor::new(0, 64, 200);
         let command = Command::SetLeds { led1, led2 };
-        let encoded = command.encode();
+        let encoded: Vec<u8> = command.clone().into();
         assert_eq!(encoded, vec![0x08, 255, 128, 0, 0, 64, 200]);
-        let decoded = Command::decode(&encoded).unwrap();
+        let decoded = Command::try_from(&encoded[..]).unwrap();
         assert_eq!(decoded, command);
     }
 
@@ -106,30 +112,30 @@ mod tests {
             off_time: 10,
             color,
         };
-        let encoded = command.encode();
+        let encoded: Vec<u8> = command.clone().into();
         assert_eq!(encoded, vec![0x10, 5, 10, 10, 0, 255, 0, 1, 0]);
-        let decoded = Command::decode(&encoded).unwrap();
+        let decoded = Command::try_from(&encoded[..]).unwrap();
         assert_eq!(decoded, command);
     }
 
     #[test]
     fn decode_empty_packet() {
-        assert!(Command::decode(&[]).is_err());
+        assert!(Command::try_from(&[][..]).is_err());
     }
 
     #[test]
     fn decode_unknown_opcode() {
-        assert!(Command::decode(&[0xFF]).is_err());
+        assert!(Command::try_from(&[0xFF][..]).is_err());
     }
 
     #[test]
     fn decode_invalid_length_set_leds() {
-        assert!(Command::decode(&[0x08, 1, 2, 3]).is_err());
+        assert!(Command::try_from(&[0x08, 1, 2, 3][..]).is_err());
     }
 
     #[test]
     fn decode_invalid_length_pulse_leds() {
-        assert!(Command::decode(&[0x10, 5, 10, 10, 0, 255, 0]).is_err());
+        assert!(Command::try_from(&[0x10, 5, 10, 10, 0, 255, 0][..]).is_err());
     }
 
     #[test]
@@ -142,14 +148,15 @@ mod tests {
 
     #[test]
     fn calibrate_encode() {
-        assert_eq!(Command::Calibrate.encode(), vec![CALIBRATION_OPCODE]);
+        let data: Vec<u8> = Command::Calibrate.into();
+        assert_eq!(data, vec![CALIBRATION_OPCODE]);
     }
 
     #[test]
     fn calibrate_round_trip() {
         let command = Command::Calibrate;
-        let encoded = command.encode();
-        let decoded = Command::decode(&encoded).unwrap();
+        let encoded: Vec<u8> = command.clone().into();
+        let decoded = Command::try_from(&encoded[..]).unwrap();
         assert_eq!(decoded, command);
     }
 }

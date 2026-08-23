@@ -1,11 +1,19 @@
 use async_trait::async_trait;
-use btleplug::api::{Central, Manager as BtleplugManager, Peripheral as BtleplugPeripheralApi, ScanFilter, WriteType};
-use btleplug::platform::{Adapter, Manager, Peripheral as BtleplugPeripheral};
+use btleplug::api::Central;
+use btleplug::api::Manager as BtleplugManager;
+use btleplug::api::Peripheral as BtleplugPeripheralApi;
+use btleplug::api::ScanFilter;
+use btleplug::api::WriteType;
+use btleplug::platform::Adapter;
+use btleplug::platform::Manager;
+use btleplug::platform::Peripheral as BtleplugPeripheral;
 use futures::stream::BoxStream;
 use uuid::Uuid;
 
-use crate::ble::uuids::{NUS_NOTIFY_CHAR_UUID, NUS_WRITE_CHAR_UUID};
-use crate::error::{DiceError, Result};
+use crate::ble::uuids::NUS_NOTIFY_CHAR_UUID;
+use crate::ble::uuids::NUS_WRITE_CHAR_UUID;
+use crate::error::DiceError;
+use crate::error::Result;
 
 /// Abstraction over a BLE backend (btleplug, bluer, mock).
 #[async_trait]

@@ -1,29 +1,20 @@
 use std::collections::VecDeque;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::sync::RwLock as StdRwLock;
 use std::sync::atomic::AtomicU8;
-use std::sync::{Arc, Mutex};
 
 use btleplug::api::Characteristic;
-use tokio::sync::{Notify, broadcast};
+use tokio::sync::Notify;
+use tokio::sync::broadcast;
+use tokio::sync::oneshot::Sender;
 use tokio::task::JoinHandle;
 
 use crate::ble::transport::BtleplugPeripheralWrapper;
-use crate::model::acceleration_offset::AccelerationOffset;
-use crate::model::color::DieColor;
-use crate::service::dice_event::DiceEvent;
-
-/// Coalescing debounce state for LED write commands.
-///
-/// When `set_leds` is called repeatedly within `LED_DEBOUNCE_MS`,
-/// only the most recent color is written to the BLE transport.
-/// A pending write is deferred until no new `set_leds` call arrives
-/// for the debounce window, then flushed by a background task.
-pub struct LedThrottleState {
-    /// Most recent LED colors requested.
-    pub pending: Option<(crate::model::led::LedColor, crate::model::led::LedColor)>,
-    /// Instant of the last `set_leds` call.
-    pub last_update: Option<tokio::time::Instant>,
-}
+use crate::model::acceleration::AccelerationOffset;
+use crate::model::dice::DiceColor;
+use crate::service::dice::event::DiceEvent;
+use crate::service::led_throttle_state::LedThrottleState;
 
 /// Internal shared state for a connected dice.
 /// Stored behind `Arc` so all `Dice` clones share the same state.
@@ -42,11 +33,11 @@ pub struct DiceInner {
     /// `Arc`-wrapped so it can be cloned into the notification task.
     pub dice_type: Arc<AtomicU8>,
     /// FIFO queue of pending battery level request senders.
-    pub pending_battery: Arc<Mutex<VecDeque<tokio::sync::oneshot::Sender<u8>>>>,
+    pub pending_battery: Arc<Mutex<VecDeque<Sender<u8>>>>,
     /// FIFO queue of pending dice color request senders.
-    pub pending_color: Arc<Mutex<VecDeque<tokio::sync::oneshot::Sender<DieColor>>>>,
+    pub pending_color: Arc<Mutex<VecDeque<Sender<DiceColor>>>>,
     /// FIFO queue of pending calibration request senders.
-    pub pending_calibration: Arc<Mutex<VecDeque<tokio::sync::oneshot::Sender<bool>>>>,
+    pub pending_calibration: Arc<Mutex<VecDeque<Sender<bool>>>>,
     /// JoinHandle of the notification parsing task.
     /// Aborted on disconnect/reconnect to prevent orphaned tasks.
     pub notification_handle: Mutex<Option<JoinHandle<()>>>,

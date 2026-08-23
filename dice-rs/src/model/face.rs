@@ -8,6 +8,9 @@ use crate::error::DiceError;
 pub struct FaceValue(u8);
 
 impl FaceValue {
+    /// The minimum valid face value (1).
+    pub const ONE: Self = Self(1);
+
     /// Create a face value. Returns error if value is 0.
     pub fn new(value: u8) -> Result<Self, DiceError> {
         if value == 0 {

@@ -1,3 +1,7 @@
+use std::str::FromStr;
+
+use crate::model::led::color_error::LedColorError;
+
 /// An RGB color for a GoDice LED.
 ///
 /// Each channel is in the range 0–255. `(0, 0, 0)` turns the LED off.
@@ -58,6 +62,40 @@ impl From<(u8, u8, u8)> for LedColor {
     }
 }
 
+/// Parse a color from a string.
+///
+/// Accepts named colors (`"red"`, `"green"`, `"blue"`, `"white"`, `"off"`, `"black"`)
+/// or hex values (`"FF0000"`, `"0xFF0000"`). Case-insensitive.
+///
+/// ```
+/// use std::str::FromStr;
+/// use dice_rs::model::led::LedColor;
+/// let color = LedColor::from_str("red").unwrap();
+/// assert_eq!(color, LedColor::RED);
+/// let hex = LedColor::from_str("00FF00").unwrap();
+/// assert_eq!(hex, LedColor::GREEN);
+/// ```
+impl FromStr for LedColor {
+    type Err = LedColorError;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let normalized = input.to_lowercase();
+        match normalized.as_str() {
+            "off" | "black" => Ok(Self::OFF),
+            "red" => Ok(Self::RED),
+            "green" => Ok(Self::GREEN),
+            "blue" => Ok(Self::BLUE),
+            "white" => Ok(Self::WHITE),
+            hex => {
+                let hex = hex.strip_prefix("0x").unwrap_or(hex);
+                u32::from_str_radix(hex, 16)
+                    .map(Self::from_hex)
+                    .map_err(|_| LedColorError::InvalidValue(input.to_string()))
+            }
+        }
+    }
+}
+
 impl std::fmt::Display for LedColor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "#{:02X}{:02X}{:02X}", self.r, self.g, self.b)
@@ -105,5 +143,25 @@ mod tests {
     #[test]
     fn display() {
         assert_eq!(LedColor::RED.to_string(), "#FF0000");
+    }
+
+    #[test]
+    fn from_str_named() {
+        assert_eq!(LedColor::from_str("red").unwrap(), LedColor::RED);
+        assert_eq!(LedColor::from_str("GREEN").unwrap(), LedColor::GREEN);
+        assert_eq!(LedColor::from_str("off").unwrap(), LedColor::OFF);
+        assert_eq!(LedColor::from_str("black").unwrap(), LedColor::OFF);
+    }
+
+    #[test]
+    fn from_str_hex() {
+        assert_eq!(LedColor::from_str("FF0000").unwrap(), LedColor::RED);
+        assert_eq!(LedColor::from_str("0x00FF00").unwrap(), LedColor::GREEN);
+        assert_eq!(LedColor::from_str("0000ff").unwrap(), LedColor::BLUE);
+    }
+
+    #[test]
+    fn from_str_invalid_returns_err() {
+        assert!(LedColor::from_str("xyz").is_err());
     }
 }

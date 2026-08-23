@@ -3,10 +3,10 @@
 //! Each type lives in its own file following the one-struct-per-file rule.
 
 pub mod acceleration;
-pub mod acceleration_offset;
-pub mod color;
-pub mod dice_type;
+pub mod battery_level;
+pub mod dice;
 pub mod face;
 pub mod led;
-pub mod state;
+pub mod stability_descriptor;
 pub mod system_status;
+pub mod vec_u8;

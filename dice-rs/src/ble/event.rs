@@ -1,7 +1,7 @@
 use crate::ble::parse_error::ParseError;
 use crate::error::Result;
 use crate::model::acceleration::Acceleration;
-use crate::model::color::DieColor;
+use crate::model::dice::DiceColor;
 
 /// Raw notification events from the GoDice.
 ///
@@ -22,7 +22,7 @@ pub enum Event {
     /// Battery level response (`Bat` + level byte).
     BatteryLevel { level: u8 },
     /// Dice color response (`Col` + color byte).
-    DiceColor { color: DieColor },
+    DiceColor { color: DiceColor },
     /// Calibration response (tentative: `Cal` + status byte).
     Calibrated { success: bool },
 }
@@ -51,7 +51,7 @@ impl Event {
 
         // DiceColor: prefix "Col" (0x43, 0x6F, 0x6C) + color byte
         if data.len() >= 4 && &data[0..3] == b"Col" {
-            let color = DieColor::try_from(data[3]).map_err(|_| ParseError::InvalidColor(data[3]))?;
+            let color = DiceColor::try_from(data[3]).map_err(|_| ParseError::InvalidColor(data[3]))?;
             return Ok(Self::DiceColor { color });
         }
 
@@ -71,13 +71,13 @@ impl Event {
                 .into());
             }
             return Ok(Self::Stable {
-                acceleration: Acceleration::from_bytes(&data[1..4]),
+                acceleration: Acceleration::try_from(&data[1..4])?,
             });
         }
 
         // Two-byte prefix events: FS, TS, MS — all followed by 3 signed bytes XYZ
         if data.len() >= 5 && data[1] == 0x53 {
-            let acceleration = Acceleration::from_bytes(&data[2..5]);
+            let acceleration = Acceleration::try_from(&data[2..5])?;
             return match first {
                 0x46 => Ok(Self::FakeStable { acceleration }),
                 0x54 => Ok(Self::TiltStable { acceleration }),
@@ -106,7 +106,7 @@ mod tests {
         assert_eq!(
             event,
             Event::Stable {
-                acceleration: Acceleration::from_bytes(&[10, 20, 30])
+                acceleration: Acceleration::try_from(&[10u8, 20, 30][..]).unwrap()
             }
         );
     }
@@ -118,7 +118,7 @@ mod tests {
         assert_eq!(
             event,
             Event::FakeStable {
-                acceleration: Acceleration::from_bytes(&[1, 2, 3])
+                acceleration: Acceleration::try_from(&[1u8, 2, 3][..]).unwrap()
             }
         );
     }
@@ -130,7 +130,7 @@ mod tests {
         assert_eq!(
             event,
             Event::TiltStable {
-                acceleration: Acceleration::from_bytes(&[1, 2, 3])
+                acceleration: Acceleration::try_from(&[1u8, 2, 3][..]).unwrap()
             }
         );
     }
@@ -142,7 +142,7 @@ mod tests {
         assert_eq!(
             event,
             Event::MoveStable {
-                acceleration: Acceleration::from_bytes(&[1, 2, 3])
+                acceleration: Acceleration::try_from(&[1u8, 2, 3][..]).unwrap()
             }
         );
     }
@@ -156,7 +156,7 @@ mod tests {
     #[test]
     fn dice_color_event() {
         let data = [0x43, 0x6F, 0x6C, 2];
-        assert_eq!(Event::parse(&data), Ok(Event::DiceColor { color: DieColor::Green }));
+        assert_eq!(Event::parse(&data), Ok(Event::DiceColor { color: DiceColor::Green }));
     }
 
     #[test]

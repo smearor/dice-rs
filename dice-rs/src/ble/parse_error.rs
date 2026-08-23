@@ -10,7 +10,7 @@ pub enum ParseError {
     /// The first byte does not match any known event.
     #[error("unknown event byte: 0x{byte:02X}")]
     UnknownEvent { byte: u8 },
-    /// The color byte is not a valid DieColor value.
+    /// The color byte is not a valid DiceColor value.
     #[error("invalid dice color value: {0}")]
     InvalidColor(u8),
 }

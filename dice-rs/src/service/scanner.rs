@@ -4,9 +4,10 @@ use std::time::Duration;
 use btleplug::api::ScanFilter;
 use tracing::debug;
 
-use crate::ble::transport::{BlePeripheral, BleTransport};
+use crate::ble::transport::BlePeripheral;
+use crate::ble::transport::BleTransport;
 use crate::error::Result;
-use crate::service::dice_device::DiceDevice;
+use crate::service::dice::DiceDevice;
 
 /// Default name prefix for GoDice devices.
 const DEFAULT_NAME_PREFIX: &str = "GoDice_";

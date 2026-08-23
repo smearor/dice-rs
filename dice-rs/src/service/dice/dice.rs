@@ -1,25 +1,31 @@
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::atomic::AtomicU8;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
-use btleplug::api::WriteType;
+use btleplug::api::{Characteristic, WriteType};
 use futures::StreamExt;
-use tokio::sync::{broadcast, oneshot};
+use tokio::sync::broadcast;
+use tokio::sync::oneshot;
 use tracing::debug;
 
 use crate::ble::command::Command;
 use crate::ble::event::Event;
-use crate::ble::transport::{BlePeripheral, BtleplugPeripheralWrapper};
-use crate::error::{DiceError, Result};
-use crate::model::acceleration_offset::AccelerationOffset;
-use crate::model::color::DieColor;
-use crate::model::dice_type::DiceType;
+use crate::ble::transport::BlePeripheral;
+use crate::ble::transport::BtleplugPeripheralWrapper;
+use crate::error::DiceError;
+use crate::error::Result;
+use crate::model::acceleration::AccelerationOffset;
+use crate::model::battery_level::BatteryLevel;
+use crate::model::dice::DiceColor;
+use crate::model::dice::DiceType;
 use crate::model::led::LedColor;
 use crate::model::system_status::SystemStatus;
-use crate::service::dice_event::DiceEvent;
-use crate::service::dice_inner::DiceInner;
-use crate::service::interpreter::interpret::interpret;
+use crate::service::dice::event::DiceEvent;
+use crate::service::dice::inner::DiceInner;
+use crate::service::led_throttle_state::LedThrottleState;
 
 /// Minimum interval between consecutive LED writes (milliseconds).
 /// Rapid calls within this window are coalesced into a single write.
@@ -46,7 +52,7 @@ pub struct Dice {
 
 impl Dice {
     /// Create a new `Dice` handle from a connected peripheral and discovered characteristics.
-    pub(crate) fn new(peripheral: BtleplugPeripheralWrapper, write_char: btleplug::api::Characteristic, notify_char: btleplug::api::Characteristic) -> Self {
+    pub(crate) fn new(peripheral: BtleplugPeripheralWrapper, write_char: Characteristic, notify_char: Characteristic) -> Self {
         let (event_sender, _) = broadcast::channel(64);
         let inner = Arc::new(DiceInner {
             peripheral,
@@ -59,7 +65,7 @@ impl Dice {
             pending_calibration: Arc::new(Mutex::new(VecDeque::new())),
             notification_handle: Mutex::new(None),
             monitor_handle: Mutex::new(None),
-            led_throttle: Mutex::new(crate::service::dice_inner::LedThrottleState {
+            led_throttle: Mutex::new(LedThrottleState {
                 pending: None,
                 last_update: None,
             }),
@@ -91,8 +97,7 @@ impl Dice {
     /// Use this for one-shot LED commands where coalescing is undesirable
     /// (e.g. CLI commands, calibration sequences).
     pub async fn set_leds_immediate(&self, led1: LedColor, led2: LedColor) -> Result<()> {
-        let command = Command::SetLeds { led1, led2 };
-        let data = command.encode();
+        let data: Vec<u8> = Command::SetLeds { led1, led2 }.into();
         self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithoutResponse).await
     }
 
@@ -108,8 +113,7 @@ impl Dice {
                 None => return Ok(()),
             }
         };
-        let command = Command::SetLeds { led1, led2 };
-        let data = command.encode();
+        let data: Vec<u8> = Command::SetLeds { led1, led2 }.into();
         self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithoutResponse).await
     }
 
@@ -125,13 +129,13 @@ impl Dice {
 
     /// Pulse both LEDs with a color.
     pub async fn pulse_leds(&self, pulse_count: u8, on_time: u8, off_time: u8, color: LedColor) -> Result<()> {
-        let command = Command::PulseLeds {
+        let data: Vec<u8> = Command::PulseLeds {
             pulse_count,
             on_time,
             off_time,
             color,
-        };
-        let data = command.encode();
+        }
+        .into();
         self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithoutResponse).await
     }
 
@@ -143,26 +147,24 @@ impl Dice {
     }
 
     /// Request battery level (0–100 percent).
-    pub async fn get_battery_level(&self) -> Result<u8> {
+    pub async fn get_battery_level(&self) -> Result<BatteryLevel> {
         let (tx, rx) = oneshot::channel();
         self.inner.pending_battery.lock().map_err(|_| DiceError::LockPoisoned)?.push_back(tx);
-        let command = Command::GetBatteryLevel;
-        let data = command.encode();
+        let data: Vec<u8> = Command::GetBatteryLevel.into();
         self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithoutResponse).await?;
         let timeout = Duration::from_secs(RESPONSE_TIMEOUT_SECS);
         match tokio::time::timeout(timeout, rx).await {
-            Ok(Ok(level)) => Ok(level),
+            Ok(Ok(level)) => Ok(BatteryLevel::from(level)),
             Ok(Err(_)) => Err(DiceError::ResponseTimeout(timeout)),
             Err(_) => Err(DiceError::ResponseTimeout(timeout)),
         }
     }
 
     /// Request dice color.
-    pub async fn get_color(&self) -> Result<DieColor> {
+    pub async fn get_color(&self) -> Result<DiceColor> {
         let (tx, rx) = oneshot::channel();
         self.inner.pending_color.lock().map_err(|_| DiceError::LockPoisoned)?.push_back(tx);
-        let command = Command::GetDiceColor;
-        let data = command.encode();
+        let data: Vec<u8> = Command::GetDiceColor.into();
         self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithoutResponse).await?;
         let timeout = Duration::from_secs(RESPONSE_TIMEOUT_SECS);
         match tokio::time::timeout(timeout, rx).await {
@@ -200,12 +202,14 @@ impl Dice {
     /// Performs battery level and color queries concurrently.
     pub async fn system_status(&self) -> Result<SystemStatus> {
         let (battery, color) = tokio::try_join!(self.get_battery_level(), self.get_color(),)?;
-        Ok(SystemStatus {
-            battery_level: battery,
-            color,
-            connected: self.is_connected().await?,
-            rssi: self.rssi().await?,
-        })
+        let connected = self.is_connected().await?;
+        let rssi = self.rssi().await?;
+        Ok(SystemStatus::builder()
+            .battery_level(battery)
+            .color(color)
+            .connected(connected)
+            .rssi(rssi)
+            .build())
     }
 
     /// Disconnect from the dice.
@@ -275,26 +279,42 @@ impl Dice {
                     Event::Stable { acceleration } => {
                         let dice_type = DiceType::try_from(dice_type.load(Ordering::Relaxed)).unwrap_or(DiceType::D6);
                         let offset = calibration_offset.read().map(|guard| *guard).unwrap_or(None);
-                        let face = interpret(acceleration, dice_type, offset);
-                        let _ = event_sender.send(DiceEvent::Stable { face, acceleration });
+                        match acceleration.interpret_to_face(dice_type, offset) {
+                            Ok(face) => {
+                                let _ = event_sender.send(DiceEvent::Stable { face, acceleration });
+                            }
+                            Err(error) => debug!(?error, "failed to interpret face value"),
+                        }
                     }
                     Event::TiltStable { acceleration } => {
                         let dice_type = DiceType::try_from(dice_type.load(Ordering::Relaxed)).unwrap_or(DiceType::D6);
                         let offset = calibration_offset.read().map(|guard| *guard).unwrap_or(None);
-                        let face = interpret(acceleration, dice_type, offset);
-                        let _ = event_sender.send(DiceEvent::TiltStable { face, acceleration });
+                        match acceleration.interpret_to_face(dice_type, offset) {
+                            Ok(face) => {
+                                let _ = event_sender.send(DiceEvent::TiltStable { face, acceleration });
+                            }
+                            Err(error) => debug!(?error, "failed to interpret face value"),
+                        }
                     }
                     Event::FakeStable { acceleration } => {
                         let dice_type = DiceType::try_from(dice_type.load(Ordering::Relaxed)).unwrap_or(DiceType::D6);
                         let offset = calibration_offset.read().map(|guard| *guard).unwrap_or(None);
-                        let face = interpret(acceleration, dice_type, offset);
-                        let _ = event_sender.send(DiceEvent::FakeStable { face, acceleration });
+                        match acceleration.interpret_to_face(dice_type, offset) {
+                            Ok(face) => {
+                                let _ = event_sender.send(DiceEvent::FakeStable { face, acceleration });
+                            }
+                            Err(error) => debug!(?error, "failed to interpret face value"),
+                        }
                     }
                     Event::MoveStable { acceleration } => {
                         let dice_type = DiceType::try_from(dice_type.load(Ordering::Relaxed)).unwrap_or(DiceType::D6);
                         let offset = calibration_offset.read().map(|guard| *guard).unwrap_or(None);
-                        let face = interpret(acceleration, dice_type, offset);
-                        let _ = event_sender.send(DiceEvent::MoveStable { face, acceleration });
+                        match acceleration.interpret_to_face(dice_type, offset) {
+                            Ok(face) => {
+                                let _ = event_sender.send(DiceEvent::MoveStable { face, acceleration });
+                            }
+                            Err(error) => debug!(?error, "failed to interpret face value"),
+                        }
                     }
                     Event::BatteryLevel { level } => {
                         if let Ok(mut queue) = pending_battery.lock() {
@@ -402,8 +422,7 @@ impl Dice {
     pub async fn calibrate(&self) -> Result<()> {
         let (tx, rx) = oneshot::channel();
         self.inner.pending_calibration.lock().map_err(|_| DiceError::LockPoisoned)?.push_back(tx);
-        let command = Command::Calibrate;
-        let data = command.encode();
+        let data: Vec<u8> = Command::Calibrate.into();
         self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithoutResponse).await?;
         let timeout = Duration::from_secs(RESPONSE_TIMEOUT_SECS);
         let success = match tokio::time::timeout(timeout, rx).await {
@@ -421,7 +440,7 @@ impl Dice {
             match receiver.recv().await {
                 Ok(DiceEvent::Stable { acceleration, .. }) => {
                     let dice_type = DiceType::try_from(self.inner.dice_type.load(Ordering::Relaxed)).unwrap_or(DiceType::D6);
-                    let offset = AccelerationOffset::from_measured(acceleration, dice_type);
+                    let offset = acceleration.offset_to(dice_type);
                     *self.inner.calibration_offset.write().map_err(|_| DiceError::LockPoisoned)? = Some(offset);
                     return Ok(offset);
                 }

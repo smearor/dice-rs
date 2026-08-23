@@ -14,3 +14,14 @@ path = "src/main.rs"
 
 [dependencies]
 dice-rs = { path = "../dice-rs" }
+clap.workspace = true
+tabled.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+assert_cmd.workspace = true
+predicates.workspace = true

@@ -3,11 +3,15 @@ use std::time::Duration;
 
 use tracing::debug;
 
-use crate::ble::transport::{BlePeripheral, BleTransport, BtleplugTransport};
-use crate::ble::uuids::{NUS_NOTIFY_CHAR_UUID, NUS_WRITE_CHAR_UUID};
-use crate::error::{DiceError, Result};
+use crate::ble::transport::BlePeripheral;
+use crate::ble::transport::BleTransport;
+use crate::ble::transport::BtleplugTransport;
+use crate::ble::uuids::NUS_NOTIFY_CHAR_UUID;
+use crate::ble::uuids::NUS_WRITE_CHAR_UUID;
+use crate::error::DiceError;
+use crate::error::Result;
 use crate::service::dice::Dice;
-use crate::service::dice_device::DiceDevice;
+use crate::service::dice::DiceDevice;
 use crate::service::scanner::DiceScanner;
 
 /// Manages BLE adapter and multiple dice connections.

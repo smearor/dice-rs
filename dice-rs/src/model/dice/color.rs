@@ -1,9 +1,11 @@
+use crate::model::dice::color_error::DiceColorError;
+
 /// Physical color of a GoDice device.
 ///
 /// Encoded as a single byte in the `Col` response notification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
-pub enum DieColor {
+pub enum DiceColor {
     /// Black shell.
     Black = 0,
     /// Red shell.
@@ -18,8 +20,8 @@ pub enum DieColor {
     Orange = 5,
 }
 
-impl TryFrom<u8> for DieColor {
-    type Error = DieColorError;
+impl TryFrom<u8> for DiceColor {
+    type Error = DiceColorError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
@@ -29,18 +31,18 @@ impl TryFrom<u8> for DieColor {
             3 => Ok(Self::Blue),
             4 => Ok(Self::Yellow),
             5 => Ok(Self::Orange),
-            _ => Err(DieColorError::InvalidValue(value)),
+            _ => Err(DiceColorError::InvalidValue(value)),
         }
     }
 }
 
-impl From<DieColor> for u8 {
-    fn from(color: DieColor) -> Self {
+impl From<DiceColor> for u8 {
+    fn from(color: DiceColor) -> Self {
         color as u8
     }
 }
 
-impl std::fmt::Display for DieColor {
+impl std::fmt::Display for DiceColor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Black => write!(f, "Black"),
@@ -53,39 +55,31 @@ impl std::fmt::Display for DieColor {
     }
 }
 
-/// Error returned when an invalid dice color byte is encountered.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-pub enum DieColorError {
-    /// The byte does not correspond to any known `DieColor`.
-    #[error("invalid dice color value: {0}")]
-    InvalidValue(u8),
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn try_from_valid() {
-        assert_eq!(DieColor::try_from(0), Ok(DieColor::Black));
-        assert_eq!(DieColor::try_from(5), Ok(DieColor::Orange));
+        assert_eq!(DiceColor::try_from(0), Ok(DiceColor::Black));
+        assert_eq!(DiceColor::try_from(5), Ok(DiceColor::Orange));
     }
 
     #[test]
     fn try_from_invalid() {
-        assert!(DieColor::try_from(6).is_err());
+        assert!(DiceColor::try_from(6).is_err());
     }
 
     #[test]
     fn from_to_u8_roundtrip() {
         for value in 0..=5 {
-            let color = DieColor::try_from(value).expect("valid color");
+            let color = DiceColor::try_from(value).expect("valid color");
             assert_eq!(u8::from(color), value);
         }
     }
 
     #[test]
     fn display() {
-        assert_eq!(DieColor::Red.to_string(), "Red");
+        assert_eq!(DiceColor::Red.to_string(), "Red");
     }
 }

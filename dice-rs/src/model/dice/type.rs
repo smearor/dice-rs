@@ -1,5 +1,13 @@
-use crate::service::interpreter::transforms::{D4_TRANSFORM, D8_TRANSFORM, D10_TRANSFORM, D10X_TRANSFORM, D12_TRANSFORM};
-use crate::service::interpreter::vectors::{D6_VECTORS, D20_VECTORS, D24_VECTORS};
+use crate::model::dice::transforms::D4_TRANSFORM;
+use crate::model::dice::transforms::D8_TRANSFORM;
+use crate::model::dice::transforms::D10_TRANSFORM;
+use crate::model::dice::transforms::D10X_TRANSFORM;
+use crate::model::dice::transforms::D12_TRANSFORM;
+use crate::model::dice::type_error::DiceTypeError;
+use crate::model::dice::vectors::D6_VECTORS;
+use crate::model::dice::vectors::D20_VECTORS;
+use crate::model::dice::vectors::D24_VECTORS;
+use std::str::FromStr;
 
 /// Determines which vector table and shell transform are used to interpret
 /// accelerometer data into a face value.
@@ -63,6 +71,33 @@ impl std::fmt::Display for DiceType {
     }
 }
 
+/// Parse a dice type from a string.
+///
+/// Accepts case-insensitive names: `"d6"`, `"d20"`, `"d10"`, `"d10x"`, `"d4"`, `"d8"`, `"d12"`.
+///
+/// ```
+/// use std::str::FromStr;
+/// use dice_rs::model::dice::DiceType;
+/// let dt = DiceType::from_str("d20").unwrap();
+/// assert_eq!(dt, DiceType::D20);
+/// ```
+impl FromStr for DiceType {
+    type Err = DiceTypeError;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        match input.to_lowercase().as_str() {
+            "d6" => Ok(Self::D6),
+            "d20" => Ok(Self::D20),
+            "d10" => Ok(Self::D10),
+            "d10x" => Ok(Self::D10X),
+            "d4" => Ok(Self::D4),
+            "d8" => Ok(Self::D8),
+            "d12" => Ok(Self::D12),
+            _ => Err(DiceTypeError::InvalidName(input.to_string())),
+        }
+    }
+}
+
 impl DiceType {
     /// Returns the vector table used for this dice type.
     pub fn vector_table(&self) -> &'static [(i32, i32, i32)] {
@@ -84,14 +119,6 @@ impl DiceType {
             Self::D12 => Some(&D12_TRANSFORM),
         }
     }
-}
-
-/// Error returned when an invalid dice type byte is encountered.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-pub enum DiceTypeError {
-    /// The byte does not correspond to any known `DiceType`.
-    #[error("invalid dice type byte: {0}")]
-    InvalidValue(u8),
 }
 
 #[cfg(test)]
@@ -151,5 +178,19 @@ mod tests {
     fn display() {
         assert_eq!(DiceType::D6.to_string(), "D6");
         assert_eq!(DiceType::D10X.to_string(), "D10X");
+    }
+
+    #[test]
+    fn from_str_valid() {
+        assert_eq!(DiceType::from_str("d6").unwrap(), DiceType::D6);
+        assert_eq!(DiceType::from_str("D20").unwrap(), DiceType::D20);
+        assert_eq!(DiceType::from_str("d10x").unwrap(), DiceType::D10X);
+        assert_eq!(DiceType::from_str("D4").unwrap(), DiceType::D4);
+    }
+
+    #[test]
+    fn from_str_invalid_returns_err() {
+        assert!(DiceType::from_str("d100").is_err());
+        assert!(DiceType::from_str("xyz").is_err());
     }
 }
