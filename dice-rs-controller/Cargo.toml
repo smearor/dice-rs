@@ -13,4 +13,15 @@ name = "dice-rs-controller"
 path = "src/main.rs"
 
 [dependencies]
+bytemuck = { workspace = true }
 dice-rs = { path = "../dice-rs" }
+gl_loader = { workspace = true }
+glam = { workspace = true }
+glib = { workspace = true }
+glow = { workspace = true }
+gtk4 = { workspace = true }
+miette = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

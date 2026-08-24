@@ -17,10 +17,18 @@ homepage = "https://github.com/smearor/dice-rs"
 [workspace.dependencies]
 assert_cmd = "2"
 async-trait = "0.1"
+bytemuck = { version = "1", features = ["derive"] }
 btleplug = "0.12"
 clap = { version = "4", features = ["derive"] }
 futures = "0.3"
+gl_loader = "0.1"
+glam = "0.33"
+glib = "0.22"
+glow = "0.18"
+gtk4 = "0.11"
+miette = { version = "7", features = ["fancy"] }
 predicates = "3"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 smallvec = "1"
 tabled = "0.21"

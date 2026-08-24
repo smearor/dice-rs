@@ -1,0 +1,166 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use dice_rs::model::led::LedColor;
+use dice_rs::service::dice::Dice;
+use glib::clone;
+use gtk4::prelude::*;
+use tracing::debug;
+
+/// LED control panel for a connected dice.
+pub struct LedControls {
+    container: gtk4::Box,
+    color_button1: gtk4::ColorButton,
+    color_button2: gtk4::ColorButton,
+    set_button: gtk4::Button,
+    pulse_button: gtk4::Button,
+    off_button: gtk4::Button,
+    dice: Rc<RefCell<Option<Dice>>>,
+}
+
+impl LedControls {
+    /// Create a new LED control panel.
+    pub fn new() -> Self {
+        let color_button1 = gtk4::ColorButton::builder().tooltip_text("LED 1").build();
+        let color_button2 = gtk4::ColorButton::builder().tooltip_text("LED 2").build();
+        let set_button = gtk4::Button::builder().label("Set").build();
+        let pulse_button = gtk4::Button::builder().label("Pulse").build();
+        let off_button = gtk4::Button::builder().label("Off").build();
+
+        let container = gtk4::Box::builder().orientation(gtk4::Orientation::Horizontal).spacing(12).build();
+        container.append(&color_button1);
+        container.append(&color_button2);
+        container.append(&set_button);
+        container.append(&pulse_button);
+        container.append(&off_button);
+
+        let dice = Rc::new(RefCell::new(None::<Dice>));
+
+        let widget = Self {
+            container,
+            color_button1,
+            color_button2,
+            set_button,
+            pulse_button,
+            off_button,
+            dice,
+        };
+
+        widget.connect_signals();
+        widget
+    }
+
+    /// Set the dice to control.
+    pub fn set_dice(&self, dice: Dice) {
+        *self.dice.borrow_mut() = Some(dice);
+    }
+
+    /// Returns the root widget for packing.
+    pub fn widget(&self) -> &gtk4::Box {
+        &self.container
+    }
+
+    fn connect_signals(&self) {
+        // LED 1 color picker — set LED 1 only (LED 2 stays off).
+        self.color_button1.connect_color_set(clone!(
+            #[strong(rename_to = dice_cell)]
+            self.dice.clone(),
+            move |button| {
+                let rgba = button.rgba();
+                let color = LedColor::new((rgba.red() * 255.0) as u8, (rgba.green() * 255.0) as u8, (rgba.blue() * 255.0) as u8);
+                if let Some(dice) = dice_cell.borrow().as_ref() {
+                    let dice = dice.clone();
+                    tokio::spawn(async move {
+                        if let Err(error) = dice.set_leds_immediate(color, LedColor::OFF).await {
+                            debug!(error = %error, "failed to set LED 1");
+                        }
+                    });
+                }
+            }
+        ));
+
+        // LED 2 color picker — set LED 2 only (LED 1 stays off).
+        self.color_button2.connect_color_set(clone!(
+            #[strong(rename_to = dice_cell)]
+            self.dice.clone(),
+            move |button| {
+                let rgba = button.rgba();
+                let color = LedColor::new((rgba.red() * 255.0) as u8, (rgba.green() * 255.0) as u8, (rgba.blue() * 255.0) as u8);
+                if let Some(dice) = dice_cell.borrow().as_ref() {
+                    let dice = dice.clone();
+                    tokio::spawn(async move {
+                        if let Err(error) = dice.set_leds_immediate(LedColor::OFF, color).await {
+                            debug!(error = %error, "failed to set LED 2");
+                        }
+                    });
+                }
+            }
+        ));
+
+        // Set button — set both LEDs to their respective picker colors.
+        self.set_button.connect_clicked(clone!(
+            #[strong(rename_to = dice_cell)]
+            self.dice.clone(),
+            #[strong(rename_to = color_button1)]
+            self.color_button1.clone(),
+            #[strong(rename_to = color_button2)]
+            self.color_button2.clone(),
+            move |_| {
+                let rgba1 = color_button1.rgba();
+                let color1 = LedColor::new((rgba1.red() * 255.0) as u8, (rgba1.green() * 255.0) as u8, (rgba1.blue() * 255.0) as u8);
+                let rgba2 = color_button2.rgba();
+                let color2 = LedColor::new((rgba2.red() * 255.0) as u8, (rgba2.green() * 255.0) as u8, (rgba2.blue() * 255.0) as u8);
+                if let Some(dice) = dice_cell.borrow().as_ref() {
+                    let dice = dice.clone();
+                    tokio::spawn(async move {
+                        if let Err(error) = dice.set_leds_immediate(color1, color2).await {
+                            debug!(error = %error, "failed to set LEDs");
+                        }
+                    });
+                }
+            }
+        ));
+
+        // Pulse button — pulse both LEDs with LED 1's color.
+        self.pulse_button.connect_clicked(clone!(
+            #[strong(rename_to = dice_cell)]
+            self.dice.clone(),
+            #[strong(rename_to = color_button1)]
+            self.color_button1.clone(),
+            move |_| {
+                let rgba = color_button1.rgba();
+                let color = LedColor::new((rgba.red() * 255.0) as u8, (rgba.green() * 255.0) as u8, (rgba.blue() * 255.0) as u8);
+                if let Some(dice) = dice_cell.borrow().as_ref() {
+                    let dice = dice.clone();
+                    tokio::spawn(async move {
+                        if let Err(error) = dice.pulse_leds(5, 10, 10, color).await {
+                            debug!(error = %error, "failed to pulse LEDs");
+                        }
+                    });
+                }
+            }
+        ));
+
+        // Off button — turn both LEDs off.
+        self.off_button.connect_clicked(clone!(
+            #[strong(rename_to = dice_cell)]
+            self.dice.clone(),
+            move |_| {
+                if let Some(dice) = dice_cell.borrow().as_ref() {
+                    let dice = dice.clone();
+                    tokio::spawn(async move {
+                        if let Err(error) = dice.set_leds_immediate(LedColor::OFF, LedColor::OFF).await {
+                            debug!(error = %error, "failed to turn off LEDs");
+                        }
+                    });
+                }
+            }
+        ));
+    }
+}
+
+impl Default for LedControls {
+    fn default() -> Self {
+        Self::new()
+    }
+}
