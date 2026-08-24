@@ -17,7 +17,7 @@ homepage = "https://github.com/smearor/dice-rs"
 [workspace.dependencies]
 assert_cmd = "2"
 async-trait = "0.1"
-btleplug = "0.11"
+btleplug = "0.12"
 clap = { version = "4", features = ["derive"] }
 futures = "0.3"
 predicates = "3"
