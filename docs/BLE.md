@@ -31,6 +31,8 @@ The first byte is always the opcode.
 | 0x14   | 20      | Stop Pulse LEDs      | (none)                                                                                                               | Stops any active pulse LED animation                                                          |
 | 0x17   | 23      | Get Dice Color       | (none)                                                                                                               | Response: `Col` + color byte                                                                  |
 | 0x19   | 25      | Init                 | `[sensitivity, pulseCount, onTime, offTime, R, G, B, blinkMode, leds]` (9 bytes)                                     | Initializes dice with sensitivity and LED configuration                                       |
+| 0x31   | 49      | Set Tap Interrupt    | `[enable]` (1 byte, 0=disable, 1=enable)                                                                             | Enables/disables single tap event notifications. Disabled by default.                         |
+| 0x32   | 50      | Set Double Tap Interrupt | `[enable]` (1 byte, 0=disable, 1=enable)                                                                         | Enables/disables double tap event notifications. Disabled by default.                         |
 | 0x65   | 101     | Detection Settings   | `[samplesCount, movementCount, faceCount, minFlatDeg, maxFlatDeg, weakStable, movementDeg, rollThreshold]` (8 bytes) | Updates roll detection sensitivity parameters                                                 |
 
 ## Receiving Events (Dice → Host)
