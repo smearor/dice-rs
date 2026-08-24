@@ -87,7 +87,7 @@ impl FromStr for LedColor {
             "blue" => Ok(Self::BLUE),
             "white" => Ok(Self::WHITE),
             hex => {
-                let hex = hex.strip_prefix("0x").unwrap_or(hex);
+                let hex = hex.strip_prefix("0x").or_else(|| hex.strip_prefix('#')).unwrap_or(hex);
                 u32::from_str_radix(hex, 16)
                     .map(Self::from_hex)
                     .map_err(|_| LedColorError::InvalidValue(input.to_string()))
@@ -158,6 +158,9 @@ mod tests {
         assert_eq!(LedColor::from_str("FF0000").unwrap(), LedColor::RED);
         assert_eq!(LedColor::from_str("0x00FF00").unwrap(), LedColor::GREEN);
         assert_eq!(LedColor::from_str("0000ff").unwrap(), LedColor::BLUE);
+        assert_eq!(LedColor::from_str("#ff0000").unwrap(), LedColor::RED);
+        assert_eq!(LedColor::from_str("#00ff00").unwrap(), LedColor::GREEN);
+        assert_eq!(LedColor::from_str("#0000FF").unwrap(), LedColor::BLUE);
     }
 
     #[test]
