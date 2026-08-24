@@ -76,13 +76,8 @@ impl<T: BleTransport> DiceScanner<T> {
             select! {
                 _ = &mut scan_deadline => break,
                 event = events.next() => {
-                    match event {
-                        Some(CentralEvent::RssiUpdate { id, rssi }) => {
-                            debug!(?id, rssi, "RssiUpdate event");
-                            rssi_samples.entry(id).or_default().push(rssi);
-                        }
-                        Some(other) => debug!(event = ?other, "central event during scan"),
-                        None => debug!("event stream ended"),
+                    if let Some(CentralEvent::RssiUpdate { id, rssi }) = event {
+                        rssi_samples.entry(id).or_default().push(rssi);
                     }
                 }
             }
@@ -109,23 +104,12 @@ impl<T: BleTransport> DiceScanner<T> {
                     let avg_rssi = match avg_rssi {
                         Some(rssi) => Some(rssi),
                         None => match peripheral.read_rssi().await {
-                            Ok(rssi) => {
-                                debug!(name = local_name, rssi, "read_rssi succeeded");
-                                Some(rssi)
-                            }
-                            Err(error) => {
-                                debug!(name = local_name, error = %error, "read_rssi failed, falling back to props.rssi");
-                                props.rssi
-                            }
+                            Ok(rssi) => Some(rssi),
+                            Err(_) => props.rssi,
                         },
                     };
 
-                    debug!(
-                        name = local_name,
-                        rssi = ?avg_rssi,
-                        sample_count = rssi_samples.get(&id).map(|v| v.len()).unwrap_or(0),
-                        "found GoDice device"
-                    );
+                    debug!(name = local_name, rssi = ?avg_rssi, "found GoDice device");
                     devices.push(DiceDevice {
                         id,
                         address: peripheral.address(),
