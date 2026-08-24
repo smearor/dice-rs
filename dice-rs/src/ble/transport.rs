@@ -158,7 +158,7 @@ impl BlePeripheral for BtleplugPeripheralWrapper {
     }
 
     async fn connect(&self) -> Result<()> {
-        self.inner.connect().await.map_err(|_| DiceError::ConnectionFailed)
+        self.inner.connect().await.map_err(|e| DiceError::ConnectionFailed(e.to_string()))
     }
 
     async fn disconnect(&self) -> Result<()> {

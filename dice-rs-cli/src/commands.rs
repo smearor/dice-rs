@@ -43,6 +43,7 @@ pub async fn run_command(manager: &DiceManager, command: Command, format: Output
         Command::Calibrate { address } => run_calibrate(manager, &address).await,
         Command::Status { address } => run_status(manager, &address, format).await,
         Command::Color { address } => run_color(manager, &address, format).await,
+        Command::Charging { address } => run_charging(manager, &address, format).await,
         Command::Interactive => run_interactive(manager).await,
     }
 }
@@ -162,6 +163,14 @@ async fn run_color(manager: &DiceManager, address: &str, format: OutputFormat) -
     Ok(())
 }
 
+async fn run_charging(manager: &DiceManager, address: &str, format: OutputFormat) -> Result<()> {
+    let dice = connect_by_address(manager, address).await?;
+    let charging = dice.is_charging();
+    output::print_charging(charging, format);
+    dice.disconnect().await?;
+    Ok(())
+}
+
 async fn run_interactive(manager: &DiceManager) -> Result<()> {
     use std::io::Write;
 
@@ -209,6 +218,12 @@ async fn run_interactive(manager: &DiceManager) -> Result<()> {
                     println!("Color: {color}");
                 }
             }
+            "charging" => {
+                if let Some(d) = &dice {
+                    let charging = d.is_charging();
+                    println!("Charging: {charging}");
+                }
+            }
             cmd if cmd.starts_with("led ") => {
                 if let Some(d) = &dice {
                     let color_str = cmd.strip_prefix("led ").unwrap_or(cmd);
@@ -246,6 +261,7 @@ fn print_interactive_help() {
     println!("  disconnect        Disconnect from the current device");
     println!("  battery           Query battery level");
     println!("  color             Query dice color");
+    println!("  charging          Check if dice is charging");
     println!("  led <color>       Set LEDs to a color (named or hex)");
     println!("  status            Show system status");
     println!("  calibrate         Calibrate the dice");

@@ -137,6 +137,26 @@ pub fn print_color(color: DiceColor, format: OutputFormat) {
     }
 }
 
+/// Print charging status in the selected format.
+pub fn print_charging(charging: bool, format: OutputFormat) {
+    match format {
+        OutputFormat::Table => {
+            let row = crate::status_row::StatusRow {
+                property: "Charging".into(),
+                value: format!("{charging}"),
+            };
+            let table = tabled::Table::new(vec![row]).with(tabled::settings::Style::rounded()).to_string();
+            println!("{table}");
+        }
+        OutputFormat::Json => {
+            println!(r#"{{"charging":{charging}}}"#);
+        }
+        OutputFormat::Plain => {
+            println!("{charging}");
+        }
+    }
+}
+
 /// Parse a color string: named ("red", "green", ...) or hex ("FF0000", "0xFF0000").
 pub fn parse_color(input: &str) -> Result<LedColor> {
     LedColor::from_str(input).map_err(|e| CliError::InvalidColor(e.to_string()))

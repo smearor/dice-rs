@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock as StdRwLock;
+use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU8;
 
 use btleplug::api::Characteristic;
@@ -19,6 +20,8 @@ use crate::service::led_throttle_state::LedThrottleState;
 /// Internal shared state for a connected dice.
 /// Stored behind `Arc` so all `Dice` clones share the same state.
 pub struct DiceInner {
+    /// Advertised device name (e.g. "GoDice_7D8E7D_O_v04").
+    pub name: String,
     /// BLE peripheral for write/subscribe operations.
     pub peripheral: BtleplugPeripheralWrapper,
     /// Write characteristic (NUS RX).
@@ -60,4 +63,7 @@ pub struct DiceInner {
     /// sensor event in the notification task.
     /// `Arc`-wrapped so it can be cloned into the notification task.
     pub calibration_offset: Arc<StdRwLock<Option<AccelerationOffset>>>,
+    /// Last known charging state, updated by the notification task.
+    /// `Arc`-wrapped so it can be cloned into the notification task.
+    pub charging_state: Arc<AtomicBool>,
 }

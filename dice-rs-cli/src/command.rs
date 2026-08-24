@@ -53,6 +53,12 @@ pub enum Command {
         address: String,
     },
 
+    /// Check if a dice is currently charging.
+    Charging {
+        /// Device MAC address.
+        address: String,
+    },
+
     /// Interactive REPL mode for exploratory use.
     Interactive,
 }

@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use gtk4::prelude::*;
 
 /// Battery level indicator widget with color-coded thresholds.
@@ -7,6 +9,8 @@ use gtk4::prelude::*;
 pub struct BatteryIndicator {
     level_bar: gtk4::LevelBar,
     label: gtk4::Label,
+    charging: Cell<bool>,
+    last_level: Cell<Option<u8>>,
 }
 
 impl BatteryIndicator {
@@ -16,17 +20,24 @@ impl BatteryIndicator {
 
         let label = gtk4::Label::builder().label("N/A").build();
 
-        Self { level_bar, label }
+        Self { level_bar, label, charging: Cell::new(false), last_level: Cell::new(None) }
     }
 
     /// Update the battery level display.
     pub fn set_level(&self, level: u8) {
+        self.last_level.set(Some(level));
         self.level_bar.set_value(level as f64);
-        self.label.set_label(&format!("{level}%"));
+
+        let text = if self.charging.get() {
+            format!("⚡ {level}%")
+        } else {
+            format!("{level}%")
+        };
+        self.label.set_label(&text);
 
         let css_class = match level {
-            0..=20 => "battery-critical",
-            21..=50 => "battery-low",
+            0..=14 => "battery-critical",
+            15..=29 => "battery-low",
             _ => "battery-ok",
         };
 
@@ -34,6 +45,24 @@ impl BatteryIndicator {
         self.level_bar.remove_css_class("battery-low");
         self.level_bar.remove_css_class("battery-ok");
         self.level_bar.add_css_class(css_class);
+    }
+
+    /// Update the charging state display.
+    /// When charging, a ⚡ prefix is shown and the `battery-charging` CSS class is applied.
+    pub fn set_charging(&self, charging: bool) {
+        self.charging.set(charging);
+
+        if charging {
+            self.level_bar.add_css_class("battery-charging");
+        } else {
+            self.level_bar.remove_css_class("battery-charging");
+        }
+
+        if let Some(level) = self.last_level.get() {
+            self.set_level(level);
+        } else if charging {
+            self.label.set_label("⚡ N/A");
+        }
     }
 
     /// Returns the label widget.

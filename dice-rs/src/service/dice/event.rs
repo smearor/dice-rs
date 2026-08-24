@@ -15,6 +15,8 @@ pub enum DiceEvent {
     FakeStable { face: FaceValue, acceleration: Acceleration },
     /// Dice is stable after a small movement (face rotation).
     MoveStable { face: FaceValue, acceleration: Acceleration },
+    /// Dice charging status changed.
+    Charging { charging: bool },
     /// Dice has disconnected.
     Disconnected,
 }
@@ -28,6 +30,7 @@ impl DiceEvent {
             Self::TiltStable { .. } => Some(StabilityDescriptor::TiltStable),
             Self::FakeStable { .. } => Some(StabilityDescriptor::FakeStable),
             Self::MoveStable { .. } => Some(StabilityDescriptor::MoveStable),
+            Self::Charging { .. } => None,
             Self::Disconnected => None,
         }
     }
@@ -41,6 +44,7 @@ impl std::fmt::Display for DiceEvent {
             Self::TiltStable { face, .. } => write!(f, "tilt-stable face={face}"),
             Self::FakeStable { face, .. } => write!(f, "fake-stable face={face}"),
             Self::MoveStable { face, .. } => write!(f, "move-stable face={face}"),
+            Self::Charging { charging } => write!(f, "charging={charging}"),
             Self::Disconnected => write!(f, "disconnected"),
         }
     }

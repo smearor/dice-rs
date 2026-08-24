@@ -42,17 +42,42 @@ impl DiceManager {
     /// Connect to a discovered device.
     ///
     /// Performs:
-    /// 1. `peripheral.connect()`
+    /// 1. `peripheral.connect()` (with up to 3 retries and 1s backoff)
     /// 2. `peripheral.discover_services()`
     /// 3. Find write char (`6e400002`) and notify char (`6e400003`)
     /// 4. `peripheral.subscribe(notify_char)`
     /// 5. `peripheral.notifications()` → spawn parse task
     /// 6. Return `Dice` handle
+    ///
+    /// The retry loop handles transient connection failures (e.g. a GoDice
+    /// that is advertising but not yet accepting connections while charging
+    /// from 0% battery).
     pub async fn connect(&self, device: &DiceDevice) -> Result<Dice> {
         let peripherals = self.transport.peripherals().await?;
-        let peripheral = peripherals.into_iter().find(|p| p.id() == device.id).ok_or(DiceError::ConnectionFailed)?;
+        let peripheral = peripherals
+            .into_iter()
+            .find(|p| p.id() == device.id)
+            .ok_or_else(|| DiceError::ConnectionFailed(format!("peripheral not found for {}", device.name)))?;
 
-        peripheral.connect().await?;
+        let max_retries = 3;
+        let backoff = Duration::from_secs(1);
+        let mut last_error = DiceError::ConnectionFailed("no attempt made".to_string());
+        for attempt in 0..max_retries {
+            match peripheral.connect().await {
+                Ok(()) => break,
+                Err(error) => {
+                    last_error = error;
+                    debug!(attempt, %last_error, device = %device.name, "connect attempt failed, retrying");
+                    if attempt + 1 < max_retries {
+                        tokio::time::sleep(backoff).await;
+                    }
+                }
+            }
+        }
+        if !peripheral.is_connected().await? {
+            return Err(last_error);
+        }
+
         peripheral.discover_services().await?;
 
         let write_char = peripheral
@@ -64,7 +89,7 @@ impl DiceManager {
 
         peripheral.subscribe(&notify_char).await?;
 
-        let dice = Dice::new(peripheral, write_char, notify_char);
+        let dice = Dice::new(peripheral, device.name.clone(), write_char, notify_char);
         dice.spawn_notification_task().await?;
         dice.spawn_led_debounce_task();
         dice.spawn_connection_monitor();

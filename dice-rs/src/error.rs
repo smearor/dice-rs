@@ -8,8 +8,8 @@ pub enum DiceError {
     #[error("BLE scan failed")]
     ScanFailed,
     /// BLE connection attempt failed.
-    #[error("connection failed")]
-    ConnectionFailed,
+    #[error("connection failed: {0}")]
+    ConnectionFailed(String),
     /// BLE write operation failed.
     #[error("write failed")]
     WriteFailed,

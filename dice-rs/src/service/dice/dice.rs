@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
@@ -52,9 +53,10 @@ pub struct Dice {
 
 impl Dice {
     /// Create a new `Dice` handle from a connected peripheral and discovered characteristics.
-    pub(crate) fn new(peripheral: BtleplugPeripheralWrapper, write_char: Characteristic, notify_char: Characteristic) -> Self {
+    pub(crate) fn new(peripheral: BtleplugPeripheralWrapper, name: String, write_char: Characteristic, notify_char: Characteristic) -> Self {
         let (event_sender, _) = broadcast::channel(64);
         let inner = Arc::new(DiceInner {
+            name,
             peripheral,
             write_char,
             notify_char,
@@ -72,6 +74,7 @@ impl Dice {
             led_debounce_handle: Mutex::new(None),
             led_notify: Arc::new(tokio::sync::Notify::new()),
             calibration_offset: Arc::new(std::sync::RwLock::new(None)),
+            charging_state: Arc::new(AtomicBool::new(false)),
         });
         Self { inner }
     }
@@ -192,6 +195,19 @@ impl Dice {
         self.inner.peripheral.is_connected().await
     }
 
+    /// Returns the advertised device name (e.g. "GoDice_7D8E7D_O_v04").
+    pub fn name(&self) -> &str {
+        &self.inner.name
+    }
+
+    /// Check if the dice is currently charging.
+    ///
+    /// Returns the last known charging state from the notification task.
+    /// Returns `false` until a charging status notification has been received.
+    pub fn is_charging(&self) -> bool {
+        self.inner.charging_state.load(Ordering::Relaxed)
+    }
+
     /// Query RSSI from cached peripheral properties.
     pub async fn rssi(&self) -> Result<Option<i16>> {
         let props = self.inner.peripheral.properties().await?;
@@ -259,6 +275,7 @@ impl Dice {
         let pending_color = self.inner.pending_color.clone();
         let pending_calibration = self.inner.pending_calibration.clone();
         let calibration_offset = self.inner.calibration_offset.clone();
+        let charging_state = self.inner.charging_state.clone();
 
         let handle = tokio::spawn(async move {
             let mut notifications = notifications;
@@ -267,7 +284,7 @@ impl Dice {
                 let event = match Event::parse(data) {
                     Ok(event) => event,
                     Err(error) => {
-                        debug!(?error, "failed to parse notification");
+                        debug!(?error, data = ?data, "failed to parse notification");
                         continue;
                     }
                 };
@@ -344,6 +361,12 @@ impl Dice {
                             {
                                 debug!("calibration response dropped: receiver gone");
                             }
+                        }
+                    }
+                    Event::Charging { charging } => {
+                        charging_state.store(charging, Ordering::Relaxed);
+                        if event_sender.send(DiceEvent::Charging { charging }).is_err() {
+                            debug!("charging event dropped: no subscribers");
                         }
                     }
                 }

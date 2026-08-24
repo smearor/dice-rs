@@ -25,6 +25,8 @@ pub enum Event {
     DiceColor { color: DiceColor },
     /// Calibration response (tentative: `Cal` + status byte).
     Calibrated { success: bool },
+    /// Charging status notification (`Char` + charging byte: 0 = not charging, 1 = charging).
+    Charging { charging: bool },
 }
 
 impl Event {
@@ -59,6 +61,11 @@ impl Event {
         // NOTE: Distinguished from DiceColor by second byte: 0x61 ('a') vs 0x6F ('o')
         if data.len() >= 4 && data[0] == 0x43 && data[1] == 0x61 && data[2] == 0x6C {
             return Ok(Self::Calibrated { success: data[3] != 0 });
+        }
+
+        // Charging: prefix "Char" (0x43, 0x68, 0x61, 0x72) + charging byte
+        if data.len() >= 5 && &data[0..4] == b"Char" {
+            return Ok(Self::Charging { charging: data[4] != 0 });
         }
 
         // Stable: single byte 0x53 ('S') + 3 signed bytes XYZ
@@ -187,6 +194,18 @@ mod tests {
     #[test]
     fn unknown_event() {
         assert!(Event::parse(&[0xFF]).is_err());
+    }
+
+    #[test]
+    fn charging_event_on() {
+        let data = [0x43, 0x68, 0x61, 0x72, 0x01];
+        assert_eq!(Event::parse(&data), Ok(Event::Charging { charging: true }));
+    }
+
+    #[test]
+    fn charging_event_off() {
+        let data = [0x43, 0x68, 0x61, 0x72, 0x00];
+        assert_eq!(Event::parse(&data), Ok(Event::Charging { charging: false }));
     }
 
     #[test]
