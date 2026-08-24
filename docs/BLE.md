@@ -4,8 +4,9 @@ BLE specification of the GoDice dice.
 
 The dice use the Nordic UART Service (NUS) profile internally.
 The full protocol was reverse-engineered from the official
-[JavaScript API](https://github.com/ParticulaCode/GoDiceJavaScriptAPI/blob/main/godice.js)
-and [Python API](https://github.com/ParticulaCode/GoDicePythonAPI/blob/main/godice/dice.py)
+[JavaScript API](https://github.com/ParticulaCode/GoDiceJavaScriptAPI/blob/main/godice.js),
+[Python API](https://github.com/ParticulaCode/GoDicePythonAPI/blob/main/godice/dice.py),
+and [C API](https://github.com/ParticulaCode/GoDiceAndroid_iOS_API/blob/main/common/godiceapi.c)
 source code.
 
 ## Device Properties
@@ -22,12 +23,15 @@ source code.
 All commands are written as byte arrays to the Write Characteristic.
 The first byte is always the opcode.
 
-| Opcode | Decimal | Command           | Payload Bytes                              | Description |
-|--------|---------|-------------------|--------------------------------------------|-------------|
-| 0x03   | 3       | Get Battery Level | (none)                                     | Response: `Bat` + level byte |
-| 0x08   | 8       | Set LEDs          | `[R1, G1, B1, R2, G2, B2]` (6 bytes, 0–255) | Sets both RGB LEDs; `[0,0,0,0,0,0]` turns off |
-| 0x10   | 16      | Pulse LEDs        | `[pulseCount, onTime, offTime, R, G, B, 1, 0]` | `onTime`/`offTime` in units of 10 ms; max 255 |
-| 0x17   | 23      | Get Dice Color    | (none)                                     | Response: `Col` + color byte |
+| Opcode | Decimal | Command              | Payload Bytes                                                                                                        | Description                                                                                   |
+|--------|---------|----------------------|----------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| 0x03   | 3       | Get Battery Level    | (none)                                                                                                               | Response: `Bat` + level byte                                                                  |
+| 0x08   | 8       | Set LEDs             | `[R1, G1, B1, R2, G2, B2]` (6 bytes, 0–255)                                                                          | Sets both RGB LEDs; `[0,0,0,0,0,0]` turns off                                                 |
+| 0x10   | 16      | Pulse LEDs           | `[pulseCount, onTime, offTime, R, G, B, blinkMode, leds]`                                                            | `onTime`/`offTime` in units of 10 ms; max 255. `blinkMode` and `leds` select which LEDs blink |
+| 0x14   | 20      | Stop Pulse LEDs      | (none)                                                                                                               | Stops any active pulse LED animation                                                          |
+| 0x17   | 23      | Get Dice Color       | (none)                                                                                                               | Response: `Col` + color byte                                                                  |
+| 0x19   | 25      | Init                 | `[sensitivity, pulseCount, onTime, offTime, R, G, B, blinkMode, leds]` (9 bytes)                                     | Initializes dice with sensitivity and LED configuration                                       |
+| 0x65   | 101     | Detection Settings   | `[samplesCount, movementCount, faceCount, minFlatDeg, maxFlatDeg, weakStable, movementDeg, rollThreshold]` (8 bytes) | Updates roll detection sensitivity parameters                                                 |
 
 ## Receiving Events (Dice → Host)
 
@@ -35,15 +39,18 @@ The dice sends byte packets on state changes as notifications on the
 Notify Characteristic. The first byte determines the event type. Some
 events use ASCII prefixes for identification.
 
-| First Byte(s)    | ASCII | Event          | Payload                                      | Description |
-|------------------|-------|----------------|----------------------------------------------|-------------|
-| 0x52             | `R`   | RollStart      | (none)                                       | Dice is currently rolling |
-| 0x53             | `S`   | Stable         | `[X, Y, Z]` (3 signed bytes, offset 1)       | Dice is stable and flat; face derived from XYZ |
-| 0x46 0x53        | `FS`  | FakeStable     | `[X, Y, Z]` (3 signed bytes, offset 2)       | Stable after a "fake" roll; face derived from XYZ |
-| 0x54 0x53        | `TS`  | TiltStable     | `[X, Y, Z]` (3 signed bytes, offset 2)       | Stable but tilted (not flat); face derived from XYZ |
-| 0x4D 0x53        | `MS`  | MoveStable     | `[X, Y, Z]` (3 signed bytes, offset 2)       | Stable after small movement (face rotation); face derived from XYZ |
-| 0x42 0x61 0x74   | `Bat` | BatteryLevel   | `[level]` (1 byte, offset 3)                 | Battery level response (0–100 percent) |
-| 0x43 0x6F 0x6C   | `Col` | DiceColor      | `[color]` (1 byte, offset 3)                 | Dice color response |
+| First Byte(s)       | ASCII  | Event        | Payload                                | Description                                                        |
+|---------------------|--------|--------------|----------------------------------------|--------------------------------------------------------------------|
+| 0x52                | `R`    | RollStart    | (none)                                 | Dice is currently rolling                                          |
+| 0x53                | `S`    | Stable       | `[X, Y, Z]` (3 signed bytes, offset 1) | Dice is stable and flat; face derived from XYZ                     |
+| 0x46 0x53           | `FS`   | FakeStable   | `[X, Y, Z]` (3 signed bytes, offset 2) | Stable after a "fake" roll; face derived from XYZ                  |
+| 0x54 0x53           | `TS`   | TiltStable   | `[X, Y, Z]` (3 signed bytes, offset 2) | Stable but tilted (not flat); face derived from XYZ                |
+| 0x4D 0x53           | `MS`   | MoveStable   | `[X, Y, Z]` (3 signed bytes, offset 2) | Stable after small movement (face rotation); face derived from XYZ |
+| 0x42 0x61 0x74      | `Bat`  | BatteryLevel | `[level]` (1 byte, offset 3)           | Battery level response (0–100 percent)                             |
+| 0x43 0x6F 0x6C      | `Col`  | DiceColor    | `[color]` (1 byte, offset 3)           | Dice color response                                                |
+| 0x43 0x68 0x61 0x72 | `Char` | Charging     | `[charging]` (1 byte, offset 4)        | Charging status (0 = not charging, 1 = charging)                   |
+| 0x54 0x61 0x70      | `Tap`  | Tap          | (none)                                 | Single tap detected (no payload)                                   |
+| 0x44 0x54 0x61 0x70 | `DTap` | DoubleTap    | (none)                                 | Double tap detected (no payload)                                   |
 
 ## Dice Colors
 
@@ -68,6 +75,10 @@ events use ASCII prefixes for identification.
 | 5     | D8    | d24Vectors → d8Transform    |
 | 6     | D12   | d24Vectors → d12Transform   |
 
+> **Note**: D10X is also referred to as **D100** (percentile) in the C API.
+> The transform maps the D20 vector index to a D10 face value multiplied by 10
+> (i.e. `d10_transform(roll) * 10`), yielding values 0, 10, 20, …, 90.
+
 `setDieType` is a client-side setting — no command is sent to the dice.
 Instead, it selects which vector table and transform to use when interpreting
 the XYZ accelerometer data to determine the face value.
@@ -80,8 +91,10 @@ the upper face by finding the closest vector in a pre-defined table:
 
 1. Extract `[x, y, z]` from the notification payload.
 2. Look up the vector table for the current `DiceType`.
-3. For each entry `(face_value, reference_vector)`, compute the squared
-   Euclidean distance: `(x - rx)² + (y - ry)² + (z - rz)²`.
+3. For each entry `(face_value, reference_vector)`, compute the
+   Euclidean distance: `sqrt((x - rx)² + (y - ry)² + (z - rz)²)`.
+   (The squared distance without `sqrt` is functionally equivalent for
+   finding the minimum, since `sqrt` is monotonically increasing.)
 4. Return the face value with the smallest distance.
 5. If a shell transform applies (D10, D10X, D4, D8, D12), map the
    intermediate value through the transform table.
@@ -97,5 +110,111 @@ the upper face by finding the closest vector in a pre-defined table:
 | 5    | 0    | 0    | -64  |
 | 6    | 64   | 0    | 0    |
 
-The D20 and D24 vector tables (20 and 24 entries respectively) and the
-shell transform tables are defined in the official API source code.
+### D20 Vector Table
+
+| Face |  X   |  Y   |  Z   |
+|------|------|------|------|
+|  1   | -64  |  0   | -22  |
+|  2   |  42  | -42  |  40  |
+|  3   |  0   |  22  | -64  |
+|  4   |  0   |  22  |  64  |
+|  5   | -42  | -42  |  42  |
+|  6   |  22  |  64  |  0   |
+|  7   | -42  | -42  | -42  |
+|  8   |  64  |  0   | -22  |
+|  9   | -22  |  64  |  0   |
+| 10   |  42  | -42  | -42  |
+| 11   | -42  |  42  |  42  |
+| 12   |  22  | -64  |  0   |
+| 13   | -64  |  0   |  22  |
+| 14   |  42  |  42  |  42  |
+| 15   | -22  | -64  |  0   |
+| 16   |  42  |  42  | -42  |
+| 17   |  0   | -22  | -64  |
+| 18   |  0   | -22  |  64  |
+| 19   | -42  |  42  | -42  |
+| 20   |  64  |  0   |  22  |
+
+### D24 Vector Table
+
+| Face |  X   |  Y   |  Z   |
+|------|------|------|------|
+|  1   |  20  | -60  | -20  |
+|  2   |  20  |  0   |  60  |
+|  3   | -40  | -40  |  40  |
+|  4   | -60  |  0   |  20  |
+|  5   |  40  |  20  |  40  |
+|  6   | -20  | -60  | -20  |
+|  7   |  20  |  60  |  20  |
+|  8   | -40  |  20  | -40  |
+|  9   | -40  |  40  |  40  |
+| 10   | -20  |  0   |  60  |
+| 11   | -20  | -60  |  20  |
+| 12   |  60  |  0   |  20  |
+| 13   | -60  |  0   | -20  |
+| 14   |  20  |  60  | -20  |
+| 15   |  20  |  0   | -60  |
+| 16   |  40  | -20  | -40  |
+| 17   | -20  |  60  | -20  |
+| 18   | -40  | -40  | -40  |
+| 19   |  40  | -20  |  40  |
+| 20   |  20  | -60  |  20  |
+| 21   |  60  |  0   | -20  |
+| 22   |  40  |  20  | -40  |
+| 23   | -20  |  0   | -60  |
+| 24   | -20  |  60  |  20  |
+
+### Shell Transform Tables
+
+Each transform maps the vector table index (1-based) to the final face value.
+D6 and D20 use identity (no transform). D10X multiplies the D10 transform by 10.
+
+#### D4 Transform (D24 → D4)
+
+| Index |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 |
+|-------|----|----|----|----|----|----|----|----|----|----|----|----|
+| Face  |  3 |  1 |  4 |  1 |  4 |  4 |  1 |  4 |  2 |  3 |  1 |  1 |
+
+| Index | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 |
+|-------|----|----|----|----|----|----|----|----|----|----|----|----|
+| Face  |  1 |  4 |  2 |  3 |  3 |  2 |  2 |  2 |  4 |  1 |  3 |  2 |
+
+#### D8 Transform (D24 → D8)
+
+| Index |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 |
+|-------|----|----|----|----|----|----|----|----|----|----|----|----|
+| Face  |  3 |  3 |  6 |  1 |  2 |  8 |  1 |  1 |  4 |  7 |  5 |  5 |
+
+| Index | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 |
+|-------|----|----|----|----|----|----|----|----|----|----|----|----|
+| Face  |  4 |  4 |  2 |  5 |  7 |  7 |  8 |  2 |  8 |  3 |  6 |  6 |
+
+#### D10 Transform (D20 → D10)
+
+| Index |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 |
+|-------|----|----|----|----|----|----|----|----|----|----|
+| Face  |  8 |  2 |  6 |  1 |  4 |  3 |  9 |  0 |  7 |  5 |
+
+| Index | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 |
+|-------|----|----|----|----|----|----|----|----|----|----|
+| Face  |  5 |  7 |  0 |  9 |  3 |  4 |  1 |  6 |  2 |  8 |
+
+#### D10X Transform (D20 → D10X)
+
+| Index |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 |
+|-------|----|----|----|----|----|----|----|----|----|----|
+| Face  | 80 | 20 | 60 | 10 | 40 | 30 | 90 |  0 | 70 | 50 |
+
+| Index | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 |
+|-------|----|----|----|----|----|----|----|----|----|----|
+| Face  | 50 | 70 |  0 | 90 | 30 | 40 | 10 | 60 | 20 | 80 |
+
+#### D12 Transform (D24 → D12)
+
+| Index |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 |
+|-------|----|----|----|----|----|----|----|----|----|----|----|----|
+| Face  |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 |
+
+| Index | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 |
+|-------|----|----|----|----|----|----|----|----|----|----|----|----|
+| Face  |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 |
