@@ -30,19 +30,19 @@
     color: #95a5a6;
 }
 
-.battery-critical {
+.battery-critical block.filled {
     background-color: #e74c3c;
 }
 
-.battery-low {
+.battery-low block.filled {
     background-color: #f39c12;
 }
 
-.battery-ok {
+.battery-ok block.filled {
     background-color: #2ecc71;
 }
 
-.battery-charging {
+.battery-charging block.filled {
     background-color: #3498db;
 }
 
