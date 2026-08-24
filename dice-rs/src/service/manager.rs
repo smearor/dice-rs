@@ -123,4 +123,44 @@ impl DiceManager {
     pub async fn shutdown(&self) -> Result<()> {
         self.transport.stop_scan().await
     }
+
+    /// Disconnect a peripheral by MAC address.
+    ///
+    /// Scans for peripherals and disconnects the one matching the given address.
+    /// Useful for cleaning up stale connections before scanning, since BlueZ
+    /// does not deliver RSSI advertisement updates for connected devices.
+    pub async fn disconnect_by_address(&self, address: &str) -> Result<()> {
+        let peripherals = self.transport.peripherals().await?;
+        for peripheral in peripherals {
+            if peripheral.address().to_string().contains(address)
+                && peripheral.is_connected().await?
+            {
+                debug!(address = %peripheral.address(), "disconnecting peripheral");
+                peripheral.disconnect().await?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Disconnect all connected GoDice devices.
+    ///
+    /// Iterates all known peripherals, filters by the GoDice name prefix,
+    /// and disconnects those that are currently connected. Returns the
+    /// number of devices that were disconnected.
+    pub async fn disconnect_all(&self) -> Result<usize> {
+        let peripherals = self.transport.peripherals().await?;
+        let mut count = 0;
+        for peripheral in peripherals {
+            let props = peripheral.properties().await?;
+            if let Some(props) = props {
+                let local_name = props.local_name.as_deref().unwrap_or("");
+                if local_name.starts_with("GoDice_") && peripheral.is_connected().await? {
+                    debug!(name = local_name, address = %peripheral.address(), "disconnecting GoDice");
+                    peripheral.disconnect().await?;
+                    count += 1;
+                }
+            }
+        }
+        Ok(count)
+    }
 }

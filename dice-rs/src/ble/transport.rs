@@ -49,6 +49,12 @@ pub trait BlePeripheral: Send + Sync {
     /// Cached properties (local name, RSSI, etc.).
     async fn properties(&self) -> Result<Option<btleplug::api::PeripheralProperties>>;
 
+    /// Read the current RSSI (signal strength) in dBm.
+    ///
+    /// On Linux returns the latest RSSI from BlueZ device properties.
+    /// May return `NotConnected` if no RSSI value is available.
+    async fn read_rssi(&self) -> Result<i16>;
+
     /// Establish a connection.
     async fn connect(&self) -> Result<()>;
 
@@ -155,6 +161,10 @@ impl BlePeripheral for BtleplugPeripheralWrapper {
 
     async fn properties(&self) -> Result<Option<btleplug::api::PeripheralProperties>> {
         self.inner.properties().await.map_err(|_| DiceError::ConnectionLost)
+    }
+
+    async fn read_rssi(&self) -> Result<i16> {
+        self.inner.read_rssi().await.map_err(|_| DiceError::ConnectionLost)
     }
 
     async fn connect(&self) -> Result<()> {

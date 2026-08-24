@@ -44,6 +44,8 @@ pub async fn run_command(manager: &DiceManager, command: Command, format: Output
         Command::Status { address } => run_status(manager, &address, format).await,
         Command::Color { address } => run_color(manager, &address, format).await,
         Command::Charging { address } => run_charging(manager, &address, format).await,
+        Command::Disconnect { address } => run_disconnect(manager, &address).await,
+        Command::DisconnectAll => run_disconnect_all(manager).await,
         Command::Interactive => run_interactive(manager).await,
     }
 }
@@ -168,6 +170,22 @@ async fn run_charging(manager: &DiceManager, address: &str, format: OutputFormat
     let charging = dice.is_charging();
     output::print_charging(charging, format);
     dice.disconnect().await?;
+    Ok(())
+}
+
+async fn run_disconnect(manager: &DiceManager, address: &str) -> Result<()> {
+    manager.disconnect_by_address(address).await?;
+    println!("Disconnected from {address}");
+    Ok(())
+}
+
+async fn run_disconnect_all(manager: &DiceManager) -> Result<()> {
+    let count = manager.disconnect_all().await?;
+    if count == 0 {
+        println!("No connected GoDice devices found.");
+    } else {
+        println!("Disconnected {count} GoDice device(s).");
+    }
     Ok(())
 }
 

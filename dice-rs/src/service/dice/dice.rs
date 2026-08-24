@@ -208,10 +208,18 @@ impl Dice {
         self.inner.charging_state.load(Ordering::Relaxed)
     }
 
-    /// Query RSSI from cached peripheral properties.
+    /// Query RSSI (signal strength) in dBm.
+    ///
+    /// Tries `read_rssi()` first (reads from BlueZ device properties on Linux),
+    /// falls back to cached `properties().rssi` if that fails.
     pub async fn rssi(&self) -> Result<Option<i16>> {
-        let props = self.inner.peripheral.properties().await?;
-        Ok(props.and_then(|p| p.rssi))
+        match self.inner.peripheral.read_rssi().await {
+            Ok(rssi) => Ok(Some(rssi)),
+            Err(_) => {
+                let props = self.inner.peripheral.properties().await?;
+                Ok(props.and_then(|p| p.rssi))
+            }
+        }
     }
 
     /// Get comprehensive system status in a single call.

@@ -59,6 +59,15 @@ pub enum Command {
         address: String,
     },
 
+    /// Disconnect from a dice by MAC address.
+    Disconnect {
+        /// Device MAC address.
+        address: String,
+    },
+
+    /// Disconnect all connected GoDice devices.
+    DisconnectAll,
+
     /// Interactive REPL mode for exploratory use.
     Interactive,
 }
