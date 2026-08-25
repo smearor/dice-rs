@@ -156,7 +156,12 @@ mod tests {
         match msg {
             WsMessage::Event { session_id, event } => {
                 assert_eq!(session_id, "s2");
-                assert_eq!(event, DiceEvent::Charging { state: ChargingState::Charging });
+                assert_eq!(
+                    event,
+                    DiceEvent::Charging {
+                        state: ChargingState::Charging
+                    }
+                );
             }
             _ => panic!("expected Event variant"),
         }

@@ -1,7 +1,7 @@
-use std::sync::Arc;
-use axum::extract::State;
 use axum::Json;
+use axum::extract::State;
 use serde::Deserialize;
+use std::sync::Arc;
 
 use crate::app_state::AppState;
 use crate::routes::disconnect::SuccessResponse;
@@ -16,10 +16,7 @@ pub struct CalibrateRequest {
 }
 
 /// POST /api/calibrate — calibrate the sensor of a connected dice.
-pub async fn calibrate_handler(
-    State(state): State<Arc<AppState>>,
-    Json(body): Json<CalibrateRequest>,
-) -> Result<Json<SuccessResponse>> {
+pub async fn calibrate_handler(State(state): State<Arc<AppState>>, Json(body): Json<CalibrateRequest>) -> Result<Json<SuccessResponse>> {
     let sessions = state.sessions.lock().await;
     let session = sessions
         .get(&body.session_id)

@@ -1,5 +1,5 @@
-use std::fmt::Display;
 use serde::Serialize;
+use std::fmt::Display;
 use tabled::Tabled;
 
 use crate::cli_error::CliError;

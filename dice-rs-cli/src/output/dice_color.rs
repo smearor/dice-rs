@@ -1,8 +1,8 @@
 use dice_rs::model::dice::DiceColor;
 
+use super::status_row::StatusRow;
 use crate::cli_error::Result;
 use crate::output::OutputFormatter;
-use super::status_row::StatusRow;
 
 impl OutputFormatter for DiceColor {
     type Row = StatusRow;

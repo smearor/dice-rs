@@ -1,8 +1,8 @@
 use dice_rs::model::system_status::SystemStatus;
 
+use super::status_row::StatusRow;
 use crate::cli_error::Result;
 use crate::output::OutputFormatter;
-use super::status_row::StatusRow;
 
 impl OutputFormatter for SystemStatus {
     type Row = StatusRow;

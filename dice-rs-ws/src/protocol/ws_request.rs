@@ -160,7 +160,15 @@ mod tests {
         let json = r#"{"action":"PulseLed","session_id":"s1","color":"00FF00","count":5,"on_time":10,"off_time":10}"#;
         let req: WsRequest = serde_json::from_str(json).unwrap();
         match req {
-            WsRequest::PulseLed { session_id, color, count, on_time, off_time, blink_mode, leds } => {
+            WsRequest::PulseLed {
+                session_id,
+                color,
+                count,
+                on_time,
+                off_time,
+                blink_mode,
+                leds,
+            } => {
                 assert_eq!(session_id, "s1");
                 assert_eq!(color, "00FF00");
                 assert_eq!(count, 5);

@@ -1,10 +1,10 @@
+use axum::Json;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::response::Response;
-use axum::Json;
-use thiserror::Error;
 use dice_rs::ble::ble_error::BleError;
 use dice_rs::error::DiceError;
+use thiserror::Error;
 
 /// Errors returned by the WebSocket server.
 #[derive(Debug, Error)]
@@ -43,9 +43,7 @@ impl IntoResponse for WsError {
         let (status, code, message) = match &self {
             WsError::SessionNotFound(_) => (StatusCode::NOT_FOUND, "session_not_found", self.to_string()),
             WsError::DeviceNotFound(_) => (StatusCode::NOT_FOUND, "device_not_found", self.to_string()),
-            WsError::InvalidColor(_) | WsError::InvalidDiceType(_) => {
-                (StatusCode::BAD_REQUEST, "invalid_input", self.to_string())
-            }
+            WsError::InvalidColor(_) | WsError::InvalidDiceType(_) => (StatusCode::BAD_REQUEST, "invalid_input", self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal_error", self.to_string()),
         };
         let body = serde_json::json!({ "code": code, "message": message });
@@ -59,9 +57,7 @@ pub type Result<T> = std::result::Result<T, WsError>;
 impl From<DiceError> for WsError {
     fn from(err: DiceError) -> Self {
         match &err {
-            DiceError::Ble(BleError::DeviceNotFound { address }) => {
-                WsError::DeviceNotFound(address.clone())
-            }
+            DiceError::Ble(BleError::DeviceNotFound { address }) => WsError::DeviceNotFound(address.clone()),
             _ => WsError::Dice(err),
         }
     }

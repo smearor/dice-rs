@@ -100,10 +100,7 @@ impl RollHistory {
 
         let mut labels = Vec::with_capacity(HISTORY_SIZE);
         for _ in 0..HISTORY_SIZE {
-            let label = gtk4::Label::builder()
-                .label("-")
-                .css_classes(vec!["roll-history-entry"])
-                .build();
+            let label = gtk4::Label::builder().label("-").css_classes(vec!["roll-history-entry"]).build();
             container.append(&label);
             labels.push(label);
         }

@@ -1,8 +1,8 @@
 use dice_rs::service::dice::DiceEvent;
 
+use super::status_row::StatusRow;
 use crate::cli_error::Result;
 use crate::output::OutputFormatter;
-use super::status_row::StatusRow;
 use crate::timestamp::chrono_like_timestamp;
 
 impl OutputFormatter for DiceEvent {

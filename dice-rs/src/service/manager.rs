@@ -185,9 +185,7 @@ impl DiceManager {
     pub async fn disconnect_by_address(&self, address: &str) -> Result<()> {
         let peripherals = self.transport.peripherals().await?;
         for peripheral in peripherals {
-            if peripheral.address().to_string().contains(address)
-                && peripheral.is_connected().await?
-            {
+            if peripheral.address().to_string().contains(address) && peripheral.is_connected().await? {
                 debug!(address = %peripheral.address(), "disconnecting peripheral");
                 peripheral.disconnect().await?;
             }

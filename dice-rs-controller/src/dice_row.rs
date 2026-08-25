@@ -52,11 +52,7 @@ impl DiceRow {
             .build();
 
         // Right side: face value, stability, battery, history, LED controls.
-        let info_box = gtk4::Box::builder()
-            .orientation(gtk4::Orientation::Vertical)
-            .spacing(8)
-            .hexpand(true)
-            .build();
+        let info_box = gtk4::Box::builder().orientation(gtk4::Orientation::Vertical).spacing(8).hexpand(true).build();
 
         let header = gtk4::Box::builder().orientation(gtk4::Orientation::Horizontal).spacing(12).build();
         header.append(face_display.widget());

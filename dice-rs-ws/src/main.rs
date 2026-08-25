@@ -35,10 +35,7 @@ impl Args {
             }
         }
 
-        Self {
-            bind_address,
-            verbose,
-        }
+        Self { bind_address, verbose }
     }
 }
 

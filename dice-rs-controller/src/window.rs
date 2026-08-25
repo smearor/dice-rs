@@ -1,7 +1,7 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
-use std::sync::Arc;
 use std::time::Duration;
 
 use dice_rs::service::manager::DiceManager;
@@ -179,7 +179,10 @@ impl MainWindow {
 
         // UI updates from the tokio scan task are marshaled via std::sync::mpsc.
         enum ScanUiUpdate {
-            NewDice { dice: dice_rs::service::dice::Dice, manager: Arc<DiceManager> },
+            NewDice {
+                dice: dice_rs::service::dice::Dice,
+                manager: Arc<DiceManager>,
+            },
         }
 
         let (sender, receiver) = std::sync::mpsc::channel::<ScanUiUpdate>();
@@ -233,7 +236,10 @@ impl MainWindow {
                             tokio::spawn(async move {
                                 match connect_manager.connect(&device).await {
                                     Ok(dice) => {
-                                        let _ = connect_sender.send(ScanUiUpdate::NewDice { dice, manager: connect_manager.clone() });
+                                        let _ = connect_sender.send(ScanUiUpdate::NewDice {
+                                            dice,
+                                            manager: connect_manager.clone(),
+                                        });
                                     }
                                     Err(error) => {
                                         debug!(error = %error, device = %device_name, "auto-scan: connection failed");

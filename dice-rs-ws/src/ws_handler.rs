@@ -22,10 +22,7 @@ use std::sync::Arc;
 type WsSender = Arc<Mutex<futures::stream::SplitSink<WebSocket, Message>>>;
 
 /// Handle the WebSocket upgrade from an HTTP request.
-pub async fn handle_ws_upgrade(
-    ws: WebSocketUpgrade,
-    State(state): State<Arc<AppState>>,
-) -> Response {
+pub async fn handle_ws_upgrade(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) -> Response {
     ws.on_upgrade(move |socket| run(socket, state))
 }
 
@@ -36,16 +33,14 @@ async fn run(socket: WebSocket, state: Arc<AppState>) {
 
     loop {
         match receiver.next().await {
-            Some(Ok(Message::Text(text))) => {
-                match serde_json::from_str::<WsRequest>(&text) {
-                    Ok(request) => {
-                        handle_request(request, &state, &sender).await;
-                    }
-                    Err(err) => {
-                        send_error(&sender, None, "parse_error", &err.to_string()).await;
-                    }
+            Some(Ok(Message::Text(text))) => match serde_json::from_str::<WsRequest>(&text) {
+                Ok(request) => {
+                    handle_request(request, &state, &sender).await;
                 }
-            }
+                Err(err) => {
+                    send_error(&sender, None, "parse_error", &err.to_string()).await;
+                }
+            },
             Some(Ok(Message::Close(_))) | None => break,
             _ => {}
         }
@@ -67,7 +62,15 @@ async fn handle_request(request: WsRequest, state: &Arc<AppState>, sender: &WsSe
         WsRequest::SetLed { session_id, color } => {
             handle_set_led(state, sender, session_id, color).await;
         }
-        WsRequest::PulseLed { session_id, color, count, on_time, off_time, blink_mode, leds } => {
+        WsRequest::PulseLed {
+            session_id,
+            color,
+            count,
+            on_time,
+            off_time,
+            blink_mode,
+            leds,
+        } => {
             handle_pulse_led(state, sender, session_id, color, count, on_time, off_time, blink_mode, leds).await;
         }
         WsRequest::TurnOffLeds { session_id } => {
@@ -104,12 +107,7 @@ async fn handle_scan(state: &Arc<AppState>, sender: &WsSender, _duration: Option
     }
 }
 
-async fn handle_connect(
-    state: &Arc<AppState>,
-    sender: &WsSender,
-    address: String,
-    dice_type: Option<String>,
-) {
+async fn handle_connect(state: &Arc<AppState>, sender: &WsSender, address: String, dice_type: Option<String>) {
     let device = match state.manager.find_device_by_address(&address).await {
         Ok(d) => d,
         Err(err) => {
@@ -185,12 +183,7 @@ async fn handle_disconnect(state: &Arc<AppState>, sender: &WsSender, session_id:
     }
 }
 
-async fn handle_set_led(
-    state: &Arc<AppState>,
-    sender: &WsSender,
-    session_id: String,
-    color: String,
-) {
+async fn handle_set_led(state: &Arc<AppState>, sender: &WsSender, session_id: String, color: String) {
     let sessions = state.sessions.lock().await;
     let session = match sessions.get(&session_id) {
         Some(s) => s,
@@ -318,10 +311,7 @@ async fn handle_get_status(state: &Arc<AppState>, sender: &WsSender, session_id:
 
     match session.dice.system_status().await {
         Ok(status) => {
-            let msg = WsMessage::SystemStatus {
-                session_id,
-                status,
-            };
+            let msg = WsMessage::SystemStatus { session_id, status };
             send_message(sender, &msg).await;
         }
         Err(err) => {
@@ -353,12 +343,7 @@ async fn handle_calibrate(state: &Arc<AppState>, sender: &WsSender, session_id: 
 }
 
 /// Enable or disable single tap interrupt notifications.
-async fn handle_set_tap_interrupt(
-    state: &Arc<AppState>,
-    sender: &WsSender,
-    session_id: String,
-    enable: bool,
-) {
+async fn handle_set_tap_interrupt(state: &Arc<AppState>, sender: &WsSender, session_id: String, enable: bool) {
     let sessions = state.sessions.lock().await;
     let session = match sessions.get(&session_id) {
         Some(s) => s,
@@ -387,12 +372,7 @@ async fn handle_set_tap_interrupt(
 }
 
 /// Enable or disable double tap interrupt notifications.
-async fn handle_set_double_tap_interrupt(
-    state: &Arc<AppState>,
-    sender: &WsSender,
-    session_id: String,
-    enable: bool,
-) {
+async fn handle_set_double_tap_interrupt(state: &Arc<AppState>, sender: &WsSender, session_id: String, enable: bool) {
     let sessions = state.sessions.lock().await;
     let session = match sessions.get(&session_id) {
         Some(s) => s,

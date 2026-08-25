@@ -116,9 +116,7 @@ impl Dice3D {
                 }
 
                 gl_loader::init_gl();
-                let loader = |sym: &str| -> *const std::ffi::c_void {
-                    gl_loader::get_proc_address(sym) as *const std::ffi::c_void
-                };
+                let loader = |sym: &str| -> *const std::ffi::c_void { gl_loader::get_proc_address(sym) as *const std::ffi::c_void };
 
                 let glow_ctx = unsafe { glow::Context::from_loader_function(loader) };
                 let model = DiceModel::d6();
@@ -153,9 +151,11 @@ impl Dice3D {
                 renderer.gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
             }
 
-            renderer.render(render_orientation, aspect, [0.95, 0.95, 0.95], orientation.borrow().color).unwrap_or_else(|e| {
-                error!(error = %miette::Report::new(e), "dice render failed");
-            });
+            renderer
+                .render(render_orientation, aspect, [0.95, 0.95, 0.95], orientation.borrow().color)
+                .unwrap_or_else(|e| {
+                    error!(error = %miette::Report::new(e), "dice render failed");
+                });
 
             gtk4::glib::Propagation::Proceed
         });

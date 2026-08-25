@@ -21,7 +21,12 @@ impl BatteryIndicator {
 
         let label = gtk4::Label::builder().label("N/A").build();
 
-        Self { level_bar, label, charging: Cell::new(ChargingState::default()), last_level: Cell::new(None) }
+        Self {
+            level_bar,
+            label,
+            charging: Cell::new(ChargingState::default()),
+            last_level: Cell::new(None),
+        }
     }
 
     /// Update the battery level display.

@@ -1,9 +1,9 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use axum::Router;
 use axum::routing::get;
 use axum::routing::post;
-use axum::Router;
 
 use crate::app_state::AppState;
 use crate::routes;

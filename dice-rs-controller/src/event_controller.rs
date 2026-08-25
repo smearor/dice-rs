@@ -1,7 +1,7 @@
+use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc;
-use std::sync::Arc;
 use std::time::Duration;
 
 use dice_rs::model::acceleration::Acceleration;
@@ -65,7 +65,15 @@ pub struct EventController {
 
 impl EventController {
     /// Create a new event controller.
-    pub fn new(dice: Dice, manager: Arc<DiceManager>, face_display: FaceDisplay, battery_indicator: BatteryIndicator, dice_3d: Dice3D, roll_history: RollHistory, tap_indicator: TapIndicator) -> Self {
+    pub fn new(
+        dice: Dice,
+        manager: Arc<DiceManager>,
+        face_display: FaceDisplay,
+        battery_indicator: BatteryIndicator,
+        dice_3d: Dice3D,
+        roll_history: RollHistory,
+        tap_indicator: TapIndicator,
+    ) -> Self {
         Self {
             dice,
             manager,

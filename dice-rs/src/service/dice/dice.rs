@@ -12,8 +12,8 @@ use tokio::sync::oneshot;
 use tracing::debug;
 use tracing::trace;
 
-use crate::ble::command::Command;
 use crate::ble::ble_error::BleError;
+use crate::ble::command::Command;
 use crate::ble::event::Event;
 use crate::ble::transport::BlePeripheral;
 use crate::ble::transport::BtleplugPeripheralWrapper;
@@ -138,15 +138,7 @@ impl Dice {
     ///
     /// `blink_mode` controls the blink pattern (rainbow or solid color).
     /// `leds` controls which LEDs participate in the pulse.
-    pub async fn pulse_leds(
-        &self,
-        pulse_count: u8,
-        on_time: u8,
-        off_time: u8,
-        color: LedColor,
-        blink_mode: PulseBlinkMode,
-        leds: PulseLeds,
-    ) -> Result<()> {
+    pub async fn pulse_leds(&self, pulse_count: u8, on_time: u8, off_time: u8, color: LedColor, blink_mode: PulseBlinkMode, leds: PulseLeds) -> Result<()> {
         let data: Vec<u8> = Command::PulseLeds {
             pulse_count,
             on_time,

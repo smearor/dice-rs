@@ -94,13 +94,10 @@ impl<T: BleTransport> DiceScanner<T> {
                 let local_name = props.local_name.as_deref().unwrap_or("");
                 if local_name.starts_with(&self.name_prefix) {
                     let id = peripheral.id();
-                    let avg_rssi = rssi_samples
-                        .get(&id)
-                        .filter(|samples| !samples.is_empty())
-                        .map(|samples| {
-                            let sum: i64 = samples.iter().map(|r| *r as i64).sum();
-                            (sum / samples.len() as i64) as i16
-                        });
+                    let avg_rssi = rssi_samples.get(&id).filter(|samples| !samples.is_empty()).map(|samples| {
+                        let sum: i64 = samples.iter().map(|r| *r as i64).sum();
+                        (sum / samples.len() as i64) as i16
+                    });
                     let avg_rssi = match avg_rssi {
                         Some(rssi) => Some(rssi),
                         None => match peripheral.read_rssi().await {

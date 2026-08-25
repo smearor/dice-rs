@@ -35,9 +35,7 @@ impl DiceService for MockDiceService {
     }
 
     async fn connect(&self, _device: &DiceDevice) -> Result<Dice> {
-        Err(DiceError::Ble(dice_rs::ble::ble_error::BleError::Connect(
-            "mock: no real device".into(),
-        )))
+        Err(DiceError::Ble(dice_rs::ble::ble_error::BleError::Connect("mock: no real device".into())))
     }
 
     async fn find_device_by_address(&self, address: &str) -> Result<DiceDevice> {
@@ -45,9 +43,7 @@ impl DiceService for MockDiceService {
             .iter()
             .find(|d| d.address.to_string().contains(address))
             .cloned()
-            .ok_or_else(|| {
-                DiceError::Ble(dice_rs::ble::ble_error::BleError::device_not_found(address))
-            })
+            .ok_or_else(|| DiceError::Ble(dice_rs::ble::ble_error::BleError::device_not_found(address)))
     }
 }
 
@@ -72,9 +68,7 @@ fn make_test_server(service: MockDiceService) -> TestServer {
     let manager: Arc<dyn DiceService> = Arc::new(service);
     let state = Arc::new(AppState::new(manager));
     let router = Server::build_router(state);
-    TestServer::builder()
-        .http_transport()
-        .build(router)
+    TestServer::builder().http_transport().build(router)
 }
 
 const TEST_ADDRESS: &str = "AA:BB:CC:DD:EE:FF";
@@ -160,15 +154,9 @@ async fn ws_scan_returns_results() {
     let device = make_device(TEST_ADDRESS, TEST_NAME);
     let server = make_test_server(MockDiceService::new(vec![device]));
 
-    let mut websocket = server
-        .get_websocket("/ws")
-        .await
-        .into_websocket()
-        .await;
+    let mut websocket = server.get_websocket("/ws").await.into_websocket().await;
 
-    websocket
-        .send_text(r#"{"action":"Scan"}"#)
-        .await;
+    websocket.send_text(r#"{"action":"Scan"}"#).await;
 
     let message = websocket.receive_message().await;
     let text = match message {
@@ -187,15 +175,9 @@ async fn ws_scan_returns_results() {
 async fn ws_scan_empty_results() {
     let server = make_test_server(MockDiceService::new(vec![]));
 
-    let mut websocket = server
-        .get_websocket("/ws")
-        .await
-        .into_websocket()
-        .await;
+    let mut websocket = server.get_websocket("/ws").await.into_websocket().await;
 
-    websocket
-        .send_text(r#"{"action":"Scan"}"#)
-        .await;
+    websocket.send_text(r#"{"action":"Scan"}"#).await;
 
     let message = websocket.receive_message().await;
     let text = match message {
@@ -212,11 +194,7 @@ async fn ws_scan_empty_results() {
 async fn ws_invalid_json_returns_error() {
     let server = make_test_server(MockDiceService::new(vec![]));
 
-    let mut websocket = server
-        .get_websocket("/ws")
-        .await
-        .into_websocket()
-        .await;
+    let mut websocket = server.get_websocket("/ws").await.into_websocket().await;
 
     websocket.send_text("not valid json").await;
 
@@ -235,15 +213,9 @@ async fn ws_invalid_json_returns_error() {
 async fn ws_connect_device_not_found() {
     let server = make_test_server(MockDiceService::new(vec![]));
 
-    let mut websocket = server
-        .get_websocket("/ws")
-        .await
-        .into_websocket()
-        .await;
+    let mut websocket = server.get_websocket("/ws").await.into_websocket().await;
 
-    websocket
-        .send_text(r#"{"action":"Connect","address":"AA:BB:CC:DD:EE:FF"}"#)
-        .await;
+    websocket.send_text(r#"{"action":"Connect","address":"AA:BB:CC:DD:EE:FF"}"#).await;
 
     let message = websocket.receive_message().await;
     let text = match message {
@@ -261,15 +233,9 @@ async fn ws_connect_fails_with_mock() {
     let device = make_device(TEST_ADDRESS, TEST_NAME);
     let server = make_test_server(MockDiceService::new(vec![device]));
 
-    let mut websocket = server
-        .get_websocket("/ws")
-        .await
-        .into_websocket()
-        .await;
+    let mut websocket = server.get_websocket("/ws").await.into_websocket().await;
 
-    websocket
-        .send_text(r#"{"action":"Connect","address":"AA:BB:CC:DD:EE:FF"}"#)
-        .await;
+    websocket.send_text(r#"{"action":"Connect","address":"AA:BB:CC:DD:EE:FF"}"#).await;
 
     let message = websocket.receive_message().await;
     let text = match message {
@@ -286,15 +252,9 @@ async fn ws_connect_fails_with_mock() {
 async fn ws_disconnect_session_not_found() {
     let server = make_test_server(MockDiceService::new(vec![]));
 
-    let mut websocket = server
-        .get_websocket("/ws")
-        .await
-        .into_websocket()
-        .await;
+    let mut websocket = server.get_websocket("/ws").await.into_websocket().await;
 
-    websocket
-        .send_text(r#"{"action":"Disconnect","session_id":"s99"}"#)
-        .await;
+    websocket.send_text(r#"{"action":"Disconnect","session_id":"s99"}"#).await;
 
     let message = websocket.receive_message().await;
     let text = match message {
@@ -311,15 +271,9 @@ async fn ws_disconnect_session_not_found() {
 async fn ws_unknown_action_returns_parse_error() {
     let server = make_test_server(MockDiceService::new(vec![]));
 
-    let mut websocket = server
-        .get_websocket("/ws")
-        .await
-        .into_websocket()
-        .await;
+    let mut websocket = server.get_websocket("/ws").await.into_websocket().await;
 
-    websocket
-        .send_text(r#"{"action":"Unknown"}"#)
-        .await;
+    websocket.send_text(r#"{"action":"Unknown"}"#).await;
 
     let message = websocket.receive_message().await;
     let text = match message {

@@ -1,8 +1,8 @@
 use dice_rs::model::charging_state::ChargingState;
 
+use super::status_row::StatusRow;
 use crate::cli_error::Result;
 use crate::output::OutputFormatter;
-use super::status_row::StatusRow;
 
 impl OutputFormatter for ChargingState {
     type Row = StatusRow;

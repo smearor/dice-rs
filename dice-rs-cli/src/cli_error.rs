@@ -1,6 +1,6 @@
-use dice_rs::model::led::LedColorError;
-use dice_rs::model::dice::DiceTypeError;
 use dice_rs::error::DiceError;
+use dice_rs::model::dice::DiceTypeError;
+use dice_rs::model::led::LedColorError;
 
 /// Errors specific to the CLI tool.
 #[derive(Debug, thiserror::Error)]

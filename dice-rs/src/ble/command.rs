@@ -142,7 +142,17 @@ impl From<Command> for Vec<u8> {
                 blink_mode,
                 leds,
             } => {
-                data.extend_from_slice(&[sensitivity, pulse_count, on_time, off_time, color.r, color.g, color.b, blink_mode.as_u8(), leds.as_u8()]);
+                data.extend_from_slice(&[
+                    sensitivity,
+                    pulse_count,
+                    on_time,
+                    off_time,
+                    color.r,
+                    color.g,
+                    color.b,
+                    blink_mode.as_u8(),
+                    leds.as_u8(),
+                ]);
             }
             Command::DetectionSettings {
                 samples_count,
@@ -154,7 +164,16 @@ impl From<Command> for Vec<u8> {
                 movement_deg,
                 roll_threshold,
             } => {
-                data.extend_from_slice(&[samples_count, movement_count, face_count, min_flat_deg, max_flat_deg, weak_stable, movement_deg, roll_threshold]);
+                data.extend_from_slice(&[
+                    samples_count,
+                    movement_count,
+                    face_count,
+                    min_flat_deg,
+                    max_flat_deg,
+                    weak_stable,
+                    movement_deg,
+                    roll_threshold,
+                ]);
             }
             Command::SetTapInterrupt { enabled } => {
                 data.push(u8::from(enabled));
@@ -214,7 +233,9 @@ impl TryFrom<&[u8]> for Command {
                 roll_threshold: data[8],
             }),
             Self::OPCODE_SET_TAP_INTERRUPT if data.len() == Self::LEN_SET_TAP_INTERRUPT => Ok(Self::SetTapInterrupt { enabled: data[1] != 0 }),
-            Self::OPCODE_SET_DOUBLE_TAP_INTERRUPT if data.len() == Self::LEN_SET_DOUBLE_TAP_INTERRUPT => Ok(Self::SetDoubleTapInterrupt { enabled: data[1] != 0 }),
+            Self::OPCODE_SET_DOUBLE_TAP_INTERRUPT if data.len() == Self::LEN_SET_DOUBLE_TAP_INTERRUPT => {
+                Ok(Self::SetDoubleTapInterrupt { enabled: data[1] != 0 })
+            }
             Self::OPCODE_CALIBRATE if data.len() == Self::LEN_CALIBRATE => Ok(Self::Calibrate),
             opcode => Err(CommandError::UnknownOpcode { opcode, length: data.len() }),
         }
@@ -228,28 +249,114 @@ mod tests {
     #[test]
     fn opcode_values() {
         assert_eq!(Command::GetBatteryLevel.opcode(), 0x03);
-        assert_eq!(Command::SetLeds { led1: LedColor::RED, led2: LedColor::RED }.opcode(), 0x08);
-        assert_eq!(Command::PulseLeds { pulse_count: 1, on_time: 1, off_time: 1, color: LedColor::RED, blink_mode: PulseBlinkMode::Color, leds: PulseLeds::Both }.opcode(), 0x10);
+        assert_eq!(
+            Command::SetLeds {
+                led1: LedColor::RED,
+                led2: LedColor::RED
+            }
+            .opcode(),
+            0x08
+        );
+        assert_eq!(
+            Command::PulseLeds {
+                pulse_count: 1,
+                on_time: 1,
+                off_time: 1,
+                color: LedColor::RED,
+                blink_mode: PulseBlinkMode::Color,
+                leds: PulseLeds::Both
+            }
+            .opcode(),
+            0x10
+        );
         assert_eq!(Command::StopPulseLeds.opcode(), 0x14);
         assert_eq!(Command::GetDiceColor.opcode(), 0x17);
-        assert_eq!(Command::Init { sensitivity: 1, pulse_count: 1, on_time: 1, off_time: 1, color: LedColor::RED, blink_mode: PulseBlinkMode::Color, leds: PulseLeds::Both }.opcode(), 0x19);
+        assert_eq!(
+            Command::Init {
+                sensitivity: 1,
+                pulse_count: 1,
+                on_time: 1,
+                off_time: 1,
+                color: LedColor::RED,
+                blink_mode: PulseBlinkMode::Color,
+                leds: PulseLeds::Both
+            }
+            .opcode(),
+            0x19
+        );
         assert_eq!(Command::SetTapInterrupt { enabled: true }.opcode(), 0x31);
         assert_eq!(Command::SetDoubleTapInterrupt { enabled: true }.opcode(), 0x32);
-        assert_eq!(Command::DetectionSettings { samples_count: 1, movement_count: 1, face_count: 6, min_flat_deg: 1, max_flat_deg: 1, weak_stable: 1, movement_deg: 1, roll_threshold: 1 }.opcode(), 0x65);
+        assert_eq!(
+            Command::DetectionSettings {
+                samples_count: 1,
+                movement_count: 1,
+                face_count: 6,
+                min_flat_deg: 1,
+                max_flat_deg: 1,
+                weak_stable: 1,
+                movement_deg: 1,
+                roll_threshold: 1
+            }
+            .opcode(),
+            0x65
+        );
         assert_eq!(Command::Calibrate.opcode(), 0x13);
     }
 
     #[test]
     fn data_len_values() {
         assert_eq!(Command::GetBatteryLevel.data_len(), 1);
-        assert_eq!(Command::SetLeds { led1: LedColor::RED, led2: LedColor::RED }.data_len(), 7);
-        assert_eq!(Command::PulseLeds { pulse_count: 1, on_time: 1, off_time: 1, color: LedColor::RED, blink_mode: PulseBlinkMode::Color, leds: PulseLeds::Both }.data_len(), 9);
+        assert_eq!(
+            Command::SetLeds {
+                led1: LedColor::RED,
+                led2: LedColor::RED
+            }
+            .data_len(),
+            7
+        );
+        assert_eq!(
+            Command::PulseLeds {
+                pulse_count: 1,
+                on_time: 1,
+                off_time: 1,
+                color: LedColor::RED,
+                blink_mode: PulseBlinkMode::Color,
+                leds: PulseLeds::Both
+            }
+            .data_len(),
+            9
+        );
         assert_eq!(Command::StopPulseLeds.data_len(), 1);
         assert_eq!(Command::GetDiceColor.data_len(), 1);
-        assert_eq!(Command::Init { sensitivity: 1, pulse_count: 1, on_time: 1, off_time: 1, color: LedColor::RED, blink_mode: PulseBlinkMode::Color, leds: PulseLeds::Both }.data_len(), 10);
+        assert_eq!(
+            Command::Init {
+                sensitivity: 1,
+                pulse_count: 1,
+                on_time: 1,
+                off_time: 1,
+                color: LedColor::RED,
+                blink_mode: PulseBlinkMode::Color,
+                leds: PulseLeds::Both
+            }
+            .data_len(),
+            10
+        );
         assert_eq!(Command::SetTapInterrupt { enabled: true }.data_len(), 2);
         assert_eq!(Command::SetDoubleTapInterrupt { enabled: true }.data_len(), 2);
-        assert_eq!(Command::DetectionSettings { samples_count: 1, movement_count: 1, face_count: 6, min_flat_deg: 1, max_flat_deg: 1, weak_stable: 1, movement_deg: 1, roll_threshold: 1 }.data_len(), 9);
+        assert_eq!(
+            Command::DetectionSettings {
+                samples_count: 1,
+                movement_count: 1,
+                face_count: 6,
+                min_flat_deg: 1,
+                max_flat_deg: 1,
+                weak_stable: 1,
+                movement_deg: 1,
+                roll_threshold: 1
+            }
+            .data_len(),
+            9
+        );
         assert_eq!(Command::Calibrate.data_len(), 1);
     }
 

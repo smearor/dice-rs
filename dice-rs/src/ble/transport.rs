@@ -90,7 +90,10 @@ impl BtleplugTransport {
     pub async fn new() -> Result<Self> {
         let manager = Manager::new().await.map_err(|e| DiceError::from(BleError::scan(e)))?;
         let adapters = manager.adapters().await.map_err(|e| DiceError::from(BleError::scan(e)))?;
-        let adapter = adapters.into_iter().next().ok_or_else(|| DiceError::from(BleError::scan("no Bluetooth adapter found")))?;
+        let adapter = adapters
+            .into_iter()
+            .next()
+            .ok_or_else(|| DiceError::from(BleError::scan("no Bluetooth adapter found")))?;
         Ok(Self { adapter })
     }
 

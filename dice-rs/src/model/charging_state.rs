@@ -14,11 +14,7 @@ pub enum ChargingState {
 
 impl From<bool> for ChargingState {
     fn from(charging: bool) -> Self {
-        if charging {
-            Self::Charging
-        } else {
-            Self::NotCharging
-        }
+        if charging { Self::Charging } else { Self::NotCharging }
     }
 }
 

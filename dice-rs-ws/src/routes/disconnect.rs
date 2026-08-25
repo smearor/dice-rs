@@ -1,8 +1,8 @@
-use std::sync::Arc;
-use axum::extract::State;
 use axum::Json;
+use axum::extract::State;
 use serde::Deserialize;
 use serde::Serialize;
+use std::sync::Arc;
 
 use crate::app_state::AppState;
 use crate::ws_error::Result;
@@ -23,10 +23,7 @@ pub struct SuccessResponse {
 }
 
 /// POST /api/disconnect — disconnect from a GoDice device.
-pub async fn disconnect_handler(
-    State(state): State<Arc<AppState>>,
-    Json(body): Json<DisconnectRequest>,
-) -> Result<Json<SuccessResponse>> {
+pub async fn disconnect_handler(State(state): State<Arc<AppState>>, Json(body): Json<DisconnectRequest>) -> Result<Json<SuccessResponse>> {
     let session = state
         .sessions
         .lock()

@@ -5,8 +5,8 @@ use serde::Deserialize;
 use serde::Serialize;
 use tabled::Tabled;
 
-use crate::cli_error::Result;
 use super::OutputFormatter;
+use crate::cli_error::Result;
 
 /// A row in the scan results table.
 #[derive(Tabled)]

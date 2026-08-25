@@ -38,11 +38,7 @@ impl LedControls {
             .build();
 
         let leds_model = gtk4::StringList::new(&["Both", "LED 1", "LED 2"]);
-        let leds_dropdown = gtk4::DropDown::builder()
-            .model(&leds_model)
-            .tooltip_text("LEDs")
-            .selected(0)
-            .build();
+        let leds_dropdown = gtk4::DropDown::builder().model(&leds_model).tooltip_text("LEDs").selected(0).build();
 
         let container = gtk4::Box::builder().orientation(gtk4::Orientation::Horizontal).spacing(12).build();
         container.append(&color_button1);

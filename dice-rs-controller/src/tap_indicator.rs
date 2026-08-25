@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use gtk4::prelude::*;
 use gtk4::glib;
+use gtk4::prelude::*;
 
 /// Duration in milliseconds for which the tap indicator stays visible.
 const FLASH_DURATION_MS: u64 = 1000;
@@ -19,11 +19,7 @@ pub struct TapIndicator {
 impl TapIndicator {
     /// Create a new tap indicator widget, initially hidden.
     pub fn new() -> Self {
-        let label = gtk4::Label::builder()
-            .label("")
-            .css_classes(vec!["tap-indicator"])
-            .visible(false)
-            .build();
+        let label = gtk4::Label::builder().label("").css_classes(vec!["tap-indicator"]).visible(false).build();
         Self {
             label,
             flash_timeout_id: Rc::new(RefCell::new(None)),
@@ -52,15 +48,12 @@ impl TapIndicator {
         self.label.set_visible(true);
 
         let label = self.label.clone();
-        let timeout_id = glib::timeout_add_local(
-            std::time::Duration::from_millis(FLASH_DURATION_MS),
-            move || {
-                label.set_visible(false);
-                label.remove_css_class("tap-single");
-                label.remove_css_class("tap-double");
-                glib::ControlFlow::Break
-            },
-        );
+        let timeout_id = glib::timeout_add_local(std::time::Duration::from_millis(FLASH_DURATION_MS), move || {
+            label.set_visible(false);
+            label.remove_css_class("tap-single");
+            label.remove_css_class("tap-double");
+            glib::ControlFlow::Break
+        });
         *self.flash_timeout_id.borrow_mut() = Some(timeout_id);
     }
 

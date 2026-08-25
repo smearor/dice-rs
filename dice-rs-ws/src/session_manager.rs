@@ -13,9 +13,7 @@ pub struct SessionManager {
 impl SessionManager {
     /// Create a new session manager.
     pub fn new() -> Self {
-        Self {
-            sessions: HashMap::new(),
-        }
+        Self { sessions: HashMap::new() }
     }
 
     /// Create a new session for a connected dice.
