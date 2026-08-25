@@ -9,6 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  APT_PACKAGES: curl build-essential pkg-config libgtk-4-dev libglib2.0-dev libgl-dev
 
 jobs:
   formatting:
@@ -44,6 +45,10 @@ jobs:
     steps:
       - name: VCS Checkout
         uses: actions/checkout@v7
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ env.APT_PACKAGES }}
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -68,6 +73,10 @@ jobs:
     steps:
       - name: VCS Checkout
         uses: actions/checkout@v7
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ env.APT_PACKAGES }}
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -90,6 +99,10 @@ jobs:
     steps:
       - name: VCS Checkout
         uses: actions/checkout@v7
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ env.APT_PACKAGES }}
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
