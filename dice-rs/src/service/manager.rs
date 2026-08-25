@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_trait::async_trait;
 use tracing::debug;
 
 use crate::ble::ble_error::BleError;
@@ -15,6 +16,29 @@ use crate::error::Result;
 use crate::service::dice::Dice;
 use crate::service::dice::DiceDevice;
 use crate::service::scanner::DiceScanner;
+
+/// Trait abstracting dice manager operations for testability.
+///
+/// Allows `dice-rs-ws` to hold a trait object (`Arc<dyn DiceService>`)
+/// instead of a concrete `DiceManager`, enabling mock implementations
+/// in integration tests without a real BLE adapter.
+#[async_trait]
+pub trait DiceService: Send + Sync {
+    /// Scan for GoDice devices using the default scan duration.
+    async fn scan(&self) -> Result<Vec<DiceDevice>>;
+
+    /// Scan for GoDice devices with a custom scan duration.
+    async fn scan_with_duration(&self, duration: Duration) -> Result<Vec<DiceDevice>>;
+
+    /// Connect to a discovered device.
+    async fn connect(&self, device: &DiceDevice) -> Result<Dice>;
+
+    /// Find a discovered device by MAC address (partial match).
+    ///
+    /// Scans for devices and returns the first whose address contains the
+    /// given substring. Useful for matching a short MAC prefix.
+    async fn find_device_by_address(&self, address: &str) -> Result<DiceDevice>;
+}
 
 /// Manages BLE adapter and multiple dice connections.
 pub struct DiceManager {
@@ -39,6 +63,11 @@ impl DiceManager {
     /// Scan for GoDice devices using the default scanner settings.
     pub async fn scan(&self) -> Result<Vec<DiceDevice>> {
         self.scanner().scan().await
+    }
+
+    /// Scan for GoDice devices with a custom scan duration.
+    pub async fn scan_with_duration(&self, duration: Duration) -> Result<Vec<DiceDevice>> {
+        self.scanner().with_scan_duration(duration).scan().await
     }
 
     /// Find a discovered device by MAC address (partial match).
@@ -186,5 +215,24 @@ impl DiceManager {
             }
         }
         Ok(count)
+    }
+}
+
+#[async_trait]
+impl DiceService for DiceManager {
+    async fn scan(&self) -> Result<Vec<DiceDevice>> {
+        DiceManager::scan(self).await
+    }
+
+    async fn scan_with_duration(&self, duration: Duration) -> Result<Vec<DiceDevice>> {
+        DiceManager::scan_with_duration(self, duration).await
+    }
+
+    async fn connect(&self, device: &DiceDevice) -> Result<Dice> {
+        DiceManager::connect(self, device).await
+    }
+
+    async fn find_device_by_address(&self, address: &str) -> Result<DiceDevice> {
+        DiceManager::find_device_by_address(self, address).await
     }
 }

@@ -3,6 +3,7 @@ use axum::response::IntoResponse;
 use axum::response::Response;
 use axum::Json;
 use thiserror::Error;
+use dice_rs::ble::ble_error::BleError;
 use dice_rs::error::DiceError;
 
 /// Errors returned by the WebSocket server.
@@ -26,7 +27,7 @@ pub enum WsError {
 
     /// Underlying dice-rs library error.
     #[error(transparent)]
-    Dice(#[from] DiceError),
+    Dice(DiceError),
 
     /// JSON serialization/deserialization error.
     #[error("json error: {0}")]
@@ -54,6 +55,17 @@ impl IntoResponse for WsError {
 
 /// Result type alias for the WebSocket server.
 pub type Result<T> = std::result::Result<T, WsError>;
+
+impl From<DiceError> for WsError {
+    fn from(err: DiceError) -> Self {
+        match &err {
+            DiceError::Ble(BleError::DeviceNotFound { address }) => {
+                WsError::DeviceNotFound(address.clone())
+            }
+            _ => WsError::Dice(err),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

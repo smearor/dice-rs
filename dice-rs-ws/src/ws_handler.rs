@@ -1,7 +1,6 @@
 use crate::app_state::AppState;
 use crate::protocol::WsMessage;
 use crate::protocol::WsRequest;
-use crate::routes::find_device_by_address;
 use axum::extract::State;
 use axum::extract::ws::Message;
 use axum::extract::ws::WebSocket;
@@ -111,7 +110,7 @@ async fn handle_connect(
     address: String,
     dice_type: Option<String>,
 ) {
-    let device = match find_device_by_address(&state.manager, &address).await {
+    let device = match state.manager.find_device_by_address(&address).await {
         Ok(d) => d,
         Err(err) => {
             send_error(sender, None, "device_not_found", &err.to_string()).await;

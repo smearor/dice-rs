@@ -17,9 +17,9 @@ pub struct Server {
 }
 
 impl Server {
-    /// Create a new server with the given application state.
-    pub fn new(state: Arc<AppState>, bind_address: SocketAddr) -> Self {
-        let router = Router::new()
+    /// Build the axum router with all WebSocket and REST API routes.
+    pub fn build_router(state: Arc<AppState>) -> Router {
+        Router::new()
             .route("/ws", get(handle_ws_upgrade))
             .route("/api/scan", get(routes::scan_handler))
             .route("/api/connect", post(routes::connect_handler))
@@ -28,10 +28,13 @@ impl Server {
             .route("/api/battery", get(routes::battery_handler))
             .route("/api/status", get(routes::status_handler))
             .route("/api/calibrate", post(routes::calibrate_handler))
-            .with_state(state);
+            .with_state(state)
+    }
 
+    /// Create a new server with the given application state.
+    pub fn new(state: Arc<AppState>, bind_address: SocketAddr) -> Self {
         Self {
-            router,
+            router: Self::build_router(state),
             bind_address,
         }
     }

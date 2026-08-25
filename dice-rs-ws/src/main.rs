@@ -1,21 +1,13 @@
-mod app_state;
-mod protocol;
-mod routes;
-mod server;
-mod session;
-mod session_manager;
-mod ws_error;
-mod ws_handler;
-
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use dice_rs::service::manager::DiceManager;
+use dice_rs::service::manager::DiceService;
 use tracing::Level;
 use tracing_subscriber::fmt;
 
-use crate::app_state::AppState;
-use crate::server::Server;
+use dice_rs_ws::app_state::AppState;
+use dice_rs_ws::server::Server;
 
 /// Parse command-line arguments for bind address and verbosity.
 struct Args {
@@ -65,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     init_logging(args.verbose);
 
-    let manager = Arc::new(DiceManager::new().await?);
+    let manager: Arc<dyn DiceService> = Arc::new(DiceManager::new().await?);
     let state = Arc::new(AppState::new(manager));
     let server = Server::new(state, args.bind_address);
 
