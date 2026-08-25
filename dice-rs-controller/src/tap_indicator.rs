@@ -9,7 +9,7 @@ const FLASH_DURATION_MS: u64 = 1000;
 
 /// Displays tap and double-tap events with a transient flash label.
 ///
-/// Cloneable — all clones share the same underlying GTK widget.
+/// Cloneable - all clones share the same underlying GTK widget.
 #[derive(Clone)]
 pub struct TapIndicator {
     label: gtk4::Label,

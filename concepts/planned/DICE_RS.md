@@ -123,7 +123,7 @@ reverse-engineered from the official
 
 | Property               | UUID                                   | Direction   |
 |------------------------|----------------------------------------|-------------|
-| Service                | `6e400001-b5a3-f393-e0a9-e50e24dcca9e` | —           |
+| Service                | `6e400001-b5a3-f393-e0a9-e50e24dcca9e` | -           |
 | Write Characteristic   | `6e400002-b5a3-f393-e0a9-e50e24dcca9e` | Host → Dice |
 | Notify Characteristic  | `6e400003-b5a3-f393-e0a9-e50e24dcca9e` | Dice → Host |
 
@@ -203,7 +203,7 @@ connection. The `DiceDevice::color()` method parses this letter via
 | 5     | D8    | d24Vectors → d8Transform    |
 | 6     | D12   | d24Vectors → d12Transform   |
 
-The `setDieType` call in the JS API is a client-side setting — it does not
+The `setDieType` call in the JS API is a client-side setting - it does not
 send a command to the dice. Instead, it selects which vector table and
 transform to use when interpreting the XYZ accelerometer data to determine
 the face value. See [Face Value Determination](#face-value-determination).
@@ -219,9 +219,9 @@ flowchart TB
     workspace["Cargo Workspace"]
 
     subgraph diceRs["dice-rs (library)"]
-        model["model — domain types"]
-        ble["ble — BLE transport (btleplug)"]
-        service["service — high-level API"]
+        model["model - domain types"]
+        ble["ble - BLE transport (btleplug)"]
+        service["service - high-level API"]
     end
 
     diceRsCli["dice-rs-cli (binary)"]
@@ -241,9 +241,9 @@ flowchart TB
 | Crate         | Type    | Optional Features | Description                                  |
 |---------------|---------|-------------------|----------------------------------------------|
 | `dice-rs`     | lib     | `async`           | Core library: model + BLE transport + service|
-| `dice-rs-cli`        | bin     | —                 | CLI tool using `clap`                        |
-| `dice-rs-controller` | bin     | —                 | GTK 4 desktop controller application         |
-| `dice-rs-ws`         | bin     | —                 | WebSocket server exposing dice events        |
+| `dice-rs-cli`        | bin     | -                 | CLI tool using `clap`                        |
+| `dice-rs-controller` | bin     | -                 | GTK 4 desktop controller application         |
+| `dice-rs-ws`         | bin     | -                 | WebSocket server exposing dice events        |
 
 ### Module Structure (dice-rs)
 
@@ -252,24 +252,24 @@ flowchart LR
     lib["lib.rs"]
 
     subgraph model["model/"]
-        color["color.rs — DieColor enum"]
-        diceType["dice_type.rs — DiceType enum"]
-        face["face.rs — FaceValue type"]
-        led["led.rs — LedColor struct"]
-        state["state.rs — DiceState enum"]
+        color["color.rs - DieColor enum"]
+        diceType["dice_type.rs - DiceType enum"]
+        face["face.rs - FaceValue type"]
+        led["led.rs - LedColor struct"]
+        state["state.rs - DiceState enum"]
     end
 
     subgraph ble["ble/"]
-        command["command.rs — Command enum"]
-        event["event.rs — Event enum"]
-        transport["transport.rs — BtleplugTransport"]
-        uuids["uuids.rs — NUS UUID constants"]
+        command["command.rs - Command enum"]
+        event["event.rs - Event enum"]
+        transport["transport.rs - BtleplugTransport"]
+        uuids["uuids.rs - NUS UUID constants"]
     end
 
     subgraph service["service/"]
-        dice["dice.rs — Dice handle"]
-        scanner["scanner.rs — DiceScanner"]
-        manager["manager.rs — DiceManager"]
+        dice["dice.rs - Dice handle"]
+        scanner["scanner.rs - DiceScanner"]
+        manager["manager.rs - DiceManager"]
     end
 
     lib --> model
@@ -837,7 +837,7 @@ pub struct DiceInner {
     /// calibration has been performed.
     ///
     /// Uses `std::sync::RwLock` (not `tokio::sync::RwLock`) because the
-    /// lock is only held for a trivial copy — never across `.await`.
+    /// lock is only held for a trivial copy - never across `.await`.
     /// This avoids unnecessary task-scheduling overhead on every
     /// sensor event in the notification task.
     /// `Arc`-wrapped so it can be cloned into the notification task.
@@ -1071,52 +1071,52 @@ gantt
     dateFormat YYYY-MM-DD
     axisFormat %V
 
-    section Phase 0 — Setup
+    section Phase 0 - Setup
     Cargo workspace & crate skeletons      :p0a, 2026-08-25, 3d
     Book skeleton & SUMMARY                :p0b, after p0a, 2d
     GitHub Actions adaptation              :p0c, after p0b, 3d
 
-    section Phase 1 — Connection Mgmt
+    section Phase 1 - Connection Mgmt
     BLE transport trait + btleplug impl    :p1a, after p0c, 4d
     DiceScanner (prefix filter)            :p1b, after p1a, 3d
     DiceManager multi-dice                 :p1c, after p1b, 3d
     Battery / RSSI / connection state      :p1d, after p1c, 3d
 
-    section Phase 2 — Events
+    section Phase 2 - Events
     Event parser (Rolling / Stable)        :p2a, after p1d, 3d
     DiceEvent channel streaming            :p2b, after p2a, 3d
     Accelerometer XYZ parsing              :p2c, after p2b, 3d
     TiltStable / FakeStable / MoveStable   :p2d, after p2c, 4d
 
-    section Phase 4 — LED Control
+    section Phase 4 - LED Control
     Command encoder (0x08 RGB)             :p4a, after p2d, 2d
     LedColor type + validation             :p4b, after p4a, 2d
 
-    section Phase 5 — System & Calibration
+    section Phase 5 - System & Calibration
     Calibration protocol investigation        :p5a, after p4b, 3d
     Calibration command + response           :p5b, after p5a, 4d
     System info (firmware, color, battery)   :p5c, after p5b, 3d
 
-    section Phase 6 — CLI
+    section Phase 6 - CLI
     clap command structure                 :p6a, after p5c, 3d
     scan / connect / listen subcommands    :p6b, after p6a, 4d
     LED & battery subcommands              :p6c, after p6b, 3d
     calibrate & system-status subcommands  :p6d, after p6c, 2d
     output formatting (table/json)         :p6e, after p6d, 2d
 
-    section Phase 7 — Controller
+    section Phase 7 - Controller
     GTK4 window + dice list                :p7a, after p6e, 5d
     Event display + face value rendering   :p7b, after p7a, 4d
     3D dice rendering                      :p7c, after p7b, 7d
     LED color picker + battery indicator   :p7d, after p7c, 3d
 
-    section Phase 8 — WebSocket Server
+    section Phase 8 - WebSocket Server
     axum server + WS endpoint              :p8a, after p7d, 3d
     JSON protocol + event streaming        :p8b, after p8a, 4d
     REST API (scan/connect/led)            :p8c, after p8b, 3d
     Multi-client session management        :p8d, after p8c, 3d
 
-    section Phase 9 — Documentation
+    section Phase 9 - Documentation
     README + badges + quick start          :p9a, after p8d, 2d
     Book chapters (all)                    :p9b, after p9a, 5d
     Rustdoc review + doc tests             :p9c, after p9b, 2d
@@ -1125,7 +1125,7 @@ gantt
 
 ### Phase Details
 
-#### Phase 0 — Project Setup
+#### Phase 0 - Project Setup
 
 - Create `Cargo.toml` workspace with `dice-rs`, `dice-rs-cli`,
   `dice-rs-controller`, `dice-rs-ws` members.
@@ -1134,7 +1134,7 @@ gantt
 - Adapt existing GitHub Actions workflows to run `cargo fmt --check`,
   `cargo clippy`, `cargo test`, `cargo audit`, and mdBook build.
 
-#### Phase 1 — Connection and Device Management
+#### Phase 1 - Connection and Device Management
 
 ##### BleTransport Trait
 
@@ -1478,7 +1478,7 @@ impl DiceManager {
 | `LedThrottleState` | `service/led_throttle_state.rs` | LED debounce state (pending color, Notify) |
 | `DiceError`      | `error.rs`                      | Error enum (`thiserror`)                        |
 
-#### Phase 2 — Dice and Motion Events
+#### Phase 2 - Dice and Motion Events
 
 ##### Event Enum and Parsing
 
@@ -1524,7 +1524,7 @@ impl Event {
             });
         }
 
-        // Two-byte prefix events: FS, TS, MS — all followed by 3 signed bytes XYZ
+        // Two-byte prefix events: FS, TS, MS - all followed by 3 signed bytes XYZ
         if data.len() >= 5 && data[1] == 0x53 {
             let acceleration = Acceleration::from_bytes(&data[2..5]);
             return match first {
@@ -1684,7 +1684,7 @@ fn spawn_notification_task(
 ##### DiceType Model
 
 `DiceType` determines which vector table and optional transform are used for
-face value interpretation. It is a client-side setting — no command is sent
+face value interpretation. It is a client-side setting - no command is sent
 to the dice.
 
 ```rust
@@ -1773,10 +1773,10 @@ Module structure:
 ```mermaid
 flowchart LR
     subgraph interpreter["service/interpreter/"]
-        modRs["mod.rs — pub use re-exports"]
-        vectors["vectors.rs — D6/D20/D24 vector tables"]
-        transforms["transforms.rs — D10/D10X/D4/D8/D12 transform tables"]
-        interpretFn["interpret.rs — interpret() function"]
+        modRs["mod.rs - pub use re-exports"]
+        vectors["vectors.rs - D6/D20/D24 vector tables"]
+        transforms["transforms.rs - D10/D10X/D4/D8/D12 transform tables"]
+        interpretFn["interpret.rs - interpret() function"]
     end
 ```
 
@@ -1931,7 +1931,7 @@ impl Dice {
 
     /// Set the dice type for face value interpretation.
     /// This is a client-side setting; no BLE command is sent.
-    /// Synchronous — uses `AtomicU8::store` instead of an async lock.
+    /// Synchronous - uses `AtomicU8::store` instead of an async lock.
     pub fn set_dice_type(&self, dice_type: DiceType) {
         self.inner.dice_type.store(dice_type.into(), Ordering::Relaxed);
     }
@@ -2029,7 +2029,7 @@ impl DiceEvent {
 | `D12_TRANSFORM`        | `service/interpreter/transforms.rs` | D12 shell transform table (24 entries)           |
 | `interpret()`          | `service/interpreter/interpret.rs` | Face value determination function                  |
 
-#### Phase 4 — LED and Visual Effects
+#### Phase 4 - LED and Visual Effects
 
 ##### LedColor Type
 
@@ -2240,7 +2240,7 @@ impl Dice {
             .await
     }
 
-    /// Set both LEDs without debounce — writes immediately.
+    /// Set both LEDs without debounce - writes immediately.
     ///
     /// Use this for one-shot LED commands where coalescing is undesirable
     /// (e.g. CLI commands, calibration sequences).
@@ -2316,7 +2316,7 @@ fn spawn_led_debounce_task(dice: Dice) -> JoinHandle<()> {
         let debounce = Duration::from_millis(LED_DEBOUNCE_MS);
         loop {
             // Check if a color is pending. The lock is released before
-            // any `.await` — `led_notify` is an `Arc<Notify>` stored
+            // any `.await` - `led_notify` is an `Arc<Notify>` stored
             // separately in `DiceInner`, so no mutex guard is needed
             // to wait for notifications.
             let has_pending = {
@@ -2334,7 +2334,7 @@ fn spawn_led_debounce_task(dice: Dice) -> JoinHandle<()> {
 
             // Sleep for the debounce window. If a new call arrives
             // during this sleep, the Notify wakes us early and we
-            // restart the timer — only the last color survives.
+            // restart the timer - only the last color survives.
             tokio::time::sleep(debounce).await;
 
             // Flush the most recent pending color to the BLE transport.
@@ -2452,7 +2452,7 @@ fn decode_invalid_opcode() {
 | `Command`        | `ble/command.rs`      | Command enum (SetLeds, PulseLeds, GetBatteryLevel, GetDiceColor) |
 | `CommandError`   | `ble/command_error.rs`| Error type for command encode/decode                |
 
-#### Phase 5 — System and Calibration
+#### Phase 5 - System and Calibration
 
 ##### Calibration Protocol Investigation
 
@@ -2514,7 +2514,7 @@ The `Command` enum is extended with a calibration variant:
 ```rust
 pub enum Command {
     // ... existing variants ...
-    /// Reset sensor calibration. TENTATIVE — opcode unconfirmed.
+    /// Reset sensor calibration. TENTATIVE - opcode unconfirmed.
     Calibrate,
 }
 
@@ -2594,7 +2594,7 @@ impl Dice {
     /// stable surface, then calls this method.
     ///
     /// The library captures the next `Stable` event's accelerometer
-    /// reading and computes an `AccelerationOffset` — the deviation
+    /// reading and computes an `AccelerationOffset` - the deviation
     /// from the expected ideal gravity vector. All subsequent
     /// accelerometer readings have this offset subtracted before
     /// face value interpretation.
@@ -2617,13 +2617,13 @@ impl Dice {
                     return Ok(offset);
                 }
                 Ok(DiceEvent::RollStart) => {
-                    // Ignore roll events — wait for a stable reading.
+                    // Ignore roll events - wait for a stable reading.
                 }
                 Ok(DiceEvent::Disconnected) => {
                     return Err(Error::ConnectionLost);
                 }
                 Err(broadcast::error::RecvError::Lagged(_)) => {
-                    // Catch up — keep waiting for a stable event.
+                    // Catch up - keep waiting for a stable event.
                 }
                 Err(broadcast::error::RecvError::Closed) => {
                     return Err(Error::ConnectionLost);
@@ -2812,7 +2812,7 @@ investigation discovers one, it will be added as:
 
 ```rust
 impl Dice {
-    /// Request firmware version. TENTATIVE — opcode unconfirmed.
+    /// Request firmware version. TENTATIVE - opcode unconfirmed.
     pub async fn get_firmware_version(&self) -> Result<FirmwareVersion>;
 }
 
@@ -2825,7 +2825,7 @@ pub struct FirmwareVersion {
 }
 ```
 
-This is listed as a **stretch goal** within Phase 5 — it will only be
+This is listed as a **stretch goal** within Phase 5 - it will only be
 implemented if the protocol investigation yields the command encoding.
 
 ##### Connection State Monitoring
@@ -2935,7 +2935,7 @@ fn acceleration_offset_apply_saturates() {
     let offset = AccelerationOffset { dx: 100, dy: -100, dz: 0 };
     let acceleration = Acceleration { x: 1, y: -1, z: 50 };
     let corrected = offset.apply(acceleration);
-    // i8::MIN = -128, i8::MAX = 127 — saturating_sub clamps
+    // i8::MIN = -128, i8::MAX = 127 - saturating_sub clamps
     assert_eq!(corrected.x, i8::MIN);
     assert_eq!(corrected.y, 99);
     assert_eq!(corrected.z, 50);
@@ -2944,7 +2944,7 @@ fn acceleration_offset_apply_saturates() {
 #[test]
 fn interpret_with_offset_corrects_face_value() {
     // Without offset: drifted reading [2, -1, 63] might still match face 1
-    // With offset: corrected to [0, 0, 64] — exact match to D6 vector
+    // With offset: corrected to [0, 0, 64] - exact match to D6 vector
     let offset = Some(AccelerationOffset { dx: 2, dy: -1, dz: -1 });
     let acceleration = Acceleration { x: 2, y: -1, z: 63 };
     let face = interpret(acceleration, DiceType::D6, offset);
@@ -2972,12 +2972,12 @@ fn system_status_concurrent_queries() {
 | `Event::Calibrated` | `ble/event.rs`     | Calibration response event variant (tentative)       |
 | `DiceError` extensions | `error.rs`     | `CalibrationFailed`, `CalibrationNotConfirmed`, `ResponseTimeout`, `ConnectionLost` |
 
-#### Phase 6 — CLI Tool
+#### Phase 6 - CLI Tool
 
 ##### Crate Structure
 
 The `dice-rs-cli` crate is a thin wrapper around the `dice-rs` library. It
-contains no business logic — all BLE operations are delegated to the library.
+contains no business logic - all BLE operations are delegated to the library.
 The CLI crate only handles argument parsing, output formatting, and
 user interaction.
 
@@ -3085,7 +3085,7 @@ pub enum Command {
         address: String,
     },
 
-    /// Interactive REPL mode — scan, connect, and issue commands interactively.
+    /// Interactive REPL mode - scan, connect, and issue commands interactively.
     Interactive,
 }
 
@@ -3161,7 +3161,7 @@ flowchart TB
 
 ##### Subcommand Implementations
 
-**Scan** — discovers GoDice devices and prints them in the selected format.
+**Scan** - discovers GoDice devices and prints them in the selected format.
 
 The `tabled` crate renders device tables via `Tabled` derive:
 
@@ -3220,7 +3220,7 @@ $ dice-rs scan --format json
 [{"address":"AA:BB:CC","name":"GoDice_001234","rssi":-42},...]
 ```
 
-**Listen** — connects to a dice and streams events until interrupted:
+**Listen** - connects to a dice and streams events until interrupted:
 
 ```rust
 async fn run_listen(
@@ -3286,7 +3286,7 @@ Listening for events from AA:BB:CC (Ctrl+C to stop)...
 [12:35:11] stable face=3
 ```
 
-**LED** — sets or pulses LEDs:
+**LED** - sets or pulses LEDs:
 
 ```rust
 async fn run_led(
@@ -3325,7 +3325,7 @@ async fn run_led(
 }
 ```
 
-**Color parsing** — supports named colors and hex values:
+**Color parsing** - supports named colors and hex values:
 
 ```rust
 /// Parse a color string: named ("red", "green", ...) or hex ("FF0000", "0xFF0000").
@@ -3348,7 +3348,7 @@ fn parse_color(input: &str) -> Result<LedColor> {
 }
 ```
 
-**Battery / Status / Color / Calibrate** — query commands:
+**Battery / Status / Color / Calibrate** - query commands:
 
 ```rust
 async fn run_battery(manager: &DiceManager, address: &str, format: OutputFormat) -> Result<()> {
@@ -3412,7 +3412,7 @@ async fn run_calibrate(manager: &DiceManager, address: &str) -> Result<()> {
 }
 ```
 
-**Interactive** — REPL mode for exploratory use:
+**Interactive** - REPL mode for exploratory use:
 
 ```rust
 async fn run_interactive(manager: &DiceManager) -> Result<()> {
@@ -3522,7 +3522,7 @@ pub enum CliError {
     InvalidDiceType(String),
 
     /// No dice connected for a command that requires one.
-    #[error("no dice connected — use 'connect' first")]
+    #[error("no dice connected - use 'connect' first")]
     NotConnected,
 
     /// Underlying library error.
@@ -3616,7 +3616,7 @@ fn scan_finds_device() {
 | `StatusRow`     | `status_row.rs`         | `tabled::Tabled` row for system status               |
 | `BatteryRow`    | `battery_row.rs`        | `tabled::Tabled` row for battery level               |
 
-#### Phase 7 — GTK 4 Controller
+#### Phase 7 - GTK 4 Controller
 
 ##### Crate Structure
 
@@ -3627,7 +3627,7 @@ controlling GoDice devices. It uses GTK 4 via the
 3D dice rendering uses `gtk4::GLArea` (which provides an OpenGL context
 managed by GTK) with the [`glow`](https://github.com/grovesNL/glow) crate
 as a safe OpenGL wrapper. This is the simplest and most reliable approach
-for embedding GPU-accelerated 3D rendering inside a GTK 4 widget — `glow`
+for embedding GPU-accelerated 3D rendering inside a GTK 4 widget - `glow`
 wraps the GL function pointers from the `GLArea`'s context and provides
 type-safe OpenGL ES 3.0 calls.
 
@@ -3809,7 +3809,7 @@ impl MainWindow {
 }
 ```
 
-##### EventController — Async-to-GTK Bridge
+##### EventController - Async-to-GTK Bridge
 
 The `EventController` bridges the async `dice-rs` event channel into the GTK
 main loop using `glib::MainContext::spawn_future_local`. This avoids blocking
@@ -3929,7 +3929,7 @@ impl FaceDisplay {
 
     /// Show disconnected state.
     pub fn set_disconnected(&self) {
-        self.label.set_label("—");
+        self.label.set_label("-");
         self.set_css_class("face-disconnected");
     }
 
@@ -3969,12 +3969,12 @@ compilation, buffer management, and draw calls.
 The model is loaded from an OBJ file and rotated based on the accelerometer
 data to reflect the physical orientation of the dice.
 
-**Rendering backend**: `glow` (primary) — safe OpenGL ES 3.0 wrapper.
+**Rendering backend**: `glow` (primary) - safe OpenGL ES 3.0 wrapper.
 The `Dice3D` widget encapsulates all GL calls behind a `DiceRenderer`
 struct, which owns the compiled shader program, vertex buffers, and
 texture. If `wgpu` external framebuffer support stabilizes in the future
 (see [wgpu#7581](https://github.com/gfx-rs/wgpu/issues/7581)), only
-`DiceRenderer` needs to be replaced — the widget's public API stays
+`DiceRenderer` needs to be replaced - the widget's public API stays
 unchanged.
 
 **Math library**: [`glam`](https://github.com/bitshifter/glam) is used
@@ -4200,7 +4200,7 @@ impl DiceRenderer {
         // MVP = Projection * View * Model
         let mvp = projection * view_matrix * model_matrix;
 
-        // Normal matrix = transpose(inverse(model_matrix)) — for lighting.
+        // Normal matrix = transpose(inverse(model_matrix)) - for lighting.
         let normal_matrix = model_matrix.inverse().transpose();
 
         // ... set uniforms, bind VAO, draw elements ...
@@ -4547,15 +4547,15 @@ glib = "0.20"
 | `EventController`  | `event_controller.rs` | Async-to-GTK event bridge                           |
 | `DiceModel`        | `dice_model.rs`       | 3D model loaded from OBJ file (vertices, normals)   |
 
-#### Phase 8 — WebSocket Server
+#### Phase 8 - WebSocket Server
 
 ##### Crate Structure
 
 The `dice-rs-ws` crate exposes the `dice-rs` library over a network API.
 It provides two interfaces:
 
-1. **WebSocket endpoint** (`/ws`) — real-time event streaming for connected dice.
-2. **REST API** — scan, connect, disconnect, LED control, battery, status queries.
+1. **WebSocket endpoint** (`/ws`) - real-time event streaming for connected dice.
+2. **REST API** - scan, connect, disconnect, LED control, battery, status queries.
 
 The server is built with [`axum`](https://docs.rs/axum) and
 [`tokio`](https://docs.rs/tokio) for async HTTP/WebSocket handling.
@@ -5023,7 +5023,7 @@ Each endpoint returns JSON.
 Example REST handler:
 
 ```rust
-/// GET /api/scan — scan for GoDice devices.
+/// GET /api/scan - scan for GoDice devices.
 pub async fn scan_handler(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ScanParams>,
@@ -5041,7 +5041,7 @@ pub async fn scan_handler(
     Ok(Json(ScanResponse { devices: device_payloads }))
 }
 
-/// POST /api/connect — connect to a GoDice device.
+/// POST /api/connect - connect to a GoDice device.
 pub async fn connect_handler(
     State(state): State<Arc<AppState>>,
     Json(body): Json<ConnectRequest>,
@@ -5057,7 +5057,7 @@ pub async fn connect_handler(
     Ok(Json(ConnectResponse { session_id }))
 }
 
-/// POST /api/led — set LED color on a connected dice.
+/// POST /api/led - set LED color on a connected dice.
 pub async fn led_handler(
     State(state): State<Arc<AppState>>,
     Json(body): Json<LedRequest>,
@@ -5224,18 +5224,18 @@ async fn full_ws_session() {
 | `Session`             | `session.rs`                        | Per-dice subscription state for a client            |
 | `SessionManager`      | `session_manager.rs`                | Multi-client session tracking                       |
 
-#### Phase 9 — Documentation
+#### Phase 9 - Documentation
 
 ##### Overview
 
 Phase 9 consolidates all documentation deliverables: the root `README.md`,
 the mdBook user guide, rustdoc API comments, and the `CHANGELOG.md`.
-This phase does not produce a crate — it produces documentation artifacts
+This phase does not produce a crate - it produces documentation artifacts
 across the workspace.
 
 ```mermaid
 flowchart TB
-    phase9["Phase 9 — Documentation"]
+    phase9["Phase 9 - Documentation"]
     readme["README.md
 (landing page)"]
     book["book/
@@ -5327,7 +5327,7 @@ preprocessor already configured in `book.toml`.
 - **Introduction**: motivation, scope, where to get help.
 - **Getting Started**: add dependency, tokio runtime, first connection.
 - **Architecture**: workspace, module layout, data flow (Mermaid).
-- **BLE Protocol**: full protocol reference integrated from `docs/BLE.md` —
+- **BLE Protocol**: full protocol reference integrated from `docs/BLE.md` -
   GATT service and characteristics, command reference, event reference, dice
   colors, dice types (shells), and face value determination with vector
   tables. This chapter is the canonical BLE documentation for the project.
@@ -5393,7 +5393,7 @@ under `## Unreleased`.
 **Example release entry:**
 
 ```markdown
-## 0.1.0 — 2026-08-23
+## 0.1.0 - 2026-08-23
 
 ### Added
 - BLE transport abstraction with `BleTransport` and `BlePeripheral` traits
@@ -5439,11 +5439,11 @@ v0.1.0"]
 
 Documentation is built and verified in CI:
 
-- `cargo doc --no-deps --all-features` — builds rustdoc for all crates.
-- `cargo test --doc` — runs rustdoc examples as tests.
-- `mdbook build book/` — builds the mdBook (with mermaid preprocessor).
-- `cargo fmt --check` — ensures formatting compliance.
-- `cargo clippy --all-targets -- -D warnings` — lint check.
+- `cargo doc --no-deps --all-features` - builds rustdoc for all crates.
+- `cargo test --doc` - runs rustdoc examples as tests.
+- `mdbook build book/` - builds the mdBook (with mermaid preprocessor).
+- `cargo fmt --check` - ensures formatting compliance.
+- `cargo clippy --all-targets -- -D warnings` - lint check.
 
 ##### Testing Strategy
 
@@ -5500,8 +5500,8 @@ tests in the same file, comprehensive success and error path coverage.
 ```mermaid
 flowchart TB
     subgraph unit["Unit Tests (inline)"]
-        modelTests["model — color, face, dice_type, led, state"]
-        bleTests["ble — command encode, event decode"]
+        modelTests["model - color, face, dice_type, led, state"]
+        bleTests["ble - command encode, event decode"]
     end
 
     subgraph integration["Integration Tests (tests/)"]
@@ -5515,7 +5515,7 @@ flowchart TB
     end
 
     subgraph hardware["Hardware Tests (feature gate)"]
-        liveDice["live dice — ignored by default"]
+        liveDice["live dice - ignored by default"]
     end
 ```
 

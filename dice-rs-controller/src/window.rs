@@ -167,7 +167,7 @@ impl MainWindow {
     }
 
     /// Start periodic auto-scan to discover and connect new dice.
-    /// Existing dice rows are preserved — only newly discovered devices are added.
+    /// Existing dice rows are preserved - only newly discovered devices are added.
     /// During the first `AUTO_SCAN_BURST_DURATION_SECS` seconds, scans run every
     /// `AUTO_SCAN_FAST_INTERVAL_SECS` seconds; afterwards the interval reverts to
     /// `AUTO_SCAN_INTERVAL_SECS`.

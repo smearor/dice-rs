@@ -37,7 +37,7 @@ impl Default for OrientationState {
 
 /// GTK4 widget that renders a 3D dice model using OpenGL (glow + glam).
 ///
-/// Wraps a `gtk4::GLArea` without subclassing — connects to signals directly.
+/// Wraps a `gtk4::GLArea` without subclassing - connects to signals directly.
 #[derive(Clone)]
 pub struct Dice3D {
     gl_area: gtk4::GLArea,

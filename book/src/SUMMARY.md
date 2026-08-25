@@ -7,10 +7,9 @@
 - [Scanning & Connecting](./connecting.md)
 - [Dice Events](./events.md)
 - [LED Control](./led.md)
-- [Battery & Status](./battery.md)
+- [Battery & Status](./status.md)
 - [Calibration](./calibration.md)
 - [CLI Tool](./cli.md)
 - [Controller](./controller.md)
 - [WebSocket Server](./websocket.md)
 - [Platform Notes](./platform-notes.md)
-

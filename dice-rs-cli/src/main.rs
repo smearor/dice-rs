@@ -1,4 +1,4 @@
-//! dice-rs-cli — Command-line tool for GoDice BLE dice.
+//! dice-rs-cli - Command-line tool for GoDice BLE dice.
 
 mod cli;
 mod cli_error;

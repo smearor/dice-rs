@@ -82,7 +82,7 @@ impl LedControls {
     }
 
     fn connect_signals(&self) {
-        // LED 1 color picker — set LED 1 only (LED 2 stays off).
+        // LED 1 color picker - set LED 1 only (LED 2 stays off).
         self.color_button1.connect_color_set(clone!(
             #[strong(rename_to = dice_cell)]
             self.dice.clone(),
@@ -100,7 +100,7 @@ impl LedControls {
             }
         ));
 
-        // LED 2 color picker — set LED 2 only (LED 1 stays off).
+        // LED 2 color picker - set LED 2 only (LED 1 stays off).
         self.color_button2.connect_color_set(clone!(
             #[strong(rename_to = dice_cell)]
             self.dice.clone(),
@@ -118,7 +118,7 @@ impl LedControls {
             }
         ));
 
-        // Set button — set both LEDs to their respective picker colors.
+        // Set button - set both LEDs to their respective picker colors.
         self.set_button.connect_clicked(clone!(
             #[strong(rename_to = dice_cell)]
             self.dice.clone(),
@@ -142,7 +142,7 @@ impl LedControls {
             }
         ));
 
-        // Pulse button — pulse LEDs with selected blink mode and LED selection.
+        // Pulse button - pulse LEDs with selected blink mode and LED selection.
         self.pulse_button.connect_clicked(clone!(
             #[strong(rename_to = dice_cell)]
             self.dice.clone(),
@@ -175,7 +175,7 @@ impl LedControls {
             }
         ));
 
-        // Off button — turn both LEDs off.
+        // Off button - turn both LEDs off.
         self.off_button.connect_clicked(clone!(
             #[strong(rename_to = dice_cell)]
             self.dice.clone(),

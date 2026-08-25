@@ -60,7 +60,7 @@ fn apply_stability_classes(widget: &impl gtk4::prelude::WidgetExt, stability: St
 
 /// Displays the current face value of a dice with visual feedback for stability state.
 ///
-/// Cloneable — all clones share the same underlying GTK widgets.
+/// Cloneable - all clones share the same underlying GTK widgets.
 #[derive(Clone)]
 pub struct FaceDisplay {
     label: gtk4::Label,
@@ -77,7 +77,7 @@ struct HistoryEntry {
 
 /// Displays the history of the last stable rolls.
 ///
-/// Cloneable — all clones share the same underlying GTK widgets.
+/// Cloneable - all clones share the same underlying GTK widgets.
 #[derive(Clone)]
 pub struct RollHistory {
     container: gtk4::Box,
@@ -101,7 +101,7 @@ impl RollHistory {
         let mut labels = Vec::with_capacity(HISTORY_SIZE);
         for _ in 0..HISTORY_SIZE {
             let label = gtk4::Label::builder()
-                .label("—")
+                .label("-")
                 .css_classes(vec!["roll-history-entry"])
                 .build();
             container.append(&label);
@@ -146,7 +146,7 @@ impl RollHistory {
                     apply_stability_classes(label, entry.stability, dice_color);
                 }
             } else {
-                label.set_label("—");
+                label.set_label("-");
                 apply_stability_classes(label, StabilityDescriptor::Rolling, dice_color);
             }
         }
@@ -197,7 +197,7 @@ impl FaceDisplay {
 
     /// Show disconnected state.
     pub fn set_disconnected(&self) {
-        self.label.set_label("—");
+        self.label.set_label("-");
         self.set_css_class("face-disconnected");
         self.stability_label.set_text("disconnected");
     }

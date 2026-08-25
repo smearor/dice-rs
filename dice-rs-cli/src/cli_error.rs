@@ -19,7 +19,7 @@ pub enum CliError {
 
     /// No dice connected for a command that requires one.
     #[allow(dead_code)]
-    #[error("no dice connected — use 'connect' first")]
+    #[error("no dice connected - use 'connect' first")]
     NotConnected,
 
     /// Underlying library error.

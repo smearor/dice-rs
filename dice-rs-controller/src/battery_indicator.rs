@@ -5,7 +5,7 @@ use gtk4::prelude::*;
 
 /// Battery level indicator widget with color-coded thresholds.
 ///
-/// Cloneable — all clones share the same underlying GTK widgets.
+/// Cloneable - all clones share the same underlying GTK widgets.
 #[derive(Clone)]
 pub struct BatteryIndicator {
     level_bar: gtk4::LevelBar,

@@ -41,7 +41,7 @@ impl Application {
 
         app.run();
 
-        // Ensure the process exits when the GTK app returns — the tokio runtime
+        // Ensure the process exits when the GTK app returns - the tokio runtime
         // and BLE background tasks would otherwise keep it alive.
         std::process::exit(0);
     }

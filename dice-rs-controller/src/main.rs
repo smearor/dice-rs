@@ -1,4 +1,4 @@
-//! dice-rs-controller — GTK 4 desktop controller application for GoDice.
+//! dice-rs-controller - GTK 4 desktop controller application for GoDice.
 
 mod application;
 mod battery_indicator;

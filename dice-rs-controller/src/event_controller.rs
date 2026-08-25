@@ -142,7 +142,7 @@ impl EventController {
             glib::ControlFlow::Continue
         });
 
-        // Tokio task: event loop — runs entirely off the GTK main thread.
+        // Tokio task: event loop - runs entirely off the GTK main thread.
         let dice = self.dice.clone();
         let dice_name = dice.name().to_string();
         let manager = self.manager.clone();
@@ -222,7 +222,7 @@ impl EventController {
             }
         });
 
-        // Tokio task: periodic battery refresh — fully off the GTK main thread.
+        // Tokio task: periodic battery refresh - fully off the GTK main thread.
         // Polls more frequently while the dice is charging.
         let battery_dice = self.dice.clone();
         let battery_name = self.dice.name().to_string();
@@ -237,7 +237,7 @@ impl EventController {
             }
 
             loop {
-                // Use dice.charging_state() as ground truth — the broadcast event
+                // Use dice.charging_state() as ground truth - the broadcast event
                 // can be missed (lag), but the AtomicU8 in DiceInner is always
                 // updated by the notification task.
                 let state = battery_dice.charging_state();

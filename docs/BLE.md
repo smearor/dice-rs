@@ -81,7 +81,7 @@ events use ASCII prefixes for identification.
 > The transform maps the D20 vector index to a D10 face value multiplied by 10
 > (i.e. `d10_transform(roll) * 10`), yielding values 0, 10, 20, …, 90.
 
-`setDieType` is a client-side setting — no command is sent to the dice.
+`setDieType` is a client-side setting - no command is sent to the dice.
 Instead, it selects which vector table and transform to use when interpreting
 the XYZ accelerometer data to determine the face value.
 
