@@ -50,7 +50,7 @@ Type-safe wrappers for GoDice data:
 ## Data Flow
 
 ```mermaid
-flowchart LR
+flowchart TD
     subgraph Dice["GoDice Hardware"]
         accel["Accelerometer"]
         ble_radio["BLE Radio"]
