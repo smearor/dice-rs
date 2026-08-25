@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
@@ -11,8 +10,10 @@ use futures::StreamExt;
 use tokio::sync::broadcast;
 use tokio::sync::oneshot;
 use tracing::debug;
+use tracing::trace;
 
 use crate::ble::command::Command;
+use crate::ble::ble_error::BleError;
 use crate::ble::event::Event;
 use crate::ble::transport::BlePeripheral;
 use crate::ble::transport::BtleplugPeripheralWrapper;
@@ -20,9 +21,12 @@ use crate::error::DiceError;
 use crate::error::Result;
 use crate::model::acceleration::AccelerationOffset;
 use crate::model::battery_level::BatteryLevel;
+use crate::model::charging_state::ChargingState;
 use crate::model::dice::DiceColor;
 use crate::model::dice::DiceType;
 use crate::model::led::LedColor;
+use crate::model::led::PulseBlinkMode;
+use crate::model::led::PulseLeds;
 use crate::model::system_status::SystemStatus;
 use crate::service::dice::event::DiceEvent;
 use crate::service::dice::inner::DiceInner;
@@ -74,7 +78,7 @@ impl Dice {
             led_debounce_handle: Mutex::new(None),
             led_notify: Arc::new(tokio::sync::Notify::new()),
             calibration_offset: Arc::new(std::sync::RwLock::new(None)),
-            charging_state: Arc::new(AtomicBool::new(false)),
+            charging_state: Arc::new(AtomicU8::new(ChargingState::NotCharging as u8)),
         });
         Self { inner }
     }
@@ -131,12 +135,25 @@ impl Dice {
     }
 
     /// Pulse both LEDs with a color.
-    pub async fn pulse_leds(&self, pulse_count: u8, on_time: u8, off_time: u8, color: LedColor) -> Result<()> {
+    ///
+    /// `blink_mode` controls the blink pattern (rainbow or solid color).
+    /// `leds` controls which LEDs participate in the pulse.
+    pub async fn pulse_leds(
+        &self,
+        pulse_count: u8,
+        on_time: u8,
+        off_time: u8,
+        color: LedColor,
+        blink_mode: PulseBlinkMode,
+        leds: PulseLeds,
+    ) -> Result<()> {
         let data: Vec<u8> = Command::PulseLeds {
             pulse_count,
             on_time,
             off_time,
             color,
+            blink_mode,
+            leds,
         }
         .into();
         self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithoutResponse).await
@@ -144,9 +161,71 @@ impl Dice {
 
     /// Pulse both LEDs with a color using a single pulse.
     ///
-    /// Convenience method equivalent to `pulse_leds(1, on_time, off_time, color)`.
+    /// Convenience method equivalent to `pulse_leds(1, on_time, off_time, color, PulseBlinkMode::Color, PulseLeds::Both)`.
     pub async fn pulse_once(&self, on_time: u8, off_time: u8, color: LedColor) -> Result<()> {
-        self.pulse_leds(1, on_time, off_time, color).await
+        self.pulse_leds(1, on_time, off_time, color, PulseBlinkMode::Color, PulseLeds::Both).await
+    }
+
+    /// Enable single tap interrupt notifications from the dice.
+    ///
+    /// After enabling, the dice will send `DiceEvent::Tap` when it detects a tap.
+    /// Disabled by default — must be explicitly enabled.
+    pub async fn enable_tap(&self) -> Result<()> {
+        debug!(device = %self.inner.name, "sending SetTapInterrupt(true)");
+        let data: Vec<u8> = Command::SetTapInterrupt { enabled: true }.into();
+        self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithResponse).await?;
+        debug!(device = %self.inner.name, "SetTapInterrupt(true) sent successfully");
+        Ok(())
+    }
+
+    /// Disable single tap interrupt notifications.
+    pub async fn disable_tap(&self) -> Result<()> {
+        debug!(device = %self.inner.name, "sending SetTapInterrupt(false)");
+        let data: Vec<u8> = Command::SetTapInterrupt { enabled: false }.into();
+        self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithResponse).await?;
+        debug!(device = %self.inner.name, "SetTapInterrupt(false) sent successfully");
+        Ok(())
+    }
+
+    /// Enable double tap interrupt notifications from the dice.
+    ///
+    /// After enabling, the dice will send `DiceEvent::DoubleTap` when it detects a double tap.
+    /// Disabled by default — must be explicitly enabled.
+    pub async fn enable_double_tap(&self) -> Result<()> {
+        debug!(device = %self.inner.name, "sending SetDoubleTapInterrupt(true)");
+        let data: Vec<u8> = Command::SetDoubleTapInterrupt { enabled: true }.into();
+        self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithResponse).await?;
+        debug!(device = %self.inner.name, "SetDoubleTapInterrupt(true) sent successfully");
+        Ok(())
+    }
+
+    /// Disable double tap interrupt notifications.
+    pub async fn disable_double_tap(&self) -> Result<()> {
+        debug!(device = %self.inner.name, "sending SetDoubleTapInterrupt(false)");
+        let data: Vec<u8> = Command::SetDoubleTapInterrupt { enabled: false }.into();
+        self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithResponse).await?;
+        debug!(device = %self.inner.name, "SetDoubleTapInterrupt(false) sent successfully");
+        Ok(())
+    }
+
+    /// Send initialization command to the dice.
+    ///
+    /// Sets roll detection sensitivity and LED configuration.
+    /// Matches the Unity demo's `SendInitializationMessage` which is sent
+    /// immediately after connection. The sensitivity value affects tap
+    /// detection thresholds.
+    pub async fn init(&self) -> Result<()> {
+        let data: Vec<u8> = Command::Init {
+            sensitivity: 30,
+            pulse_count: 3,
+            on_time: 50,
+            off_time: 50,
+            color: LedColor::GREEN,
+            blink_mode: PulseBlinkMode::Color,
+            leds: PulseLeds::Both,
+        }
+        .into();
+        self.inner.peripheral.write(&self.inner.write_char, &data, WriteType::WithResponse).await
     }
 
     /// Request battery level (0–100 percent).
@@ -203,9 +282,12 @@ impl Dice {
     /// Check if the dice is currently charging.
     ///
     /// Returns the last known charging state from the notification task.
-    /// Returns `false` until a charging status notification has been received.
-    pub fn is_charging(&self) -> bool {
-        self.inner.charging_state.load(Ordering::Relaxed)
+    /// Returns `NotCharging` until a charging status notification has been received.
+    pub fn charging_state(&self) -> ChargingState {
+        match self.inner.charging_state.load(Ordering::Relaxed) {
+            1 => ChargingState::Charging,
+            _ => ChargingState::NotCharging,
+        }
     }
 
     /// Query RSSI (signal strength) in dBm.
@@ -297,6 +379,8 @@ impl Dice {
                     }
                 };
 
+                trace!(?event, "received BLE notification");
+
                 match event {
                     Event::RollStart => {
                         let _ = event_sender.send(DiceEvent::RollStart);
@@ -372,9 +456,20 @@ impl Dice {
                         }
                     }
                     Event::Charging { charging } => {
-                        charging_state.store(charging, Ordering::Relaxed);
-                        if event_sender.send(DiceEvent::Charging { charging }).is_err() {
+                        let state = ChargingState::from(charging);
+                        charging_state.store(state as u8, Ordering::Relaxed);
+                        if event_sender.send(DiceEvent::Charging { state }).is_err() {
                             debug!("charging event dropped: no subscribers");
+                        }
+                    }
+                    Event::Tap => {
+                        if event_sender.send(DiceEvent::Tap).is_err() {
+                            debug!("tap event dropped: no subscribers");
+                        }
+                    }
+                    Event::DoubleTap => {
+                        if event_sender.send(DiceEvent::DoubleTap).is_err() {
+                            debug!("double-tap event dropped: no subscribers");
                         }
                     }
                 }
@@ -477,7 +572,7 @@ impl Dice {
                 }
                 Ok(_) => continue,
                 Err(broadcast::error::RecvError::Closed) => {
-                    return Err(DiceError::ConnectionLost);
+                    return Err(BleError::ConnectionLost.into());
                 }
                 Err(broadcast::error::RecvError::Lagged(_)) => continue,
             }

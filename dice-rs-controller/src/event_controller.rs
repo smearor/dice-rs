@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use dice_rs::model::acceleration::Acceleration;
+use dice_rs::model::charging_state::ChargingState;
 use dice_rs::model::face::FaceValue;
 use dice_rs::model::stability_descriptor::StabilityDescriptor;
 use dice_rs::service::dice::Dice;
@@ -19,6 +20,7 @@ use crate::battery_indicator::BatteryIndicator;
 use crate::dice_3d::Dice3D;
 use crate::face_display::FaceDisplay;
 use crate::face_display::RollHistory;
+use crate::tap_indicator::TapIndicator;
 
 /// Interval for periodic battery level refresh.
 const BATTERY_REFRESH_INTERVAL_SECS: u64 = 30;
@@ -39,7 +41,9 @@ enum UiUpdate {
     TiltStable { face: FaceValue, acceleration: Acceleration },
     FakeStable { face: FaceValue, acceleration: Acceleration },
     MoveStable { face: FaceValue, acceleration: Acceleration },
-    Charging { charging: bool },
+    Charging { state: ChargingState },
+    Tap,
+    DoubleTap,
     Disconnected,
     BatteryLevel(u8),
 }
@@ -56,11 +60,12 @@ pub struct EventController {
     battery_indicator: BatteryIndicator,
     dice_3d: Dice3D,
     roll_history: RollHistory,
+    tap_indicator: TapIndicator,
 }
 
 impl EventController {
     /// Create a new event controller.
-    pub fn new(dice: Dice, manager: Arc<DiceManager>, face_display: FaceDisplay, battery_indicator: BatteryIndicator, dice_3d: Dice3D, roll_history: RollHistory) -> Self {
+    pub fn new(dice: Dice, manager: Arc<DiceManager>, face_display: FaceDisplay, battery_indicator: BatteryIndicator, dice_3d: Dice3D, roll_history: RollHistory, tap_indicator: TapIndicator) -> Self {
         Self {
             dice,
             manager,
@@ -68,6 +73,7 @@ impl EventController {
             battery_indicator,
             dice_3d,
             roll_history,
+            tap_indicator,
         }
     }
 
@@ -80,6 +86,7 @@ impl EventController {
         let dice_3d = self.dice_3d.clone();
         let roll_history = self.roll_history.clone();
         let battery_indicator = self.battery_indicator.clone();
+        let tap_indicator = self.tap_indicator.clone();
         glib::timeout_add_local(Duration::from_millis(UI_POLL_INTERVAL_MS), move || {
             // Drain all pending updates in one batch.
             while let Ok(update) = receiver.try_recv() {
@@ -114,8 +121,14 @@ impl EventController {
                         roll_history.add_roll(face, StabilityDescriptor::MoveStable);
                         dice_3d.set_orientation(acceleration);
                     }
-                    UiUpdate::Charging { charging } => {
-                        battery_indicator.set_charging(charging);
+                    UiUpdate::Charging { state } => {
+                        battery_indicator.set_charging(state);
+                    }
+                    UiUpdate::Tap => {
+                        tap_indicator.flash_tap();
+                    }
+                    UiUpdate::DoubleTap => {
+                        tap_indicator.flash_double_tap();
                     }
                     UiUpdate::Disconnected => {
                         face_display.set_disconnected();
@@ -140,6 +153,7 @@ impl EventController {
         let charging_notify_for_battery = charging_notify.clone();
         tokio::spawn(async move {
             let mut receiver = dice.subscribe();
+
             loop {
                 match receiver.recv().await {
                     Ok(DiceEvent::RollStart) => {
@@ -167,12 +181,19 @@ impl EventController {
                             let _ = event_sender.send(UiUpdate::MoveStable { face, acceleration });
                         }
                     }
-                    Ok(DiceEvent::Charging { charging }) => {
+                    Ok(DiceEvent::Charging { state }) => {
+                        let charging = bool::from(state);
                         charging_flag.store(charging, Ordering::Relaxed);
                         if charging {
                             charging_notify.notify_one();
                         }
-                        let _ = event_sender.send(UiUpdate::Charging { charging });
+                        let _ = event_sender.send(UiUpdate::Charging { state });
+                    }
+                    Ok(DiceEvent::Tap) => {
+                        let _ = event_sender.send(UiUpdate::Tap);
+                    }
+                    Ok(DiceEvent::DoubleTap) => {
+                        let _ = event_sender.send(UiUpdate::DoubleTap);
                     }
                     Ok(DiceEvent::Disconnected) => {
                         let _ = event_sender.send(UiUpdate::Disconnected);
@@ -216,14 +237,15 @@ impl EventController {
             }
 
             loop {
-                // Use dice.is_charging() as ground truth — the broadcast event
-                // can be missed (lag), but the AtomicBool in DiceInner is always
+                // Use dice.charging_state() as ground truth — the broadcast event
+                // can be missed (lag), but the AtomicU8 in DiceInner is always
                 // updated by the notification task.
-                let charging = battery_dice.is_charging();
+                let state = battery_dice.charging_state();
+                let charging = bool::from(state);
                 let prev = charging_flag_for_battery.swap(charging, Ordering::Relaxed);
                 if charging != prev {
                     debug!(device = %battery_name, charging, prev, "charging state sync via battery task");
-                    let _ = battery_sender.send(UiUpdate::Charging { charging });
+                    let _ = battery_sender.send(UiUpdate::Charging { state });
                 }
 
                 let interval = if charging {

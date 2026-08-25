@@ -2,7 +2,6 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock as StdRwLock;
-use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU8;
 
 use btleplug::api::Characteristic;
@@ -64,6 +63,7 @@ pub struct DiceInner {
     /// `Arc`-wrapped so it can be cloned into the notification task.
     pub calibration_offset: Arc<StdRwLock<Option<AccelerationOffset>>>,
     /// Last known charging state, updated by the notification task.
+    /// Stored as `AtomicU8` using `ChargingState` repr.
     /// `Arc`-wrapped so it can be cloned into the notification task.
-    pub charging_state: Arc<AtomicBool>,
+    pub charging_state: Arc<AtomicU8>,
 }

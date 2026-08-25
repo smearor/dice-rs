@@ -1,9 +1,12 @@
 use crate::model::dice::color_error::DiceColorError;
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Physical color of a GoDice device.
 ///
 /// Encoded as a single byte in the `Col` response notification.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 #[repr(u8)]
 pub enum DiceColor {
     /// Black shell.

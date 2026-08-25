@@ -143,3 +143,20 @@
 .scan-list row {
     border-bottom: 1px solid alpha(@borders, 0.3);
 }
+
+.tap-indicator {
+    font-size: 0.9em;
+    font-weight: bold;
+    padding: 2px 10px;
+    border-radius: 4px;
+}
+
+.tap-single {
+    background-color: #f39c12;
+    color: white;
+}
+
+.tap-double {
+    background-color: #e74c3c;
+    color: white;
+}

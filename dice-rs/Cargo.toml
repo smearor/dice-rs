@@ -12,6 +12,7 @@ description = "Core library for GoDice BLE dice: model, BLE transport, and high-
 async-trait.workspace = true
 btleplug.workspace = true
 futures.workspace = true
+serde.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 tokio.workspace = true

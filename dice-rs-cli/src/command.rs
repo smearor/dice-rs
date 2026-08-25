@@ -35,6 +35,22 @@ pub enum Command {
         action: LedAction,
     },
 
+    /// Enable or disable tap interrupt notifications.
+    Tap {
+        /// Device MAC address.
+        address: String,
+        /// Enable (true) or disable (false) tap notifications.
+        enable: bool,
+    },
+
+    /// Enable or disable double tap interrupt notifications.
+    DoubleTap {
+        /// Device MAC address.
+        address: String,
+        /// Enable (true) or disable (false) double tap notifications.
+        enable: bool,
+    },
+
     /// Calibrate a dice on a flat surface.
     Calibrate {
         /// Device MAC address.

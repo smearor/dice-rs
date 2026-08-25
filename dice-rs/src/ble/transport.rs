@@ -10,6 +10,7 @@ use btleplug::platform::Peripheral as BtleplugPeripheral;
 use futures::stream::BoxStream;
 use uuid::Uuid;
 
+use crate::ble::ble_error::BleError;
 use crate::ble::uuids::NUS_NOTIFY_CHAR_UUID;
 use crate::ble::uuids::NUS_WRITE_CHAR_UUID;
 use crate::error::DiceError;
@@ -87,9 +88,9 @@ pub struct BtleplugTransport {
 impl BtleplugTransport {
     /// Create a new transport by selecting the first available Bluetooth adapter.
     pub async fn new() -> Result<Self> {
-        let manager = Manager::new().await.map_err(|_| DiceError::ScanFailed)?;
-        let adapters = manager.adapters().await.map_err(|_| DiceError::ScanFailed)?;
-        let adapter = adapters.into_iter().next().ok_or(DiceError::ScanFailed)?;
+        let manager = Manager::new().await.map_err(|e| DiceError::from(BleError::scan(e)))?;
+        let adapters = manager.adapters().await.map_err(|e| DiceError::from(BleError::scan(e)))?;
+        let adapter = adapters.into_iter().next().ok_or_else(|| DiceError::from(BleError::scan("no Bluetooth adapter found")))?;
         Ok(Self { adapter })
     }
 
@@ -109,20 +110,20 @@ impl BleTransport for BtleplugTransport {
     type Peripheral = BtleplugPeripheralWrapper;
 
     async fn start_scan(&self, filter: ScanFilter) -> Result<()> {
-        self.adapter.start_scan(filter).await.map_err(|_| DiceError::ScanFailed)
+        self.adapter.start_scan(filter).await.map_err(|e| BleError::scan(e).into())
     }
 
     async fn stop_scan(&self) -> Result<()> {
-        self.adapter.stop_scan().await.map_err(|_| DiceError::ScanFailed)
+        self.adapter.stop_scan().await.map_err(|e| BleError::scan(e).into())
     }
 
     async fn peripherals(&self) -> Result<Vec<Self::Peripheral>> {
-        let peripherals = self.adapter.peripherals().await.map_err(|_| DiceError::ScanFailed)?;
+        let peripherals = self.adapter.peripherals().await.map_err(|e| DiceError::from(BleError::scan(e)))?;
         Ok(peripherals.into_iter().map(BtleplugPeripheralWrapper::new).collect())
     }
 
     async fn events(&self) -> Result<BoxStream<'static, btleplug::api::CentralEvent>> {
-        let events = self.adapter.events().await.map_err(|_| DiceError::ScanFailed)?;
+        let events = self.adapter.events().await.map_err(|e| DiceError::from(BleError::scan(e)))?;
         Ok(Box::pin(events))
     }
 }
@@ -156,27 +157,27 @@ impl BlePeripheral for BtleplugPeripheralWrapper {
     }
 
     async fn is_connected(&self) -> Result<bool> {
-        self.inner.is_connected().await.map_err(|_| DiceError::ConnectionLost)
+        self.inner.is_connected().await.map_err(|e| BleError::not_connected(e).into())
     }
 
     async fn properties(&self) -> Result<Option<btleplug::api::PeripheralProperties>> {
-        self.inner.properties().await.map_err(|_| DiceError::ConnectionLost)
+        self.inner.properties().await.map_err(|e| BleError::not_connected(e).into())
     }
 
     async fn read_rssi(&self) -> Result<i16> {
-        self.inner.read_rssi().await.map_err(|_| DiceError::ConnectionLost)
+        self.inner.read_rssi().await.map_err(|e| BleError::not_connected(e).into())
     }
 
     async fn connect(&self) -> Result<()> {
-        self.inner.connect().await.map_err(|e| DiceError::ConnectionFailed(e.to_string()))
+        self.inner.connect().await.map_err(|e| BleError::connect(e).into())
     }
 
     async fn disconnect(&self) -> Result<()> {
-        self.inner.disconnect().await.map_err(|_| DiceError::ConnectionLost)
+        self.inner.disconnect().await.map_err(|e| BleError::disconnect(e).into())
     }
 
     async fn discover_services(&self) -> Result<()> {
-        self.inner.discover_services().await.map_err(|_| DiceError::DiscoveryFailed)
+        self.inner.discover_services().await.map_err(|e| BleError::discovery(e).into())
     }
 
     fn characteristic(&self, uuid: Uuid) -> Option<btleplug::api::Characteristic> {
@@ -184,15 +185,15 @@ impl BlePeripheral for BtleplugPeripheralWrapper {
     }
 
     async fn write(&self, characteristic: &btleplug::api::Characteristic, data: &[u8], write_type: WriteType) -> Result<()> {
-        self.inner.write(characteristic, data, write_type).await.map_err(|_| DiceError::WriteFailed)
+        self.inner.write(characteristic, data, write_type).await.map_err(|e| BleError::write(e).into())
     }
 
     async fn subscribe(&self, characteristic: &btleplug::api::Characteristic) -> Result<()> {
-        self.inner.subscribe(characteristic).await.map_err(|_| DiceError::SubscribeFailed)
+        self.inner.subscribe(characteristic).await.map_err(|e| BleError::subscribe(e).into())
     }
 
     async fn notifications(&self) -> Result<BoxStream<'static, btleplug::api::ValueNotification>> {
-        let notifications = self.inner.notifications().await.map_err(|_| DiceError::SubscribeFailed)?;
+        let notifications = self.inner.notifications().await.map_err(|e| DiceError::from(BleError::subscribe(e)))?;
         Ok(Box::pin(notifications))
     }
 }

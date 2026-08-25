@@ -3,6 +3,8 @@ use std::time::Duration;
 
 use tracing::debug;
 
+use crate::ble::ble_error::BleError;
+use crate::ble::nus_characteristic::NusCharacteristic;
 use crate::ble::transport::BlePeripheral;
 use crate::ble::transport::BleTransport;
 use crate::ble::transport::BtleplugTransport;
@@ -39,6 +41,26 @@ impl DiceManager {
         self.scanner().scan().await
     }
 
+    /// Find a discovered device by MAC address (partial match).
+    ///
+    /// Scans for devices and returns the first whose address contains the
+    /// given substring. Useful for matching a short MAC prefix.
+    pub async fn find_device_by_address(&self, address: &str) -> Result<DiceDevice> {
+        let devices = self.scan().await?;
+        devices
+            .into_iter()
+            .find(|d| d.address.to_string().contains(address))
+            .ok_or_else(|| BleError::device_not_found(address).into())
+    }
+
+    /// Connect to a dice by MAC address (scans first).
+    ///
+    /// Convenience method combining `find_device_by_address` and `connect`.
+    pub async fn connect_by_address(&self, address: &str) -> Result<Dice> {
+        let device = self.find_device_by_address(address).await?;
+        self.connect(&device).await
+    }
+
     /// Connect to a discovered device.
     ///
     /// Performs:
@@ -57,11 +79,11 @@ impl DiceManager {
         let peripheral = peripherals
             .into_iter()
             .find(|p| p.id() == device.id)
-            .ok_or_else(|| DiceError::ConnectionFailed(format!("peripheral not found for {}", device.name)))?;
+            .ok_or_else(|| DiceError::from(BleError::peripheral_not_found(&device.name)))?;
 
         let max_retries = 3;
         let backoff = Duration::from_secs(1);
-        let mut last_error = DiceError::ConnectionFailed("no attempt made".to_string());
+        let mut last_error: DiceError = BleError::NoAttemptMade.into();
         for attempt in 0..max_retries {
             match peripheral.connect().await {
                 Ok(()) => break,
@@ -82,10 +104,10 @@ impl DiceManager {
 
         let write_char = peripheral
             .characteristic(NUS_WRITE_CHAR_UUID)
-            .ok_or_else(|| DiceError::CharacteristicNotFound("NUS write".to_string()))?;
+            .ok_or_else(|| DiceError::from(BleError::characteristic_not_found(NusCharacteristic::Write)))?;
         let notify_char = peripheral
             .characteristic(NUS_NOTIFY_CHAR_UUID)
-            .ok_or_else(|| DiceError::CharacteristicNotFound("NUS notify".to_string()))?;
+            .ok_or_else(|| DiceError::from(BleError::characteristic_not_found(NusCharacteristic::Notify)))?;
 
         peripheral.subscribe(&notify_char).await?;
 
@@ -93,6 +115,8 @@ impl DiceManager {
         dice.spawn_notification_task().await?;
         dice.spawn_led_debounce_task();
         dice.spawn_connection_monitor();
+
+        dice.init().await?;
 
         Ok(dice)
     }
@@ -116,7 +140,7 @@ impl DiceManager {
             tokio::time::sleep(backoff).await;
             backoff = (backoff * 2).min(max_backoff);
         }
-        Err(DiceError::ReconnectFailed)
+        Err(BleError::ReconnectFailed.into())
     }
 
     /// Disconnect all dice and release the BLE adapter.

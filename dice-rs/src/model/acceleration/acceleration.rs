@@ -4,13 +4,15 @@ use crate::model::acceleration::offset::AccelerationOffset;
 use crate::model::dice::DiceType;
 use crate::model::face::FaceValue;
 use crate::model::vec_u8::VecU8;
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Raw 3-axis accelerometer data from the dice.
 ///
 /// Extracted as three signed 8-bit integers (`i8`) from the notification
 /// payload. The Python API uses `struct.unpack(">bbb", xyz_bytes)` and
 /// the JS API uses `data.getInt8(startByte)`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Acceleration {
     /// X-axis acceleration.
     pub x: i8,

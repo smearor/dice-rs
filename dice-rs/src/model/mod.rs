@@ -4,6 +4,7 @@
 
 pub mod acceleration;
 pub mod battery_level;
+pub mod charging_state;
 pub mod dice;
 pub mod face;
 pub mod led;

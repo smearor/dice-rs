@@ -30,6 +30,12 @@ pub enum LedAction {
         /// Off time in 10ms units.
         #[arg(long, default_value = "10")]
         off_time: u8,
+        /// Blink mode: "rainbow" or "color".
+        #[arg(long, default_value = "color")]
+        blink_mode: String,
+        /// LED selection: "both", "led1", or "led2".
+        #[arg(long, default_value = "both")]
+        leds: String,
     },
 
     /// Turn both LEDs off.

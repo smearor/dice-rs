@@ -1,5 +1,9 @@
+use serde::Deserialize;
+use serde::Serialize;
+
 /// Battery level of a GoDice device (0–100 percent).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct BatteryLevel(u8);
 
 impl BatteryLevel {

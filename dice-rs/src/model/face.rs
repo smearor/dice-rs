@@ -1,10 +1,13 @@
 use crate::error::DiceError;
+use serde::Deserialize;
+use serde::Serialize;
 
 /// The face value rolled on a die (1-based).
 ///
 /// A newtype wrapper around `u8` that enforces the invariant
 /// that a face value is always ≥ 1.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct FaceValue(u8);
 
 impl FaceValue {

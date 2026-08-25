@@ -66,8 +66,8 @@ impl MainWindow {
         let window = gtk4::ApplicationWindow::builder()
             .application(app)
             .title("dice-rs Controller")
-            .default_width(600)
-            .default_height(400)
+            .default_width(800)
+            .default_height(1000)
             .child(&scrolled)
             .build();
         window.set_titlebar(Some(&header_bar));

@@ -27,6 +27,10 @@ pub enum Event {
     Calibrated { success: bool },
     /// Charging status notification (`Char` + charging byte: 0 = not charging, 1 = charging).
     Charging { charging: bool },
+    /// Single tap detected (`Tap`).
+    Tap,
+    /// Double tap detected (`DTap`).
+    DoubleTap,
 }
 
 impl Event {
@@ -66,6 +70,16 @@ impl Event {
         // Charging: prefix "Char" (0x43, 0x68, 0x61, 0x72) + charging byte
         if data.len() >= 5 && &data[0..4] == b"Char" {
             return Ok(Self::Charging { charging: data[4] != 0 });
+        }
+
+        // Tap: prefix "Tap" (0x54, 0x61, 0x70)
+        if data.len() >= 3 && &data[0..3] == b"Tap" {
+            return Ok(Self::Tap);
+        }
+
+        // DoubleTap: prefix "DTap" (0x44, 0x54, 0x61, 0x70)
+        if data.len() >= 4 && &data[0..4] == b"DTap" {
+            return Ok(Self::DoubleTap);
         }
 
         // Stable: single byte 0x53 ('S') + 3 signed bytes XYZ
@@ -206,6 +220,18 @@ mod tests {
     fn charging_event_off() {
         let data = [0x43, 0x68, 0x61, 0x72, 0x00];
         assert_eq!(Event::parse(&data), Ok(Event::Charging { charging: false }));
+    }
+
+    #[test]
+    fn tap_event() {
+        let data = [0x54, 0x61, 0x70];
+        assert_eq!(Event::parse(&data), Ok(Event::Tap));
+    }
+
+    #[test]
+    fn double_tap_event() {
+        let data = [0x44, 0x54, 0x61, 0x70];
+        assert_eq!(Event::parse(&data), Ok(Event::DoubleTap));
     }
 
     #[test]

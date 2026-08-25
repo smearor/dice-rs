@@ -2,6 +2,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use dice_rs::model::led::LedColor;
+use dice_rs::model::led::PulseBlinkMode;
+use dice_rs::model::led::PulseLeds;
 use dice_rs::service::dice::Dice;
 use glib::clone;
 use gtk4::prelude::*;
@@ -15,6 +17,8 @@ pub struct LedControls {
     set_button: gtk4::Button,
     pulse_button: gtk4::Button,
     off_button: gtk4::Button,
+    blink_mode_dropdown: gtk4::DropDown,
+    leds_dropdown: gtk4::DropDown,
     dice: Rc<RefCell<Option<Dice>>>,
 }
 
@@ -26,12 +30,27 @@ impl LedControls {
         let set_button = gtk4::Button::builder().label("Set").build();
         let pulse_button = gtk4::Button::builder().label("Pulse").build();
         let off_button = gtk4::Button::builder().label("Off").build();
+        let blink_mode_model = gtk4::StringList::new(&["Rainbow", "Color"]);
+        let blink_mode_dropdown = gtk4::DropDown::builder()
+            .model(&blink_mode_model)
+            .tooltip_text("Blink mode")
+            .selected(1)
+            .build();
+
+        let leds_model = gtk4::StringList::new(&["Both", "LED 1", "LED 2"]);
+        let leds_dropdown = gtk4::DropDown::builder()
+            .model(&leds_model)
+            .tooltip_text("LEDs")
+            .selected(0)
+            .build();
 
         let container = gtk4::Box::builder().orientation(gtk4::Orientation::Horizontal).spacing(12).build();
         container.append(&color_button1);
         container.append(&color_button2);
         container.append(&set_button);
         container.append(&pulse_button);
+        container.append(&blink_mode_dropdown);
+        container.append(&leds_dropdown);
         container.append(&off_button);
 
         let dice = Rc::new(RefCell::new(None::<Dice>));
@@ -43,6 +62,8 @@ impl LedControls {
             set_button,
             pulse_button,
             off_button,
+            blink_mode_dropdown,
+            leds_dropdown,
             dice,
         };
 
@@ -121,19 +142,32 @@ impl LedControls {
             }
         ));
 
-        // Pulse button — pulse both LEDs with LED 1's color.
+        // Pulse button — pulse LEDs with selected blink mode and LED selection.
         self.pulse_button.connect_clicked(clone!(
             #[strong(rename_to = dice_cell)]
             self.dice.clone(),
             #[strong(rename_to = color_button1)]
             self.color_button1.clone(),
+            #[strong(rename_to = blink_mode_dropdown)]
+            self.blink_mode_dropdown.clone(),
+            #[strong(rename_to = leds_dropdown)]
+            self.leds_dropdown.clone(),
             move |_| {
                 let rgba = color_button1.rgba();
                 let color = LedColor::new((rgba.red() * 255.0) as u8, (rgba.green() * 255.0) as u8, (rgba.blue() * 255.0) as u8);
+                let blink_mode = match blink_mode_dropdown.selected() {
+                    0 => PulseBlinkMode::Rainbow,
+                    _ => PulseBlinkMode::Color,
+                };
+                let leds = match leds_dropdown.selected() {
+                    1 => PulseLeds::Led1,
+                    2 => PulseLeds::Led2,
+                    _ => PulseLeds::Both,
+                };
                 if let Some(dice) = dice_cell.borrow().as_ref() {
                     let dice = dice.clone();
                     tokio::spawn(async move {
-                        if let Err(error) = dice.pulse_leds(5, 10, 10, color).await {
+                        if let Err(error) = dice.pulse_leds(5, 10, 10, color, blink_mode, leds).await {
                             debug!(error = %error, "failed to pulse LEDs");
                         }
                     });

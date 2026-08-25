@@ -1,5 +1,6 @@
 use std::cell::Cell;
 
+use dice_rs::model::charging_state::ChargingState;
 use gtk4::prelude::*;
 
 /// Battery level indicator widget with color-coded thresholds.
@@ -9,7 +10,7 @@ use gtk4::prelude::*;
 pub struct BatteryIndicator {
     level_bar: gtk4::LevelBar,
     label: gtk4::Label,
-    charging: Cell<bool>,
+    charging: Cell<ChargingState>,
     last_level: Cell<Option<u8>>,
 }
 
@@ -20,7 +21,7 @@ impl BatteryIndicator {
 
         let label = gtk4::Label::builder().label("N/A").build();
 
-        Self { level_bar, label, charging: Cell::new(false), last_level: Cell::new(None) }
+        Self { level_bar, label, charging: Cell::new(ChargingState::default()), last_level: Cell::new(None) }
     }
 
     /// Update the battery level display.
@@ -28,7 +29,7 @@ impl BatteryIndicator {
         self.last_level.set(Some(level));
         self.level_bar.set_value(level as f64);
 
-        let text = if self.charging.get() {
+        let text = if matches!(self.charging.get(), ChargingState::Charging) {
             format!("⚡ {level}%")
         } else {
             format!("{level}%")
@@ -49,10 +50,11 @@ impl BatteryIndicator {
 
     /// Update the charging state display.
     /// When charging, a ⚡ prefix is shown and the `battery-charging` CSS class is applied.
-    pub fn set_charging(&self, charging: bool) {
-        self.charging.set(charging);
+    pub fn set_charging(&self, state: ChargingState) {
+        self.charging.set(state);
 
-        if charging {
+        let is_charging = matches!(state, ChargingState::Charging);
+        if is_charging {
             self.level_bar.add_css_class("battery-charging");
         } else {
             self.level_bar.remove_css_class("battery-charging");
@@ -60,7 +62,7 @@ impl BatteryIndicator {
 
         if let Some(level) = self.last_level.get() {
             self.set_level(level);
-        } else if charging {
+        } else if is_charging {
             self.label.set_label("⚡ N/A");
         }
     }

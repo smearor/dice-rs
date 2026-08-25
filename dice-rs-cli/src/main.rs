@@ -1,15 +1,13 @@
 //! dice-rs-cli — Command-line tool for GoDice BLE dice.
 
-mod battery_row;
 mod cli;
 mod cli_error;
 mod command;
 mod commands;
-mod device_row;
 mod led_action;
 mod output;
 mod output_format;
-mod status_row;
+mod timestamp;
 
 use crate::cli::Cli;
 use crate::cli_error::Result;

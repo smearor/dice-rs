@@ -1,9 +1,11 @@
 use crate::model::battery_level::BatteryLevel;
 use crate::model::dice::DiceColor;
+use serde::Deserialize;
+use serde::Serialize;
 use typed_builder::TypedBuilder;
 
 /// Aggregated system status of a connected GoDice.
-#[derive(Debug, Clone, PartialEq, TypedBuilder)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TypedBuilder)]
 pub struct SystemStatus {
     /// Battery level (0–100 percent).
     pub battery_level: BatteryLevel,

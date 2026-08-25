@@ -1,39 +1,19 @@
+use crate::ble::ble_error::BleError;
 use crate::ble::command_error::CommandError;
 use std::time::Duration;
 
 /// Errors that can occur when interacting with a GoDice.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum DiceError {
-    /// BLE scan failed to start.
-    #[error("BLE scan failed")]
-    ScanFailed,
-    /// BLE connection attempt failed.
-    #[error("connection failed: {0}")]
-    ConnectionFailed(String),
-    /// BLE write operation failed.
-    #[error("write failed")]
-    WriteFailed,
-    /// GATT service discovery failed.
-    #[error("service discovery failed")]
-    DiscoveryFailed,
-    /// A required GATT characteristic was not found.
-    #[error("characteristic not found: {0}")]
-    CharacteristicNotFound(String),
-    /// BLE subscription (notify enable) failed.
-    #[error("subscribe failed")]
-    SubscribeFailed,
+    /// BLE transport error (scan, connect, disconnect, GATT operations).
+    #[error(transparent)]
+    Ble(#[from] BleError),
     /// A mutex lock was poisoned by a panicking thread.
     #[error("lock poisoned")]
     LockPoisoned,
     /// A request-response query timed out before the dice responded.
     #[error("response timeout: no reply within {0:?}")]
     ResponseTimeout(Duration),
-    /// The BLE connection was lost during an operation.
-    #[error("connection lost")]
-    ConnectionLost,
-    /// Reconnect attempts exhausted without success.
-    #[error("reconnect failed after max retries")]
-    ReconnectFailed,
     /// An invalid face value (0) was encountered.
     #[error("invalid face value: {0}")]
     InvalidFaceValue(u8),

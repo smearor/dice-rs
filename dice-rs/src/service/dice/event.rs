@@ -1,9 +1,13 @@
 use crate::model::acceleration::Acceleration;
+use crate::model::charging_state::ChargingState;
 use crate::model::face::FaceValue;
 use crate::model::stability_descriptor::StabilityDescriptor;
+use serde::Deserialize;
+use serde::Serialize;
 
 /// High-level events emitted by a connected GoDice.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind")]
 pub enum DiceEvent {
     /// Dice has started rolling.
     RollStart,
@@ -16,7 +20,11 @@ pub enum DiceEvent {
     /// Dice is stable after a small movement (face rotation).
     MoveStable { face: FaceValue, acceleration: Acceleration },
     /// Dice charging status changed.
-    Charging { charging: bool },
+    Charging { state: ChargingState },
+    /// Single tap detected.
+    Tap,
+    /// Double tap detected.
+    DoubleTap,
     /// Dice has disconnected.
     Disconnected,
 }
@@ -31,6 +39,8 @@ impl DiceEvent {
             Self::FakeStable { .. } => Some(StabilityDescriptor::FakeStable),
             Self::MoveStable { .. } => Some(StabilityDescriptor::MoveStable),
             Self::Charging { .. } => None,
+            Self::Tap => None,
+            Self::DoubleTap => None,
             Self::Disconnected => None,
         }
     }
@@ -44,7 +54,9 @@ impl std::fmt::Display for DiceEvent {
             Self::TiltStable { face, .. } => write!(f, "tilt-stable face={face}"),
             Self::FakeStable { face, .. } => write!(f, "fake-stable face={face}"),
             Self::MoveStable { face, .. } => write!(f, "move-stable face={face}"),
-            Self::Charging { charging } => write!(f, "charging={charging}"),
+            Self::Charging { state } => write!(f, "charging={state}"),
+            Self::Tap => write!(f, "tap"),
+            Self::DoubleTap => write!(f, "double-tap"),
             Self::Disconnected => write!(f, "disconnected"),
         }
     }
