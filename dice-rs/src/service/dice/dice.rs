@@ -5,7 +5,8 @@ use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
-use btleplug::api::{Characteristic, WriteType};
+use btleplug::api::Characteristic;
+use btleplug::api::WriteType;
 use futures::StreamExt;
 use tokio::sync::broadcast;
 use tokio::sync::oneshot;

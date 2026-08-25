@@ -1,7 +1,8 @@
 use std::fmt;
 use std::str::FromStr;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// LED selection for the Pulse LEDs BLE command.
 ///
