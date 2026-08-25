@@ -11,7 +11,6 @@ use crate::event_controller::EventController;
 use crate::face_display::FaceDisplay;
 use crate::face_display::RollHistory;
 use crate::led_controls::LedControls;
-use crate::tap_controls::TapControls;
 use crate::tap_indicator::TapIndicator;
 
 /// Map a DiceColor to a CSS class name for the border.
@@ -37,12 +36,10 @@ impl DiceRow {
         let face_display = FaceDisplay::new();
         let battery_indicator = BatteryIndicator::new();
         let led_controls = LedControls::new();
-        let tap_controls = TapControls::new();
         let dice_3d = Dice3D::new();
         let roll_history = RollHistory::new();
         let tap_indicator = TapIndicator::new();
         led_controls.set_dice(dice.clone());
-        tap_controls.set_dice(dice.clone());
 
         // Left side: 3D dice view.
         let dice_3d_frame = gtk4::Frame::builder()
@@ -75,7 +72,6 @@ impl DiceRow {
         info_box.append(&header);
         info_box.append(roll_history.widget());
         info_box.append(led_controls.widget());
-        info_box.append(tap_controls.widget());
         info_box.append(&battery_row);
 
         let container = gtk4::Box::builder()
