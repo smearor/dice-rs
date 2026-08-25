@@ -25,7 +25,7 @@ const AUTO_SCAN_BURST_DURATION_SECS: u64 = 60;
 pub struct MainWindow {
     window: gtk4::ApplicationWindow,
     scan_button: gtk4::Button,
-    dice_list: gtk4::ListBox,
+    dice_list: gtk4::Box,
     status_label: gtk4::Label,
     manager: Arc<DiceManager>,
     connected_ids: Arc<std::sync::Mutex<HashSet<String>>>,
@@ -36,9 +36,10 @@ impl MainWindow {
     pub fn new(app: &gtk4::Application, manager: Arc<DiceManager>) -> Self {
         let scan_button = gtk4::Button::builder().label("Scan for GoDice").css_classes(vec!["suggested-action"]).build();
 
-        let dice_list = gtk4::ListBox::builder()
+        let dice_list = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Vertical)
+            .spacing(6)
             .css_classes(vec!["dice-list"])
-            .selection_mode(gtk4::SelectionMode::None)
             .build();
 
         let status_label = gtk4::Label::builder()
@@ -104,8 +105,8 @@ impl MainWindow {
                 let connected_ids = connected_ids.clone();
 
                 // Clear existing dice rows and reset connected IDs.
-                while let Some(row) = dice_list.first_child() {
-                    dice_list.remove(&row);
+                while let Some(child) = dice_list.first_child() {
+                    dice_list.remove(&child);
                 }
                 if let Ok(mut ids) = connected_ids.lock() {
                     ids.clear();
@@ -131,30 +132,24 @@ impl MainWindow {
                                     ids.insert(device_id);
                                 }
 
-                                let manager = manager.clone();
-                                let dice_list = dice_list.clone();
-                                let status_label = status_label.clone();
-                                let connected = connected.clone();
-                                glib::spawn_future_local(async move {
-                                    let device_name = device.name.clone();
-                                    let connect_manager = manager.clone();
-                                    let connect_result = tokio::spawn(async move { connect_manager.connect(&device).await }).await;
-                                    match connect_result {
-                                        Ok(Ok(dice)) => {
-                                            let row = DiceRow::new(dice, manager.clone());
-                                            dice_list.append(row.widget());
-                                            let n = connected.fetch_add(1, Ordering::Relaxed) + 1;
-                                            status_label.set_text(&format!("Connected {n}/{count}"));
-                                        }
-                                        Ok(Err(error)) => {
-                                            debug!(error = %error, device = %device_name, "connection failed");
-                                            status_label.set_text(&format!("Connection failed for {device_name}: {error}"));
-                                        }
-                                        Err(error) => {
-                                            debug!(error = %error, device = %device_name, "connect task join failed");
-                                        }
+                                let device_name = device.name.clone();
+                                let connect_manager = manager.clone();
+                                let connect_result = tokio::spawn(async move { connect_manager.connect(&device).await }).await;
+                                match connect_result {
+                                    Ok(Ok(dice)) => {
+                                        let row = DiceRow::new(dice, manager.clone());
+                                        dice_list.append(row.widget());
+                                        let n = connected.fetch_add(1, Ordering::Relaxed) + 1;
+                                        status_label.set_text(&format!("Connected {n}/{count}"));
                                     }
-                                });
+                                    Ok(Err(error)) => {
+                                        debug!(error = %error, device = %device_name, "connection failed");
+                                        status_label.set_text(&format!("Connection failed for {device_name}: {error}"));
+                                    }
+                                    Err(error) => {
+                                        debug!(error = %error, device = %device_name, "connect task join failed");
+                                    }
+                                }
                             }
                         }
                         Ok(Err(error)) => {
