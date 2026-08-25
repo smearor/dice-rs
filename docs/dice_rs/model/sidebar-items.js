@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["color","dice_type","face","led","state"]};
+window.SIDEBAR_ITEMS = {"mod":["acceleration","battery_level","charging_state","dice","face","led","stability_descriptor","system_status","vec_u8"]};

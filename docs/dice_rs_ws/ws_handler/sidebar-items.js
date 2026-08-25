@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["handle_calibrate","handle_connect","handle_disconnect","handle_get_battery","handle_get_status","handle_pulse_led","handle_request","handle_scan","handle_set_double_tap_interrupt","handle_set_led","handle_set_tap_interrupt","handle_turn_off_leds","handle_ws_upgrade","run","send_error","send_message"],"type":["WsSender"]};

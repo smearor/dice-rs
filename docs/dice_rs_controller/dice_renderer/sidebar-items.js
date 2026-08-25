@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["FRAGMENT_SHADER_SOURCE","VERTEX_SHADER_SOURCE"],"enum":["RendererError"],"struct":["DiceRenderer"],"type":["Result"]};

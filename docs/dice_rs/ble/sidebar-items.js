@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["command","event","transport","uuids"]};
+window.SIDEBAR_ITEMS = {"mod":["ble_error","command","command_error","event","nus_characteristic","parse_error","transport","uuids"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["battery","calibrate","connect","disconnect","led","scan","status"]};

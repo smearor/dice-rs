@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["battery_handler"],"struct":["BatteryParams","BatteryResponse"]};

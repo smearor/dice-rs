@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["main"]};
+window.SIDEBAR_ITEMS = {"mod":["app_state","protocol","routes","server","session","session_manager","ws_error","ws_handler"]};

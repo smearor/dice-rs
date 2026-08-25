@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {};
+window.SIDEBAR_ITEMS = {"mod":["color","color_error","pulse_blink_mode","pulse_leds"]};

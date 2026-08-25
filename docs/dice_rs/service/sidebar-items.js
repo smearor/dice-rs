@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["dice","interpreter","manager","scanner"]};
+window.SIDEBAR_ITEMS = {"mod":["dice","led_throttle_state","manager","scanner"]};

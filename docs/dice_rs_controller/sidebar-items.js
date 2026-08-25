@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["main"]};
+window.SIDEBAR_ITEMS = {"fn":["main"],"mod":["application","battery_indicator","dice_3d","dice_model","dice_renderer","dice_row","event_controller","face_display","led_controls","tap_indicator","window"]};

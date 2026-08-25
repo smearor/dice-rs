@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["FLASH_DURATION_MS"],"struct":["TapIndicator"]};

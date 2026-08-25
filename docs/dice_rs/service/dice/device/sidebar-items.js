@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["default_peripheral_id","deserialize_bdaddr","serialize_bdaddr"],"struct":["DiceDevice"]};

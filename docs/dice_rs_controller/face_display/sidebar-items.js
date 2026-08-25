@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["HISTORY_SIZE"],"fn":["apply_stability_classes","dice_color_bg_class"],"struct":["FaceDisplay","HistoryEntry","RollHistory"]};

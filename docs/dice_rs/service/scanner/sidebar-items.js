@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {};
+window.SIDEBAR_ITEMS = {"constant":["DEFAULT_NAME_PREFIX","DEFAULT_SCAN_DURATION"],"struct":["DiceScanner"]};

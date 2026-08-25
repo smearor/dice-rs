@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["D20_VECTORS","D24_VECTORS","D6_VECTORS"]};
