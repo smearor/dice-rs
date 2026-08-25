@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-052631b6.js";
+            window.path_to_searchindex_js = "searchindex-9eac52b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-3173f8ce.js"></script>
+        <script src="toc-65f3e578.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -178,6 +178,71 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="controller"><a class="header" href="#controller">Controller</a></h1>
+<p>The <code>dice-rs-controller</code> crate is a GTK 4 desktop application for managing
+GoDice devices with a graphical interface and 3D dice rendering.</p>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="./assets/dice-rs-controller.png" alt="dice-rs-controller"><span class="img-wrapper"><img src="./assets/dice-rs-controller.png" alt="dice-rs-controller"></span></label></p>
+<h2 id="features"><a class="header" href="#features">Features</a></h2>
+<ul>
+<li><strong>Auto-scan</strong> on startup with manual rescan button</li>
+<li><strong>Dice list</strong> showing all connected dice with face value, battery, and color</li>
+<li><strong>3D dice rendering</strong> using OpenGL (<code>glow</code> + <code>glam</code>) with real-time
+orientation from accelerometer data</li>
+<li><strong>LED controls</strong> - color pickers, set/pulse/off buttons</li>
+<li><strong>Tap controls</strong> - enable/disable tap and double tap notifications</li>
+<li><strong>Battery indicator</strong> with visual gauge</li>
+<li><strong>Roll history</strong> showing recent face values</li>
+<li><strong>Tap indicator</strong> flashing on tap events</li>
+<li><strong>Reconnect</strong> support for dropped connections</li>
+</ul>
+<h2 id="building"><a class="header" href="#building">Building</a></h2>
+<p>The controller requires GTK 4 development libraries:</p>
+<pre><code class="language-sh"># Ubuntu/Debian
+sudo apt install libgtk-4-dev
+
+# Build
+cargo build -p dice-rs-controller
+</code></pre>
+<h2 id="running"><a class="header" href="#running">Running</a></h2>
+<pre><code class="language-sh">cargo run -p dice-rs-controller
+</code></pre>
+<p>The application window appears with a scan button and an empty dice list.
+Connected dice appear as rows with interactive controls.</p>
+<h2 id="architecture"><a class="header" href="#architecture">Architecture</a></h2>
+<pre class="mermaid">flowchart TB
+    app["Application
+    (gtk4::Application)"]
+    window["MainWindow
+    (scan, dice list)"]
+    row["DiceRow
+    (per-dice UI)"]
+    controller["EventController
+    (async → GTK bridge)"]
+    dice3d["Dice3D
+    (OpenGL renderer)"]
+    led["LedControls
+    (color pickers)"]
+    tap["TapControls
+    (tap switches)"]
+    battery["BatteryIndicator"]
+    history["RollHistory"]
+    face["FaceDisplay"]
+
+    app --&gt; window
+    window --&gt; row
+    row --&gt; controller
+    row --&gt; dice3d
+    row --&gt; led
+    row --&gt; tap
+    row --&gt; battery
+    row --&gt; history
+    row --&gt; face
+</pre>
+
+<h3 id="eventcontroller"><a class="header" href="#eventcontroller">EventController</a></h3>
+<p>The <code>EventController</code> bridges async dice events into the GTK main loop. It
+runs a background tokio task that receives <code>DiceEvent</code>s and sends UI updates
+through an <code>mpsc</code> channel to the GTK main thread. This avoids blocking the
+UI while waiting for BLE events.</p>
 
                     </main>
 

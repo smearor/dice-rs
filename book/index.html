@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-052631b6.js";
+            window.path_to_searchindex_js = "searchindex-9eac52b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-3173f8ce.js"></script>
+        <script src="toc-65f3e578.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -178,6 +178,31 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
+<p><code>dice-rs</code> is a Rust library and toolkit for controlling
+<a href="https://particula-tech.com/products/godice-full-pack">GoDice</a> - physical
+Bluetooth dice that communicate over Bluetooth Low Energy (BLE).</p>
+<h2 id="motivation"><a class="header" href="#motivation">Motivation</a></h2>
+<p>GoDice are physical dice with embedded LEDs, an accelerometer, and a BLE
+radio. They use the Nordic UART Service (NUS) profile for communication.
+The official APIs from Particula are in JavaScript and Python. <code>dice-rs</code>
+brings native Rust support with an idiomatic async API, type-safe domain
+model, and a trait-based transport layer for testability.</p>
+<h2 id="scope"><a class="header" href="#scope">Scope</a></h2>
+<p>The workspace provides four crates:</p>
+<ul>
+<li><strong><code>dice-rs</code></strong> - core library with domain types, BLE transport, and a
+high-level service API</li>
+<li><strong><code>dice-rs-cli</code></strong> - command-line tool for quick interactions</li>
+<li><strong><code>dice-rs-controller</code></strong> - GTK 4 desktop application with 3D dice rendering</li>
+<li><strong><code>dice-rs-ws</code></strong> - WebSocket server for network-accessible dice events</li>
+</ul>
+<h2 id="where-to-get-help"><a class="header" href="#where-to-get-help">Where to Get Help</a></h2>
+<ul>
+<li><a href="https://github.com/smearor/dice-rs/issues">GitHub Issues</a> - bug reports
+and feature requests</li>
+<li><a href="./ble-protocol.html">BLE Protocol</a> - canonical protocol reference</li>
+<li><a href="https://docs.rs/dice-rs">API Reference (docs.rs)</a> - rustdoc for all crates</li>
+</ul>
 
                     </main>
 

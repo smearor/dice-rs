@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-052631b6.js";
+            window.path_to_searchindex_js = "searchindex-9eac52b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-3173f8ce.js"></script>
+        <script src="toc-65f3e578.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -179,30 +179,1249 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
+<p><code>dice-rs</code> is a Rust library and toolkit for controlling
+<a href="https://particula-tech.com/products/godice-full-pack">GoDice</a> - physical
+Bluetooth dice that communicate over Bluetooth Low Energy (BLE).</p>
+<h2 id="motivation"><a class="header" href="#motivation">Motivation</a></h2>
+<p>GoDice are physical dice with embedded LEDs, an accelerometer, and a BLE
+radio. They use the Nordic UART Service (NUS) profile for communication.
+The official APIs from Particula are in JavaScript and Python. <code>dice-rs</code>
+brings native Rust support with an idiomatic async API, type-safe domain
+model, and a trait-based transport layer for testability.</p>
+<h2 id="scope"><a class="header" href="#scope">Scope</a></h2>
+<p>The workspace provides four crates:</p>
+<ul>
+<li><strong><code>dice-rs</code></strong> - core library with domain types, BLE transport, and a
+high-level service API</li>
+<li><strong><code>dice-rs-cli</code></strong> - command-line tool for quick interactions</li>
+<li><strong><code>dice-rs-controller</code></strong> - GTK 4 desktop application with 3D dice rendering</li>
+<li><strong><code>dice-rs-ws</code></strong> - WebSocket server for network-accessible dice events</li>
+</ul>
+<h2 id="where-to-get-help"><a class="header" href="#where-to-get-help">Where to Get Help</a></h2>
+<ul>
+<li><a href="https://github.com/smearor/dice-rs/issues">GitHub Issues</a> - bug reports
+and feature requests</li>
+<li><a href="#ble-protocol">BLE Protocol</a> - canonical protocol reference</li>
+<li><a href="https://docs.rs/dice-rs">API Reference (docs.rs)</a> - rustdoc for all crates</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h1>
+<h2 id="add-the-dependency"><a class="header" href="#add-the-dependency">Add the Dependency</a></h2>
+<p>Add <code>dice-rs</code> to your <code>Cargo.toml</code>:</p>
+<pre><code class="language-toml">[dependencies]
+dice-rs = "0.1"
+tokio = { version = "1", features = ["full"] }
+</code></pre>
+<h2 id="tokio-runtime"><a class="header" href="#tokio-runtime">Tokio Runtime</a></h2>
+<p><code>dice-rs</code> is async-only. You need a tokio runtime to drive the BLE operations:</p>
+<pre class="playground"><code class="language-rust">use dice_rs::{DiceManager, DiceEvent};
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+
+    if devices.is_empty() {
+        println!("No GoDice devices found");
+        return Ok(());
+    }
+
+    for device in &amp;devices {
+        println!("Found: {device}");
+    }
+
+    let dice = manager.connect(&amp;devices[0]).await?;
+    let mut receiver = dice.subscribe();
+    while let Ok(event) = receiver.recv().await {
+        match event {
+            DiceEvent::Stable { face, .. } =&gt; {
+                println!("Rolled: {face}");
+                break;
+            }
+            DiceEvent::RollStart =&gt; println!("Rolling..."),
+            DiceEvent::Disconnected =&gt; break,
+            _ =&gt; {}
+        }
+    }
+
+    dice.disconnect().await?;
+    Ok(())
+}</code></pre>
+<h2 id="first-connection"><a class="header" href="#first-connection">First Connection</a></h2>
+<ol>
+<li>Create a <code>DiceManager</code> - this initializes the BLE adapter.</li>
+<li>Call <code>scan()</code> to discover nearby GoDice devices (filtered by <code>GoDice_</code> prefix).</li>
+<li>Call <code>connect()</code> with a <code>DiceDevice</code> to establish a BLE connection.</li>
+<li>Call <code>subscribe()</code> to get a <code>broadcast::Receiver&lt;DiceEvent&gt;</code>.</li>
+<li>Listen for events in a loop.</li>
+</ol>
+<p>The <code>Dice</code> handle is <code>Clone</code>, so you can share it across tasks. All clones
+share the same underlying connection state.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="architecture"><a class="header" href="#architecture">Architecture</a></h1>
+<h2 id="workspace-structure"><a class="header" href="#workspace-structure">Workspace Structure</a></h2>
+<pre><code>dice-rs/
+├── dice-rs/              # Core library
+│   ├── src/
+│   │   ├── ble/          # BLE transport layer (commands, events, transport trait)
+│   │   ├── model/        # Domain types (FaceValue, LedColor, DiceType, etc.)
+│   │   ├── service/      # High-level API (DiceManager, Dice, DiceEvent)
+│   │   ├── error.rs      # Error types
+│   │   └── lib.rs        # Re-exports
+├── dice-rs-cli/          # CLI tool
+├── dice-rs-controller/   # GTK 4 desktop app
+└── dice-rs-ws/           # WebSocket server
+</code></pre>
+<h2 id="module-layout"><a class="header" href="#module-layout">Module Layout</a></h2>
+<h3 id="ble---protocol-layer"><a class="header" href="#ble---protocol-layer"><code>ble</code> - Protocol Layer</a></h3>
+<p>Handles raw BLE communication: encoding commands, decoding notification
+events, and the <code>BleTransport</code> trait that abstracts the BLE backend.</p>
+<ul>
+<li><strong><code>command</code></strong> - <code>Command</code> enum encoding host-to-dice byte sequences</li>
+<li><strong><code>event</code></strong> - <code>Event</code> enum decoding dice-to-host notifications</li>
+<li><strong><code>transport</code></strong> - <code>BleTransport</code> and <code>BlePeripheral</code> traits</li>
+<li><strong><code>uuids</code></strong> - NUS service and characteristic UUIDs</li>
+</ul>
+<h3 id="model---domain-types"><a class="header" href="#model---domain-types"><code>model</code> - Domain Types</a></h3>
+<p>Type-safe wrappers for GoDice data:</p>
+<ul>
+<li><strong><code>FaceValue</code></strong> - rolled face (1-based, rejects 0)</li>
+<li><strong><code>Acceleration</code></strong> - raw XYZ accelerometer data with face interpretation</li>
+<li><strong><code>LedColor</code></strong> - RGB color with named constants and hex parsing</li>
+<li><strong><code>BatteryLevel</code></strong> - 0–100 percent</li>
+<li><strong><code>ChargingState</code></strong> - charging or not charging</li>
+<li><strong><code>DiceColor</code></strong> - physical shell color (Black, Red, Green, Blue, Yellow, Orange)</li>
+<li><strong><code>DiceType</code></strong> - dice shell type (D6, D20, D10, D10X, D4, D8, D12)</li>
+</ul>
+<h3 id="service---high-level-api"><a class="header" href="#service---high-level-api"><code>service</code> - High-Level API</a></h3>
+<ul>
+<li><strong><code>DiceManager</code></strong> - manages BLE adapter and multiple dice connections</li>
+<li><strong><code>Dice</code></strong> - handle to a connected die with LED, battery, and event methods</li>
+<li><strong><code>DiceEvent</code></strong> - high-level events emitted via broadcast channel</li>
+<li><strong><code>DiceScanner</code></strong> - device discovery with name-prefix filtering</li>
+</ul>
+<h2 id="data-flow"><a class="header" href="#data-flow">Data Flow</a></h2>
+<pre class="mermaid">flowchart TD
+    subgraph Dice["GoDice Hardware"]
+        accel["Accelerometer"]
+        ble_radio["BLE Radio"]
+    end
+
+    subgraph Transport["BLE Transport Layer"]
+        btleplug["btleplug
+        (BlueZ DBus)"]
+        trait["BleTransport Trait"]
+    end
+
+    subgraph Service["Service Layer"]
+        manager["DiceManager"]
+        dice["Dice Handle"]
+        channel["broadcast::Channel
+        DiceEvent"]
+    end
+
+    subgraph Consumer["Application"]
+        recv["Receiver"]
+    end
+
+    accel --&gt; ble_radio
+    ble_radio --&gt;|NUS notifications| btleplug
+    btleplug --&gt; trait
+    trait --&gt;|Event parse| dice
+    dice --&gt;|DiceEvent| channel
+    channel --&gt; recv
+    manager --&gt;|connect/disconnect| trait
+</pre>
+
+<h2 id="ble-backend"><a class="header" href="#ble-backend">BLE Backend</a></h2>
+<p>The primary BLE backend is <a href="https://docs.rs/btleplug/latest/btleplug/">btleplug</a>,
+which uses BlueZ DBus on Linux. The <code>BleTransport</code> trait abstracts the backend,
+enabling mock implementations for testing and future backends like
+<a href="https://docs.rs/bluer/latest/bluer/">bluer</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="ble-protocol"><a class="header" href="#ble-protocol">BLE Protocol</a></h1>
+<p>This chapter is the canonical BLE documentation for the project. The full
+protocol was reverse-engineered from the official
+<a href="https://github.com/ParticulaCode/GoDiceJavaScriptAPI">JavaScript API</a> and
+<a href="https://github.com/ParticulaCode/GoDicePythonAPI">Python API</a> source code.</p>
+<p>The content below is included from <code>docs/BLE.md</code> so that the source of truth
+remains in a single file and the book stays in sync automatically.</p>
+<h1 id="ble-specifications"><a class="header" href="#ble-specifications">BLE Specifications</a></h1>
+<p>BLE specification of the GoDice dice.</p>
+<p>The dice use the Nordic UART Service (NUS) profile internally.
+The full protocol was reverse-engineered from the official
+<a href="https://github.com/ParticulaCode/GoDiceJavaScriptAPI/blob/main/godice.js">JavaScript API</a>,
+<a href="https://github.com/ParticulaCode/GoDicePythonAPI/blob/main/godice/dice.py">Python API</a>,
+and <a href="https://github.com/ParticulaCode/GoDiceAndroid_iOS_API/blob/main/common/godiceapi.c">C API</a>
+source code.</p>
+<h2 id="device-properties"><a class="header" href="#device-properties">Device Properties</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Property</th><th>Description</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td>Device name</td><td>Prefix</td><td>GoDice_</td></tr>
+<tr><td>Service UUID</td><td></td><td>6e400001-b5a3-f393-e0a9-e50e24dcca9e</td></tr>
+<tr><td>Write Characteristic</td><td>Send commands</td><td>6e400002-b5a3-f393-e0a9-e50e24dcca9e</td></tr>
+<tr><td>Notify Characteristic</td><td>Receive events / results</td><td>6e400003-b5a3-f393-e0a9-e50e24dcca9e</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="byte-commands-host--dice"><a class="header" href="#byte-commands-host--dice">Byte Commands (Host → Dice)</a></h2>
+<p>All commands are written as byte arrays to the Write Characteristic.
+The first byte is always the opcode.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Opcode</th><th>Decimal</th><th>Command</th><th>Payload Bytes</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td>0x03</td><td>3</td><td>Get Battery Level</td><td>(none)</td><td>Response: <code>Bat</code> + level byte</td></tr>
+<tr><td>0x08</td><td>8</td><td>Set LEDs</td><td><code>[R1, G1, B1, R2, G2, B2]</code> (6 bytes, 0–255)</td><td>Sets both RGB LEDs; <code>[0,0,0,0,0,0]</code> turns off</td></tr>
+<tr><td>0x10</td><td>16</td><td>Pulse LEDs</td><td><code>[pulseCount, onTime, offTime, R, G, B, blinkMode, leds]</code></td><td><code>onTime</code>/<code>offTime</code> in units of 10 ms; max 255. <code>blinkMode</code> and <code>leds</code> select which LEDs blink</td></tr>
+<tr><td>0x14</td><td>20</td><td>Stop Pulse LEDs</td><td>(none)</td><td>Stops any active pulse LED animation</td></tr>
+<tr><td>0x17</td><td>23</td><td>Get Dice Color</td><td>(none)</td><td>Response: <code>Col</code> + color byte</td></tr>
+<tr><td>0x19</td><td>25</td><td>Init</td><td><code>[sensitivity, pulseCount, onTime, offTime, R, G, B, blinkMode, leds]</code> (9 bytes)</td><td>Initializes dice with sensitivity and LED configuration</td></tr>
+<tr><td>0x31</td><td>49</td><td>Set Tap Interrupt</td><td><code>[enable]</code> (1 byte, 0=disable, 1=enable)</td><td>Enables/disables single tap event notifications. Disabled by default.</td></tr>
+<tr><td>0x32</td><td>50</td><td>Set Double Tap Interrupt</td><td><code>[enable]</code> (1 byte, 0=disable, 1=enable)</td><td>Enables/disables double tap event notifications. Disabled by default.</td></tr>
+<tr><td>0x65</td><td>101</td><td>Detection Settings</td><td><code>[samplesCount, movementCount, faceCount, minFlatDeg, maxFlatDeg, weakStable, movementDeg, rollThreshold]</code> (8 bytes)</td><td>Updates roll detection sensitivity parameters</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="receiving-events-dice--host"><a class="header" href="#receiving-events-dice--host">Receiving Events (Dice → Host)</a></h2>
+<p>The dice sends byte packets on state changes as notifications on the
+Notify Characteristic. The first byte determines the event type. Some
+events use ASCII prefixes for identification.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>First Byte(s)</th><th>ASCII</th><th>Event</th><th>Payload</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td>0x52</td><td><code>R</code></td><td>RollStart</td><td>(none)</td><td>Dice is currently rolling</td></tr>
+<tr><td>0x53</td><td><code>S</code></td><td>Stable</td><td><code>[X, Y, Z]</code> (3 signed bytes, offset 1)</td><td>Dice is stable and flat; face derived from XYZ</td></tr>
+<tr><td>0x46 0x53</td><td><code>FS</code></td><td>FakeStable</td><td><code>[X, Y, Z]</code> (3 signed bytes, offset 2)</td><td>Stable after a “fake” roll; face derived from XYZ</td></tr>
+<tr><td>0x54 0x53</td><td><code>TS</code></td><td>TiltStable</td><td><code>[X, Y, Z]</code> (3 signed bytes, offset 2)</td><td>Stable but tilted (not flat); face derived from XYZ</td></tr>
+<tr><td>0x4D 0x53</td><td><code>MS</code></td><td>MoveStable</td><td><code>[X, Y, Z]</code> (3 signed bytes, offset 2)</td><td>Stable after small movement (face rotation); face derived from XYZ</td></tr>
+<tr><td>0x42 0x61 0x74</td><td><code>Bat</code></td><td>BatteryLevel</td><td><code>[level]</code> (1 byte, offset 3)</td><td>Battery level response (0–100 percent)</td></tr>
+<tr><td>0x43 0x6F 0x6C</td><td><code>Col</code></td><td>DiceColor</td><td><code>[color]</code> (1 byte, offset 3)</td><td>Dice color response</td></tr>
+<tr><td>0x43 0x68 0x61 0x72</td><td><code>Char</code></td><td>Charging</td><td><code>[charging]</code> (1 byte, offset 4)</td><td>Charging status (0 = not charging, 1 = charging)</td></tr>
+<tr><td>0x54 0x61 0x70</td><td><code>Tap</code></td><td>Tap</td><td>(none)</td><td>Single tap detected (no payload)</td></tr>
+<tr><td>0x44 0x54 0x61 0x70</td><td><code>DTap</code></td><td>DoubleTap</td><td>(none)</td><td>Double tap detected (no payload)</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="dice-colors"><a class="header" href="#dice-colors">Dice Colors</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Value</th><th>Color</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Black</td></tr>
+<tr><td>1</td><td>Red</td></tr>
+<tr><td>2</td><td>Green</td></tr>
+<tr><td>3</td><td>Blue</td></tr>
+<tr><td>4</td><td>Yellow</td></tr>
+<tr><td>5</td><td>Orange</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="dice-types-shells"><a class="header" href="#dice-types-shells">Dice Types (Shells)</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Value</th><th>Type</th><th>Vector Table</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>D6</td><td>d6Vectors</td></tr>
+<tr><td>1</td><td>D20</td><td>d20Vectors</td></tr>
+<tr><td>2</td><td>D10</td><td>d20Vectors → d10Transform</td></tr>
+<tr><td>3</td><td>D10X</td><td>d20Vectors → d10XTransform</td></tr>
+<tr><td>4</td><td>D4</td><td>d24Vectors → d4Transform</td></tr>
+<tr><td>5</td><td>D8</td><td>d24Vectors → d8Transform</td></tr>
+<tr><td>6</td><td>D12</td><td>d24Vectors → d12Transform</td></tr>
+</tbody>
+</table>
+</div>
+<blockquote>
+<p><strong>Note</strong>: D10X is also referred to as <strong>D100</strong> (percentile) in the C API.
+The transform maps the D20 vector index to a D10 face value multiplied by 10
+(i.e. <code>d10_transform(roll) * 10</code>), yielding values 0, 10, 20, …, 90.</p>
+</blockquote>
+<p><code>setDieType</code> is a client-side setting - no command is sent to the dice.
+Instead, it selects which vector table and transform to use when interpreting
+the XYZ accelerometer data to determine the face value.</p>
+<h2 id="face-value-determination"><a class="header" href="#face-value-determination">Face Value Determination</a></h2>
+<p>The dice does not send the rolled number directly. Instead, it sends raw
+XYZ accelerometer data (3 signed 8-bit integers). The client determines
+the upper face by finding the closest vector in a pre-defined table:</p>
+<ol>
+<li>Extract <code>[x, y, z]</code> from the notification payload.</li>
+<li>Look up the vector table for the current <code>DiceType</code>.</li>
+<li>For each entry <code>(face_value, reference_vector)</code>, compute the
+Euclidean distance: <code>sqrt((x - rx)² + (y - ry)² + (z - rz)²)</code>.
+(The squared distance without <code>sqrt</code> is functionally equivalent for
+finding the minimum, since <code>sqrt</code> is monotonically increasing.)</li>
+<li>Return the face value with the smallest distance.</li>
+<li>If a shell transform applies (D10, D10X, D4, D8, D12), map the
+intermediate value through the transform table.</li>
+</ol>
+<h3 id="d6-vector-table"><a class="header" href="#d6-vector-table">D6 Vector Table</a></h3>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="assets/d6_vectors.svg" alt="D6 Vectors"><span class="img-wrapper"><img src="assets/d6_vectors.svg" alt="D6 Vectors"></span></label></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Face</th><th>X</th><th>Y</th><th>Z</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>-64</td><td>0</td><td>0</td></tr>
+<tr><td>2</td><td>0</td><td>0</td><td>64</td></tr>
+<tr><td>3</td><td>0</td><td>64</td><td>0</td></tr>
+<tr><td>4</td><td>0</td><td>-64</td><td>0</td></tr>
+<tr><td>5</td><td>0</td><td>0</td><td>-64</td></tr>
+<tr><td>6</td><td>64</td><td>0</td><td>0</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="d20-vector-table"><a class="header" href="#d20-vector-table">D20 Vector Table</a></h3>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="assets/d20_vectors.svg" alt="D20 Vectors"><span class="img-wrapper"><img src="assets/d20_vectors.svg" alt="D20 Vectors"></span></label></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Face</th><th>X</th><th>Y</th><th>Z</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>-64</td><td>0</td><td>-22</td></tr>
+<tr><td>2</td><td>42</td><td>-42</td><td>40</td></tr>
+<tr><td>3</td><td>0</td><td>22</td><td>-64</td></tr>
+<tr><td>4</td><td>0</td><td>22</td><td>64</td></tr>
+<tr><td>5</td><td>-42</td><td>-42</td><td>42</td></tr>
+<tr><td>6</td><td>22</td><td>64</td><td>0</td></tr>
+<tr><td>7</td><td>-42</td><td>-42</td><td>-42</td></tr>
+<tr><td>8</td><td>64</td><td>0</td><td>-22</td></tr>
+<tr><td>9</td><td>-22</td><td>64</td><td>0</td></tr>
+<tr><td>10</td><td>42</td><td>-42</td><td>-42</td></tr>
+<tr><td>11</td><td>-42</td><td>42</td><td>42</td></tr>
+<tr><td>12</td><td>22</td><td>-64</td><td>0</td></tr>
+<tr><td>13</td><td>-64</td><td>0</td><td>22</td></tr>
+<tr><td>14</td><td>42</td><td>42</td><td>42</td></tr>
+<tr><td>15</td><td>-22</td><td>-64</td><td>0</td></tr>
+<tr><td>16</td><td>42</td><td>42</td><td>-42</td></tr>
+<tr><td>17</td><td>0</td><td>-22</td><td>-64</td></tr>
+<tr><td>18</td><td>0</td><td>-22</td><td>64</td></tr>
+<tr><td>19</td><td>-42</td><td>42</td><td>-42</td></tr>
+<tr><td>20</td><td>64</td><td>0</td><td>22</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="d24-vector-table"><a class="header" href="#d24-vector-table">D24 Vector Table</a></h3>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="assets/d24_vectors.svg" alt="D24 Vectors"><span class="img-wrapper"><img src="assets/d24_vectors.svg" alt="D24 Vectors"></span></label></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Face</th><th>X</th><th>Y</th><th>Z</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>20</td><td>-60</td><td>-20</td></tr>
+<tr><td>2</td><td>20</td><td>0</td><td>60</td></tr>
+<tr><td>3</td><td>-40</td><td>-40</td><td>40</td></tr>
+<tr><td>4</td><td>-60</td><td>0</td><td>20</td></tr>
+<tr><td>5</td><td>40</td><td>20</td><td>40</td></tr>
+<tr><td>6</td><td>-20</td><td>-60</td><td>-20</td></tr>
+<tr><td>7</td><td>20</td><td>60</td><td>20</td></tr>
+<tr><td>8</td><td>-40</td><td>20</td><td>-40</td></tr>
+<tr><td>9</td><td>-40</td><td>40</td><td>40</td></tr>
+<tr><td>10</td><td>-20</td><td>0</td><td>60</td></tr>
+<tr><td>11</td><td>-20</td><td>-60</td><td>20</td></tr>
+<tr><td>12</td><td>60</td><td>0</td><td>20</td></tr>
+<tr><td>13</td><td>-60</td><td>0</td><td>-20</td></tr>
+<tr><td>14</td><td>20</td><td>60</td><td>-20</td></tr>
+<tr><td>15</td><td>20</td><td>0</td><td>-60</td></tr>
+<tr><td>16</td><td>40</td><td>-20</td><td>-40</td></tr>
+<tr><td>17</td><td>-20</td><td>60</td><td>-20</td></tr>
+<tr><td>18</td><td>-40</td><td>-40</td><td>-40</td></tr>
+<tr><td>19</td><td>40</td><td>-20</td><td>40</td></tr>
+<tr><td>20</td><td>20</td><td>-60</td><td>20</td></tr>
+<tr><td>21</td><td>60</td><td>0</td><td>-20</td></tr>
+<tr><td>22</td><td>40</td><td>20</td><td>-40</td></tr>
+<tr><td>23</td><td>-20</td><td>0</td><td>-60</td></tr>
+<tr><td>24</td><td>-20</td><td>60</td><td>20</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="shell-transform-tables"><a class="header" href="#shell-transform-tables">Shell Transform Tables</a></h3>
+<p>Each transform maps the vector table index (1-based) to the final face value.
+D6 and D20 use identity (no transform). D10X multiplies the D10 transform by 10.</p>
+<h4 id="d4-transform-d24--d4"><a class="header" href="#d4-transform-d24--d4">D4 Transform (D24 → D4)</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Index</th><th>01</th><th>02</th><th>03</th><th>04</th><th>05</th><th>06</th><th>07</th><th>08</th></tr>
+</thead>
+<tbody>
+<tr><td>Face</td><td>3</td><td>1</td><td>4</td><td>1</td><td>4</td><td>4</td><td>1</td><td>4</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Index</th><th>09</th><th>10</th><th>11</th><th>12</th><th>13</th><th>14</th><th>15</th><th>16</th></tr>
+</thead>
+<tbody>
+<tr><td>Face</td><td>2</td><td>3</td><td>1</td><td>1</td><td>1</td><td>4</td><td>2</td><td>3</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Index</th><th>17</th><th>18</th><th>19</th><th>20</th><th>21</th><th>22</th><th>23</th><th>24</th></tr>
+</thead>
+<tbody>
+<tr><td>Face</td><td>3</td><td>2</td><td>2</td><td>2</td><td>4</td><td>1</td><td>3</td><td>2</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="d8-transform-d24--d8"><a class="header" href="#d8-transform-d24--d8">D8 Transform (D24 → D8)</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Index</th><th>01</th><th>02</th><th>03</th><th>04</th><th>05</th><th>06</th><th>07</th><th>08</th></tr>
+</thead>
+<tbody>
+<tr><td>Face</td><td>3</td><td>3</td><td>6</td><td>1</td><td>2</td><td>8</td><td>1</td><td>1</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Index</th><th>09</th><th>10</th><th>11</th><th>12</th><th>13</th><th>14</th><th>15</th><th>16</th></tr>
+</thead>
+<tbody>
+<tr><td>Face</td><td>4</td><td>7</td><td>5</td><td>5</td><td>4</td><td>4</td><td>2</td><td>5</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Index</th><th>17</th><th>18</th><th>19</th><th>20</th><th>21</th><th>22</th><th>23</th><th>24</th></tr>
+</thead>
+<tbody>
+<tr><td>Face</td><td>7</td><td>7</td><td>8</td><td>2</td><td>8</td><td>3</td><td>6</td><td>6</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="d10-transform-d20--d10"><a class="header" href="#d10-transform-d20--d10">D10 Transform (D20 → D10)</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Index</th><th>01</th><th>02</th><th>03</th><th>04</th><th>05</th><th>06</th><th>07</th><th>08</th><th>09</th><th>10</th></tr>
+</thead>
+<tbody>
+<tr><td>Face</td><td>8</td><td>2</td><td>6</td><td>1</td><td>4</td><td>3</td><td>9</td><td>0</td><td>7</td><td>5</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Index</th><th>11</th><th>12</th><th>13</th><th>14</th><th>15</th><th>16</th><th>17</th><th>18</th><th>19</th><th>20</th></tr>
+</thead>
+<tbody>
+<tr><td>Face</td><td>5</td><td>7</td><td>0</td><td>9</td><td>3</td><td>4</td><td>1</td><td>6</td><td>2</td><td>8</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="d10x-transform-d20--d10x"><a class="header" href="#d10x-transform-d20--d10x">D10X Transform (D20 → D10X)</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Index</th><th>01</th><th>02</th><th>03</th><th>04</th><th>05</th><th>06</th><th>07</th><th>08</th><th>09</th><th>10</th></tr>
+</thead>
+<tbody>
+<tr><td>Face</td><td>80</td><td>20</td><td>60</td><td>10</td><td>40</td><td>30</td><td>90</td><td>0</td><td>70</td><td>50</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Index</th><th>11</th><th>12</th><th>13</th><th>14</th><th>15</th><th>16</th><th>17</th><th>18</th><th>19</th><th>20</th></tr>
+</thead>
+<tbody>
+<tr><td>Face</td><td>50</td><td>70</td><td>0</td><td>90</td><td>30</td><td>40</td><td>10</td><td>60</td><td>20</td><td>80</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="d12-transform-d24--d12"><a class="header" href="#d12-transform-d24--d12">D12 Transform (D24 → D12)</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Index</th><th>01</th><th>02</th><th>03</th><th>04</th><th>05</th><th>06</th><th>07</th><th>08</th></tr>
+</thead>
+<tbody>
+<tr><td>Face</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Index</th><th>09</th><th>10</th><th>11</th><th>12</th><th>13</th><th>14</th><th>15</th><th>16</th></tr>
+</thead>
+<tbody>
+<tr><td>Face</td><td>9</td><td>10</td><td>11</td><td>12</td><td>1</td><td>2</td><td>3</td><td>4</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Index</th><th>17</th><th>18</th><th>19</th><th>20</th><th>21</th><th>22</th><th>23</th><th>24</th></tr>
+</thead>
+<tbody>
+<tr><td>Face</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td><td>11</td><td>12</td></tr>
+</tbody>
+</table>
+</div>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="scanning--connecting"><a class="header" href="#scanning--connecting">Scanning &amp; Connecting</a></h1>
+<h2 id="dicescanner"><a class="header" href="#dicescanner">DiceScanner</a></h2>
+<p><code>DiceScanner</code> discovers GoDice devices by scanning for BLE peripherals with
+the <code>GoDice_</code> name prefix. It wraps the <code>BleTransport</code> trait and provides
+configurable scan duration.</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+
+    for device in &amp;devices {
+        println!("Found: {device}");
+    }
+
+    Ok(())
+}</code></pre>
+<h2 id="dicemanager"><a class="header" href="#dicemanager">DiceManager</a></h2>
+<p><code>DiceManager</code> is the entry point for all BLE operations. It manages the BLE
+adapter and provides methods for scanning, connecting, and disconnecting.</p>
+<h3 id="multi-dice-connections"><a class="header" href="#multi-dice-connections">Multi-Dice Connections</a></h3>
+<p>You can connect to multiple dice concurrently. Each <code>Dice</code> handle is
+independent and has its own event channel:</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+use dice_rs::DiceEvent;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+
+    let mut dice_list = Vec::new();
+    for device in &amp;devices {
+        let dice = manager.connect(device).await?;
+        dice_list.push(dice);
+    }
+
+    // Each dice has its own event receiver
+    for dice in &amp;dice_list {
+        let mut receiver = dice.subscribe();
+        // Spawn a task per dice to listen for events
+        let name = dice.name().to_string();
+        tokio::spawn(async move {
+            while let Ok(event) = receiver.recv().await {
+                println!("{name}: {event}");
+            }
+        });
+    }
+
+    Ok(())
+}</code></pre>
+<h3 id="connection-retry"><a class="header" href="#connection-retry">Connection Retry</a></h3>
+<p><code>DiceManager::connect()</code> retries up to 3 times with 1-second backoff. This
+handles transient connection failures, such as a GoDice that is advertising
+but not yet accepting connections while charging from 0% battery.</p>
+<h3 id="reconnect"><a class="header" href="#reconnect">Reconnect</a></h3>
+<p><code>DiceManager::reconnect()</code> attempts to reconnect a disconnected dice with
+exponential backoff (500ms → 5s, up to 10 retries).</p>
+<h3 id="find-by-address"><a class="header" href="#find-by-address">Find by Address</a></h3>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let dice = manager.connect_by_address("AA:BB:CC").await?;
+    println!("Connected to {}", dice.name());
+    Ok(())
+}</code></pre>
+<p>The address parameter accepts a partial MAC address - the first device whose
+address contains the given substring is selected.</p>
+<h2 id="disconnect"><a class="header" href="#disconnect">Disconnect</a></h2>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    // Disconnect all connected GoDice devices
+    let count = manager.disconnect_all().await?;
+    println!("Disconnected {count} dice");
+    Ok(())
+}</code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="dice-events"><a class="header" href="#dice-events">Dice Events</a></h1>
+<h2 id="event-types"><a class="header" href="#event-types">Event Types</a></h2>
+<p><code>DiceEvent</code> is the high-level event enum emitted by a connected GoDice.
+Events are delivered via a <code>tokio::sync::broadcast</code> channel.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Variant</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>RollStart</code></td><td>Dice has started rolling</td></tr>
+<tr><td><code>Stable { face, acceleration }</code></td><td>Dice is stable and flat after a roll</td></tr>
+<tr><td><code>TiltStable { face, acceleration }</code></td><td>Stable but tilted</td></tr>
+<tr><td><code>FakeStable { face, acceleration }</code></td><td>Stable after a fake roll</td></tr>
+<tr><td><code>MoveStable { face, acceleration }</code></td><td>Stable after small movement</td></tr>
+<tr><td><code>Charging { state }</code></td><td>Charging status changed</td></tr>
+<tr><td><code>Tap</code></td><td>Single tap detected (must be enabled)</td></tr>
+<tr><td><code>DoubleTap</code></td><td>Double tap detected (must be enabled)</td></tr>
+<tr><td><code>Disconnected</code></td><td>BLE link lost or dice disconnected</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="subscribing-to-events"><a class="header" href="#subscribing-to-events">Subscribing to Events</a></h2>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::{DiceManager, DiceEvent};
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    let mut receiver = dice.subscribe();
+    while let Ok(event) = receiver.recv().await {
+        match event {
+            DiceEvent::Stable { face, acceleration } =&gt; {
+                println!("Stable on face {face} (accel: {acceleration:?})");
+            }
+            DiceEvent::RollStart =&gt; println!("Rolling..."),
+            DiceEvent::TiltStable { face, .. } =&gt; println!("Tilt stable: {face}"),
+            DiceEvent::FakeStable { face, .. } =&gt; println!("Fake stable: {face}"),
+            DiceEvent::MoveStable { face, .. } =&gt; println!("Move stable: {face}"),
+            DiceEvent::Charging { state } =&gt; println!("Charging: {state}"),
+            DiceEvent::Tap =&gt; println!("Tap!"),
+            DiceEvent::DoubleTap =&gt; println!("Double tap!"),
+            DiceEvent::Disconnected =&gt; {
+                println!("Disconnected");
+                break;
+            }
+        }
+    }
+
+    Ok(())
+}</code></pre>
+<h2 id="multiple-subscribers"><a class="header" href="#multiple-subscribers">Multiple Subscribers</a></h2>
+<p>The broadcast channel supports multiple subscribers. Each call to
+<code>subscribe()</code> returns an independent receiver:</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    let mut rx1 = dice.subscribe();
+    let mut rx2 = dice.subscribe();
+
+    // Both receivers get the same events
+    tokio::spawn(async move {
+        while let Ok(event) = rx1.recv().await {
+            println!("Subscriber 1: {event}");
+        }
+    });
+
+    while let Ok(event) = rx2.recv().await {
+        println!("Subscriber 2: {event}");
+    }
+
+    Ok(())
+}</code></pre>
+<h2 id="accelerometer-data"><a class="header" href="#accelerometer-data">Accelerometer Data</a></h2>
+<p><code>Stable</code>, <code>TiltStable</code>, <code>FakeStable</code>, and <code>MoveStable</code> events include an
+<code>Acceleration</code> struct with raw XYZ accelerometer data (three <code>i8</code> values).
+The face value is computed by finding the closest reference vector in the
+dice type’s vector table. See <a href="#ble-protocol">BLE Protocol</a> for the
+full vector tables.</p>
+<h2 id="tap-events"><a class="header" href="#tap-events">Tap Events</a></h2>
+<p>Tap and double tap notifications are disabled by default. Enable them
+explicitly:</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    dice.enable_tap().await?;
+    dice.enable_double_tap().await?;
+
+    let mut receiver = dice.subscribe();
+    while let Ok(event) = receiver.recv().await {
+        println!("{event}");
+    }
+
+    Ok(())
+}</code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="led-control"><a class="header" href="#led-control">LED Control</a></h1>
+<p>GoDice has two RGB LEDs. The <code>dice-rs</code> library provides methods for setting
+colors and pulse animations.</p>
+<h2 id="ledcolor"><a class="header" href="#ledcolor">LedColor</a></h2>
+<p><code>LedColor</code> is an RGB color with channels 0–255:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use dice_rs::LedColor;
+
+let red = LedColor::RED;
+let custom = LedColor::new(128, 64, 255);
+let from_hex = LedColor::from_hex(0xFF8800);
+let off = LedColor::OFF;
+<span class="boring">}</span></code></pre>
+<h2 id="set-leds"><a class="header" href="#set-leds">Set LEDs</a></h2>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::{DiceManager, LedColor};
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    // Set both LEDs to the same color
+    dice.set_led(LedColor::GREEN).await?;
+
+    // Set each LED independently
+    dice.set_leds(LedColor::RED, LedColor::BLUE).await?;
+
+    // Turn off
+    dice.turn_off_leds().await?;
+
+    Ok(())
+}</code></pre>
+<h2 id="debouncing"><a class="header" href="#debouncing">Debouncing</a></h2>
+<p><code>set_leds()</code> uses a debounce mechanism: rapid successive calls within a 30ms
+window are coalesced into a single BLE write. Only the most recent colors
+are written. This prevents BlueZ/DBus socket buffer overflow when an
+application fires many color changes in quick succession.</p>
+<p>For one-shot commands where coalescing is undesirable, use
+<code>set_leds_immediate()</code>:</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::{DiceManager, LedColor};
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    // Write immediately, bypassing debounce
+    dice.set_leds_immediate(LedColor::RED, LedColor::RED).await?;
+
+    Ok(())
+}</code></pre>
+<h2 id="pulse-leds"><a class="header" href="#pulse-leds">Pulse LEDs</a></h2>
+<p>Pulse animations blink the LEDs with configurable timing:</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::{DiceManager, LedColor};
+use dice_rs::model::led::PulseBlinkMode;
+use dice_rs::model::led::PulseLeds;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    // Pulse 3 times: 500ms on, 200ms off, green, solid color, both LEDs
+    dice.pulse_leds(3, 50, 20, LedColor::GREEN, PulseBlinkMode::Color, PulseLeds::Both).await?;
+
+    // Convenience: single pulse
+    dice.pulse_once(50, 20, LedColor::RED).await?;
+
+    Ok(())
+}</code></pre>
+<p><code>on_time</code> and <code>off_time</code> are in units of 10ms. Maximum value is 255 (2.55s).</p>
+<h3 id="pulseblinkmode"><a class="header" href="#pulseblinkmode">PulseBlinkMode</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mode</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Color</code></td><td>Solid color blink</td></tr>
+<tr><td><code>Rainbow</code></td><td>Rainbow color cycle</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="pulseleds"><a class="header" href="#pulseleds">PulseLeds</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Value</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Both</code></td><td>Both LEDs pulse</td></tr>
+<tr><td><code>Led1</code></td><td>Only LED 1 pulses</td></tr>
+<tr><td><code>Led2</code></td><td>Only LED 2 pulses</td></tr>
+</tbody>
+</table>
+</div>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="battery--status"><a class="header" href="#battery--status">Battery &amp; Status</a></h1>
+<h2 id="battery-level"><a class="header" href="#battery-level">Battery Level</a></h2>
+<p>Query the battery level (0–100 percent):</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    let battery = dice.get_battery_level().await?;
+    println!("Battery: {battery}");
+
+    Ok(())
+}</code></pre>
+<p>The request uses a <code>oneshot</code> channel with a 5-second timeout. If the dice
+does not respond, <code>DiceError::ResponseTimeout</code> is returned.</p>
+<h2 id="dice-color"><a class="header" href="#dice-color">Dice Color</a></h2>
+<p>Query the physical shell color:</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    let color = dice.get_color().await?;
+    println!("Color: {color}");
+
+    Ok(())
+}</code></pre>
+<h2 id="charging-state"><a class="header" href="#charging-state">Charging State</a></h2>
+<p>The charging state is updated automatically from notifications. Query the
+last known state without sending a BLE command:</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    let charging = dice.charging_state();
+    println!("Charging: {charging}");
+
+    Ok(())
+}</code></pre>
+<p>Charging state changes are also delivered as <code>DiceEvent::Charging</code> events.</p>
+<h2 id="rssi"><a class="header" href="#rssi">RSSI</a></h2>
+<p>Query the signal strength (if available):</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    if let Some(rssi) = dice.rssi().await? {
+        println!("RSSI: {rssi} dBm");
+    }
+
+    Ok(())
+}</code></pre>
+<p>RSSI availability depends on the Bluetooth adapter and BlueZ version.</p>
+<h2 id="system-status"><a class="header" href="#system-status">System Status</a></h2>
+<p>Get all status information in a single call:</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    let status = dice.system_status().await?;
+    println!("Battery: {}", status.battery_level);
+    println!("Color: {}", status.color);
+    println!("Connected: {}", status.connected);
+    if let Some(rssi) = status.rssi {
+        println!("RSSI: {rssi} dBm");
+    }
+
+    Ok(())
+}</code></pre>
+<p><code>system_status()</code> performs battery level and color queries concurrently for
+efficiency.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="calibration"><a class="header" href="#calibration">Calibration</a></h1>
+<h2 id="software-calibration"><a class="header" href="#software-calibration">Software Calibration</a></h2>
+<p>Software calibration computes an <code>AccelerationOffset</code> from the next <code>Stable</code>
+event. The offset is the difference between the measured acceleration and
+the expected ideal gravity vector for the current dice type. The offset is
+then subtracted from all subsequent accelerometer readings before face value
+interpretation.</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    println!("Place the dice on a flat surface, then press Enter...");
+    // In a real app, wait for user input
+
+    let offset = dice.calibrate_software().await?;
+    println!("Calibration offset: {offset:?}");
+
+    Ok(())
+}</code></pre>
+<p>After calibration, all subsequent <code>Stable</code>, <code>TiltStable</code>, <code>FakeStable</code>, and
+<code>MoveStable</code> events use the corrected acceleration data for face value
+determination.</p>
+<h2 id="clear-calibration"><a class="header" href="#clear-calibration">Clear Calibration</a></h2>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    dice.calibrate_software().await?;
+    // ... later ...
+    dice.clear_software_calibration()?;
+
+    Ok(())
+}</code></pre>
+<h2 id="hardware-calibration"><a class="header" href="#hardware-calibration">Hardware Calibration</a></h2>
+<p>Hardware calibration sends a BLE command (opcode <code>0x13</code>) to the dice. The
+exact byte encoding is unconfirmed - this method is tentative and may not
+work with all firmware versions.</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    dice.calibrate().await?;
+    println!("Hardware calibration complete");
+
+    Ok(())
+}</code></pre>
+<p>If the dice reports a calibration failure, <code>DiceError::CalibrationFailed</code> is
+returned. If the dice does not respond within 5 seconds,
+<code>DiceError::ResponseTimeout</code> is returned.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="cli-tool"><a class="header" href="#cli-tool">CLI Tool</a></h1>
+<p>The <code>dice-rs-cli</code> crate provides a command-line tool (<code>dice-rs</code>) for
+interacting with GoDice devices without writing code.</p>
+<h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
+<pre><code class="language-sh">cargo install dice-rs-cli
+</code></pre>
+<h2 id="commands"><a class="header" href="#commands">Commands</a></h2>
+<h3 id="scan"><a class="header" href="#scan">Scan</a></h3>
+<p>Scan for nearby GoDice devices:</p>
+<pre><code class="language-sh">dice-rs scan 5
+</code></pre>
+<p>The argument is the scan duration in seconds.</p>
+<h3 id="listen"><a class="header" href="#listen">Listen</a></h3>
+<p>Connect to a dice and print events:</p>
+<pre><code class="language-sh">dice-rs listen AA:BB:CC:DD:EE:FF d6
+</code></pre>
+<p>The first argument is the MAC address (or a partial prefix). The second is
+the dice type (<code>d6</code>, <code>d20</code>, <code>d10</code>, <code>d10x</code>, <code>d4</code>, <code>d8</code>, <code>d12</code>).</p>
+<h3 id="battery"><a class="header" href="#battery">Battery</a></h3>
+<p>Query battery level:</p>
+<pre><code class="language-sh">dice-rs battery AA:BB:CC:DD:EE:FF
+</code></pre>
+<h3 id="led-control-1"><a class="header" href="#led-control-1">LED Control</a></h3>
+<p>Set LED colors:</p>
+<pre><code class="language-sh"># Set both LEDs to red
+dice-rs led AA:BB:CC:DD:EE:FF set red
+
+# Set each LED independently
+dice-rs led AA:BB:CC:DD:EE:FF set-dual red blue
+
+# Pulse animation
+dice-rs led AA:BB:CC:DD:EE:FF pulse green
+
+# Turn off
+dice-rs led AA:BB:CC:DD:EE:FF off
+</code></pre>
+<h3 id="tap-interrupts"><a class="header" href="#tap-interrupts">Tap Interrupts</a></h3>
+<p>Enable or disable tap notifications:</p>
+<pre><code class="language-sh">dice-rs tap AA:BB:CC:DD:EE:FF true
+dice-rs double-tap AA:BB:CC:DD:EE:FF true
+</code></pre>
+<h3 id="calibration-1"><a class="header" href="#calibration-1">Calibration</a></h3>
+<pre><code class="language-sh">dice-rs calibrate AA:BB:CC:DD:EE:FF
+</code></pre>
+<h3 id="status"><a class="header" href="#status">Status</a></h3>
+<p>Get comprehensive status:</p>
+<pre><code class="language-sh">dice-rs status AA:BB:CC:DD:EE:FF
+</code></pre>
+<h3 id="color"><a class="header" href="#color">Color</a></h3>
+<p>Query the dice shell color:</p>
+<pre><code class="language-sh">dice-rs color AA:BB:CC:DD:EE:FF
+</code></pre>
+<h3 id="charging"><a class="header" href="#charging">Charging</a></h3>
+<p>Query charging state:</p>
+<pre><code class="language-sh">dice-rs charging AA:BB:CC:DD:EE:FF
+</code></pre>
+<h3 id="disconnect-1"><a class="header" href="#disconnect-1">Disconnect</a></h3>
+<pre><code class="language-sh"># Disconnect a specific dice
+dice-rs disconnect AA:BB:CC:DD:EE:FF
+
+# Disconnect all connected dice
+dice-rs disconnect-all
+</code></pre>
+<h3 id="interactive-mode"><a class="header" href="#interactive-mode">Interactive Mode</a></h3>
+<p>Start a REPL for interactive exploration:</p>
+<pre><code class="language-sh">dice-rs interactive
+</code></pre>
+<p>Available commands in interactive mode: <code>scan</code>, <code>connect &lt;address&gt;</code>,
+<code>disconnect</code>, <code>battery</code>, <code>color</code>, <code>charging</code>, <code>led &lt;color&gt;</code>, <code>status</code>,
+<code>calibrate</code>, <code>quit</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="controller"><a class="header" href="#controller">Controller</a></h1>
+<p>The <code>dice-rs-controller</code> crate is a GTK 4 desktop application for managing
+GoDice devices with a graphical interface and 3D dice rendering.</p>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="assets/dice-rs-controller.png" alt="dice-rs-controller"><span class="img-wrapper"><img src="assets/dice-rs-controller.png" alt="dice-rs-controller"></span></label></p>
+<h2 id="features"><a class="header" href="#features">Features</a></h2>
+<ul>
+<li><strong>Auto-scan</strong> on startup with manual rescan button</li>
+<li><strong>Dice list</strong> showing all connected dice with face value, battery, and color</li>
+<li><strong>3D dice rendering</strong> using OpenGL (<code>glow</code> + <code>glam</code>) with real-time
+orientation from accelerometer data</li>
+<li><strong>LED controls</strong> - color pickers, set/pulse/off buttons</li>
+<li><strong>Tap controls</strong> - enable/disable tap and double tap notifications</li>
+<li><strong>Battery indicator</strong> with visual gauge</li>
+<li><strong>Roll history</strong> showing recent face values</li>
+<li><strong>Tap indicator</strong> flashing on tap events</li>
+<li><strong>Reconnect</strong> support for dropped connections</li>
+</ul>
+<h2 id="building"><a class="header" href="#building">Building</a></h2>
+<p>The controller requires GTK 4 development libraries:</p>
+<pre><code class="language-sh"># Ubuntu/Debian
+sudo apt install libgtk-4-dev
+
+# Build
+cargo build -p dice-rs-controller
+</code></pre>
+<h2 id="running"><a class="header" href="#running">Running</a></h2>
+<pre><code class="language-sh">cargo run -p dice-rs-controller
+</code></pre>
+<p>The application window appears with a scan button and an empty dice list.
+Connected dice appear as rows with interactive controls.</p>
+<h2 id="architecture-1"><a class="header" href="#architecture-1">Architecture</a></h2>
+<pre class="mermaid">flowchart TB
+    app["Application
+    (gtk4::Application)"]
+    window["MainWindow
+    (scan, dice list)"]
+    row["DiceRow
+    (per-dice UI)"]
+    controller["EventController
+    (async → GTK bridge)"]
+    dice3d["Dice3D
+    (OpenGL renderer)"]
+    led["LedControls
+    (color pickers)"]
+    tap["TapControls
+    (tap switches)"]
+    battery["BatteryIndicator"]
+    history["RollHistory"]
+    face["FaceDisplay"]
+
+    app --&gt; window
+    window --&gt; row
+    row --&gt; controller
+    row --&gt; dice3d
+    row --&gt; led
+    row --&gt; tap
+    row --&gt; battery
+    row --&gt; history
+    row --&gt; face
+</pre>
+
+<h3 id="eventcontroller"><a class="header" href="#eventcontroller">EventController</a></h3>
+<p>The <code>EventController</code> bridges async dice events into the GTK main loop. It
+runs a background tokio task that receives <code>DiceEvent</code>s and sends UI updates
+through an <code>mpsc</code> channel to the GTK main thread. This avoids blocking the
+UI while waiting for BLE events.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="websocket-server"><a class="header" href="#websocket-server">WebSocket Server</a></h1>
+<p>The <code>dice-rs-ws</code> crate provides a WebSocket and REST server for exposing
+GoDice events over a network API.</p>
+<h2 id="running-1"><a class="header" href="#running-1">Running</a></h2>
+<pre><code class="language-sh">cargo run -p dice-rs-ws
+</code></pre>
+<p>The server starts on <code>0.0.0.0:3000</code>.</p>
+<h2 id="rest-api"><a class="header" href="#rest-api">REST API</a></h2>
+<h3 id="scan-1"><a class="header" href="#scan-1">Scan</a></h3>
+<pre><code>POST /api/scan
+</code></pre>
+<p>Returns a JSON array of discovered devices:</p>
+<pre><code class="language-json">[
+  {
+    "address": "AA:BB:CC:DD:EE:FF",
+    "name": "GoDice_AAABBCC_O_v04",
+    "rssi": -45
+  }
+]
+</code></pre>
+<h3 id="connect"><a class="header" href="#connect">Connect</a></h3>
+<pre><code>POST /api/connect
+Content-Type: application/json
+
+{
+  "address": "AA:BB:CC:DD:EE:FF",
+  "dice_type": "d6"
+}
+</code></pre>
+<p>Returns a session ID:</p>
+<pre><code class="language-json">{
+  "session_id": "abc123"
+}
+</code></pre>
+<p><code>dice_type</code> is optional. Accepts: <code>d6</code>, <code>d20</code>, <code>d10</code>, <code>d10x</code>, <code>d4</code>, <code>d8</code>, <code>d12</code>.</p>
+<h3 id="disconnect-2"><a class="header" href="#disconnect-2">Disconnect</a></h3>
+<pre><code>POST /api/disconnect
+Content-Type: application/json
+
+{
+  "session_id": "abc123"
+}
+</code></pre>
+<h3 id="led-control-2"><a class="header" href="#led-control-2">LED Control</a></h3>
+<pre><code>POST /api/led
+Content-Type: application/json
+
+{
+  "session_id": "abc123",
+  "led1": "FF0000",
+  "led2": "00FF00"
+}
+</code></pre>
+<h3 id="battery-1"><a class="header" href="#battery-1">Battery</a></h3>
+<pre><code>GET /api/battery/:session_id
+</code></pre>
+<h3 id="status-1"><a class="header" href="#status-1">Status</a></h3>
+<pre><code>GET /api/status/:session_id
+</code></pre>
+<h3 id="calibration-2"><a class="header" href="#calibration-2">Calibration</a></h3>
+<pre><code>POST /api/calibrate
+Content-Type: application/json
+
+{
+  "session_id": "abc123"
+}
+</code></pre>
+<h2 id="websocket-api"><a class="header" href="#websocket-api">WebSocket API</a></h2>
+<p>Connect to <code>ws://localhost:3000/ws</code> to receive a real-time stream of
+<code>DiceEvent</code>s as JSON:</p>
+<pre><code class="language-json">{
+  "kind": "Stable",
+  "face": 6,
+  "acceleration": { "x": 64, "y": 0, "z": 0 }
+}
+</code></pre>
+<pre><code class="language-json">{
+  "kind": "RollStart"
+}
+</code></pre>
+<pre><code class="language-json">{
+  "kind": "Disconnected"
+}
+</code></pre>
+<h2 id="deployment"><a class="header" href="#deployment">Deployment</a></h2>
+<p>The server uses <code>axum</code> with tokio. For production deployment, consider
+running behind a reverse proxy (e.g. nginx) with TLS termination.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="platform-notes"><a class="header" href="#platform-notes">Platform Notes</a></h1>
+<h2 id="linux-bluez"><a class="header" href="#linux-bluez">Linux (BlueZ)</a></h2>
+<p><code>dice-rs</code> uses <a href="https://github.com/deviceplug/btleplug">btleplug</a> which
+communicates with BlueZ via DBus on Linux. This is the primary and
+currently only supported platform.</p>
+<h3 id="requirements"><a class="header" href="#requirements">Requirements</a></h3>
+<ul>
+<li>BlueZ 5.x</li>
+<li><code>bluetoothd</code> daemon running</li>
+<li>DBus session bus access</li>
+<li>A Bluetooth adapter with BLE support</li>
+</ul>
+<h3 id="setup"><a class="header" href="#setup">Setup</a></h3>
+<pre><code class="language-sh"># Check BlueZ is running
+systemctl status bluetooth
+
+# Start if needed
+sudo systemctl start bluetooth
+
+# Ensure the user has Bluetooth access
+sudo usermod -aG bluetooth $USER
+# Log out and back in for group changes to take effect
+</code></pre>
+<h3 id="permissions"><a class="header" href="#permissions">Permissions</a></h3>
+<p>The user running <code>dice-rs</code> needs DBus access to the Bluetooth adapter. In
+most desktop environments this is granted automatically. On headless
+servers or containers, you may need to:</p>
+<ol>
+<li>Start a DBus session: <code>export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus</code></li>
+<li>Ensure <code>bluetoothd</code> is running with <code>--experimental</code> flag if using
+extended BLE features.</li>
+</ol>
+<h3 id="troubleshooting"><a class="header" href="#troubleshooting">Troubleshooting</a></h3>
+<p><strong>“No Bluetooth adapter found”</strong></p>
+<p>Ensure <code>bluetoothd</code> is running and an adapter is present:</p>
+<pre><code class="language-sh">hciconfig -a
+</code></pre>
+<p><strong>“Device not found during scan”</strong></p>
+<ul>
+<li>Make sure the GoDice is awake (tap or roll to wake)</li>
+<li>Check that the dice is not already connected to another host</li>
+<li>Try disconnecting stale connections: <code>dice-rs disconnect-all</code></li>
+<li>BlueZ does not deliver RSSI advertisement updates for connected devices.
+Disconnect before scanning.</li>
+</ul>
+<p><strong>“Connection failed after 3 retries”</strong></p>
+<ul>
+<li>The dice may be charging from 0% battery and not yet accepting connections.
+Wait a few minutes and retry.</li>
+<li>Move closer to the Bluetooth adapter.</li>
+<li>Check for interference from other BLE devices.</li>
+</ul>
+<p><strong>“BlueZ/DBus socket buffer overflow”</strong></p>
+<p>This can happen when sending many LED commands in rapid succession. The
+<code>set_leds()</code> method includes a 30ms debounce to prevent this. If using
+<code>set_leds_immediate()</code>, throttle your calls.</p>
+<h2 id="macos"><a class="header" href="#macos">macOS</a></h2>
+<p>Not supported in the initial release. The <code>BleTransport</code> trait allows a
+future CoreBluetooth backend.</p>
+<h2 id="windows"><a class="header" href="#windows">Windows</a></h2>
+<p>Not supported in the initial release. The <code>BleTransport</code> trait allows a
+future WinRT backend.</p>
 
                     </main>
 

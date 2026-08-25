@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-052631b6.js";
+            window.path_to_searchindex_js = "searchindex-9eac52b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-3173f8ce.js"></script>
+        <script src="toc-65f3e578.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -178,12 +178,72 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="calibration"><a class="header" href="#calibration">Calibration</a></h1>
+<h2 id="software-calibration"><a class="header" href="#software-calibration">Software Calibration</a></h2>
+<p>Software calibration computes an <code>AccelerationOffset</code> from the next <code>Stable</code>
+event. The offset is the difference between the measured acceleration and
+the expected ideal gravity vector for the current dice type. The offset is
+then subtracted from all subsequent accelerometer readings before face value
+interpretation.</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    println!("Place the dice on a flat surface, then press Enter...");
+    // In a real app, wait for user input
+
+    let offset = dice.calibrate_software().await?;
+    println!("Calibration offset: {offset:?}");
+
+    Ok(())
+}</code></pre>
+<p>After calibration, all subsequent <code>Stable</code>, <code>TiltStable</code>, <code>FakeStable</code>, and
+<code>MoveStable</code> events use the corrected acceleration data for face value
+determination.</p>
+<h2 id="clear-calibration"><a class="header" href="#clear-calibration">Clear Calibration</a></h2>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    dice.calibrate_software().await?;
+    // ... later ...
+    dice.clear_software_calibration()?;
+
+    Ok(())
+}</code></pre>
+<h2 id="hardware-calibration"><a class="header" href="#hardware-calibration">Hardware Calibration</a></h2>
+<p>Hardware calibration sends a BLE command (opcode <code>0x13</code>) to the dice. The
+exact byte encoding is unconfirmed - this method is tentative and may not
+work with all firmware versions.</p>
+<pre class="playground"><code class="language-rust no_run">use dice_rs::DiceManager;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = DiceManager::new().await?;
+    let devices = manager.scan().await?;
+    let dice = manager.connect(&amp;devices[0]).await?;
+
+    dice.calibrate().await?;
+    println!("Hardware calibration complete");
+
+    Ok(())
+}</code></pre>
+<p>If the dice reports a calibration failure, <code>DiceError::CalibrationFailed</code> is
+returned. If the dice does not respond within 5 seconds,
+<code>DiceError::ResponseTimeout</code> is returned.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="battery.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="status.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -197,7 +257,7 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="battery.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="status.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 

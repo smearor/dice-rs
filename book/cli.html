@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-052631b6.js";
+            window.path_to_searchindex_js = "searchindex-9eac52b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-3173f8ce.js"></script>
+        <script src="toc-65f3e578.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -178,6 +178,75 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="cli-tool"><a class="header" href="#cli-tool">CLI Tool</a></h1>
+<p>The <code>dice-rs-cli</code> crate provides a command-line tool (<code>dice-rs</code>) for
+interacting with GoDice devices without writing code.</p>
+<h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
+<pre><code class="language-sh">cargo install dice-rs-cli
+</code></pre>
+<h2 id="commands"><a class="header" href="#commands">Commands</a></h2>
+<h3 id="scan"><a class="header" href="#scan">Scan</a></h3>
+<p>Scan for nearby GoDice devices:</p>
+<pre><code class="language-sh">dice-rs scan 5
+</code></pre>
+<p>The argument is the scan duration in seconds.</p>
+<h3 id="listen"><a class="header" href="#listen">Listen</a></h3>
+<p>Connect to a dice and print events:</p>
+<pre><code class="language-sh">dice-rs listen AA:BB:CC:DD:EE:FF d6
+</code></pre>
+<p>The first argument is the MAC address (or a partial prefix). The second is
+the dice type (<code>d6</code>, <code>d20</code>, <code>d10</code>, <code>d10x</code>, <code>d4</code>, <code>d8</code>, <code>d12</code>).</p>
+<h3 id="battery"><a class="header" href="#battery">Battery</a></h3>
+<p>Query battery level:</p>
+<pre><code class="language-sh">dice-rs battery AA:BB:CC:DD:EE:FF
+</code></pre>
+<h3 id="led-control"><a class="header" href="#led-control">LED Control</a></h3>
+<p>Set LED colors:</p>
+<pre><code class="language-sh"># Set both LEDs to red
+dice-rs led AA:BB:CC:DD:EE:FF set red
+
+# Set each LED independently
+dice-rs led AA:BB:CC:DD:EE:FF set-dual red blue
+
+# Pulse animation
+dice-rs led AA:BB:CC:DD:EE:FF pulse green
+
+# Turn off
+dice-rs led AA:BB:CC:DD:EE:FF off
+</code></pre>
+<h3 id="tap-interrupts"><a class="header" href="#tap-interrupts">Tap Interrupts</a></h3>
+<p>Enable or disable tap notifications:</p>
+<pre><code class="language-sh">dice-rs tap AA:BB:CC:DD:EE:FF true
+dice-rs double-tap AA:BB:CC:DD:EE:FF true
+</code></pre>
+<h3 id="calibration"><a class="header" href="#calibration">Calibration</a></h3>
+<pre><code class="language-sh">dice-rs calibrate AA:BB:CC:DD:EE:FF
+</code></pre>
+<h3 id="status"><a class="header" href="#status">Status</a></h3>
+<p>Get comprehensive status:</p>
+<pre><code class="language-sh">dice-rs status AA:BB:CC:DD:EE:FF
+</code></pre>
+<h3 id="color"><a class="header" href="#color">Color</a></h3>
+<p>Query the dice shell color:</p>
+<pre><code class="language-sh">dice-rs color AA:BB:CC:DD:EE:FF
+</code></pre>
+<h3 id="charging"><a class="header" href="#charging">Charging</a></h3>
+<p>Query charging state:</p>
+<pre><code class="language-sh">dice-rs charging AA:BB:CC:DD:EE:FF
+</code></pre>
+<h3 id="disconnect"><a class="header" href="#disconnect">Disconnect</a></h3>
+<pre><code class="language-sh"># Disconnect a specific dice
+dice-rs disconnect AA:BB:CC:DD:EE:FF
+
+# Disconnect all connected dice
+dice-rs disconnect-all
+</code></pre>
+<h3 id="interactive-mode"><a class="header" href="#interactive-mode">Interactive Mode</a></h3>
+<p>Start a REPL for interactive exploration:</p>
+<pre><code class="language-sh">dice-rs interactive
+</code></pre>
+<p>Available commands in interactive mode: <code>scan</code>, <code>connect &lt;address&gt;</code>,
+<code>disconnect</code>, <code>battery</code>, <code>color</code>, <code>charging</code>, <code>led &lt;color&gt;</code>, <code>status</code>,
+<code>calibrate</code>, <code>quit</code>.</p>
 
                     </main>
 
