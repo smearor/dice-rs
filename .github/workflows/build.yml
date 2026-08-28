@@ -61,8 +61,8 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.11
       - name: Run cargo clippy
         run: cargo clippy --all-targets --target ${{ matrix.target }}
-  build:
-    name: Release Build
+  build_linux:
+    name: Release Build (Linux)
     needs: [ lint ]
     if: always() && (!contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled'))
     strategy:
@@ -87,6 +87,28 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.11
       - name: Build (Release Mode)
         run: cargo build --release --verbose
+  build_cross_platform:
+    name: Cross-Platform Build
+    needs: [ lint ]
+    if: always() && (!contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled'))
+    strategy:
+      matrix:
+        os: [ windows-latest, macos-latest ]
+        toolchain: [ stable ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: VCS Checkout
+        uses: actions/checkout@v7
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.11
+      - name: Build (Release Mode)
+        run: cargo build --release --verbose -p dice-rs -p dice-rs-cli -p dice-rs-ws
   test:
     name: Tests
     needs: [ lint ]
@@ -114,3 +136,25 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.11
       - name: Test (Release Mode)
         run: cargo test --release --verbose --target ${{ matrix.target }}
+  test_cross_platform:
+    name: Cross-Platform Tests
+    needs: [ lint ]
+    if: always() && (!contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled'))
+    strategy:
+      matrix:
+        os: [ windows-latest, macos-latest ]
+        toolchain: [ stable ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: VCS Checkout
+        uses: actions/checkout@v7
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.11
+      - name: Test (Release Mode)
+        run: cargo test --release --verbose -p dice-rs -p dice-rs-cli -p dice-rs-ws

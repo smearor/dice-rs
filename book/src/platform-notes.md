@@ -70,10 +70,76 @@ This can happen when sending many LED commands in rapid succession. The
 
 ## macOS
 
-Not supported in the initial release. The `BleTransport` trait allows a
-future CoreBluetooth backend.
+`dice-rs` supports macOS via btleplug's CoreBluetooth backend. The library
+(`dice-rs`), CLI (`dice-rs-cli`), and WebSocket server (`dice-rs-ws`) are
+fully supported. The GTK4 controller (`dice-rs-controller`) is Linux-only.
+
+### Requirements
+
+- macOS 12 (Monterey) or later
+- A Bluetooth adapter with BLE support (built-in on all modern Macs)
+- Xcode Command Line Tools: `xcode-select --install`
+
+### Permissions
+
+macOS requires Bluetooth permission for the process. When running the CLI or
+WebSocket server for the first time, the OS will prompt for Bluetooth access.
+Grant the permission to your terminal or application.
+
+### Troubleshooting
+
+**"No Bluetooth adapter found"**
+
+Ensure Bluetooth is enabled in System Settings > Bluetooth.
+
+**"Device not found during scan"**
+
+- Make sure the GoDice is awake (tap or roll to wake)
+- Check that the dice is not already connected to another host
+- CoreBluetooth may cache device state — try toggling Bluetooth off/on
 
 ## Windows
 
-Not supported in the initial release. The `BleTransport` trait allows a
-future WinRT backend.
+`dice-rs` supports Windows via btleplug's WinRT backend. The library
+(`dice-rs`), CLI (`dice-rs-cli`), and WebSocket server (`dice-rs-ws`) are
+fully supported. The GTK4 controller (`dice-rs-controller`) is Linux-only.
+
+### Requirements
+
+- Windows 10 (build 19041) or later
+- A Bluetooth adapter with BLE support
+- [Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+
+### Permissions
+
+Windows requires Bluetooth access for the process. No explicit permission
+prompt is shown, but the Bluetooth radio must be enabled in Settings >
+Bluetooth & devices.
+
+### Troubleshooting
+
+**"No Bluetooth adapter found"**
+
+Ensure Bluetooth is enabled in Settings > Bluetooth & devices and that a
+compatible adapter is present.
+
+**"Device not found during scan"**
+
+- Make sure the GoDice is awake (tap or roll to wake)
+- Check that the dice is not already connected to another host
+- WinRT may not deliver RSSI updates for all devices — the library falls
+  back to cached properties when `read_rssi()` fails
+
+**"Connection failed after 3 retries"**
+
+- The dice may be charging from 0% battery and not yet accepting connections.
+  Wait a few minutes and retry.
+- Move closer to the Bluetooth adapter.
+- Check for interference from other BLE devices.
+
+## Controller (Linux-only)
+
+The `dice-rs-controller` GTK4 desktop application is Linux-only. It depends
+on GTK4, OpenGL (`glow`), and BlueZ-specific behaviors. There are no plans
+to port it to Windows or macOS. For cross-platform UI access, use the
+`dice-rs-ws` WebSocket server with a web-based or native client.

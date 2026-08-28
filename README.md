@@ -75,9 +75,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Compatibility
 
+### Library, CLI, and WebSocket Server
+
 - **Linux** (BlueZ 5.x with DBus) - primary target
-- macOS and Windows are not supported in the initial release. The
-  `BleTransport` trait allows future platform backends.
+- **Windows** (WinRT) - supported via btleplug
+- **macOS** (CoreBluetooth) - supported via btleplug
+
+### Controller (`dice-rs-controller`)
+
+- **Linux** only - requires GTK4 and OpenGL, not portable to Windows/macOS
 
 ### Linux Setup
 
