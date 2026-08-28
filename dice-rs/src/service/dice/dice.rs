@@ -262,6 +262,12 @@ impl Dice {
         self.inner.dice_type.store(dice_type.into(), Ordering::Relaxed);
     }
 
+    /// Get the current dice type for face value interpretation.
+    /// Synchronous — uses `AtomicU8::load` instead of an async lock.
+    pub fn dice_type(&self) -> DiceType {
+        DiceType::try_from(self.inner.dice_type.load(Ordering::Relaxed)).unwrap_or(DiceType::D6)
+    }
+
     /// Check if the dice is currently connected.
     pub async fn is_connected(&self) -> Result<bool> {
         self.inner.peripheral.is_connected().await

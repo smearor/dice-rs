@@ -44,7 +44,7 @@ impl MainWindow {
 
         let dice_list = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
-            .spacing(6)
+            .spacing(12)
             .css_classes(vec!["dice-list"])
             .build();
 
@@ -102,7 +102,7 @@ impl MainWindow {
         let window = gtk4::ApplicationWindow::builder()
             .application(app)
             .title("dice-rs Controller")
-            .default_width(800)
+            .default_width(1000)
             .default_height(1000)
             .child(&scrolled)
             .build();

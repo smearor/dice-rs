@@ -13,6 +13,7 @@ use tracing::debug;
 use crate::app_settings::AppSettingsData;
 use crate::battery_indicator::BatteryIndicator;
 use crate::dice_3d::Dice3D;
+use crate::dice_type_icon::create_icon;
 use crate::dice_style::DiceColorStyle;
 use crate::event_controller::EventController;
 use crate::face_display::FaceDisplay;
@@ -75,12 +76,57 @@ impl DiceRow {
         // Right side: face value, stability, battery, history, LED controls.
         let info_box = gtk4::Box::builder().orientation(gtk4::Orientation::Vertical).spacing(8).hexpand(true).build();
 
-        let dice_type_model = gtk4::StringList::new(&["D6", "D20", "D10", "D10X", "D4", "D8", "D12"]);
+        let dice_types = DiceType::sorted_by_count();
+        let dice_type_labels: Vec<String> = dice_types.iter().map(|t| t.to_string()).collect();
+        let dice_type_model = gtk4::StringList::new(&dice_type_labels.iter().map(|s| s.as_str()).collect::<Vec<_>>());
         let dice_type_selector = gtk4::DropDown::builder()
             .model(&dice_type_model)
             .tooltip_text("Dice shell type")
             .css_classes(vec!["dice-type-selector"])
             .build();
+
+        // Custom factory: render isometric dice icons in dropdown items.
+        let factory = gtk4::SignalListItemFactory::new();
+        let types_for_setup = dice_types.clone();
+        factory.connect_setup(move |_item, list_item| {
+            let overlay = gtk4::Overlay::builder()
+                .css_classes(vec!["dice-type-item"])
+                .build();
+            list_item.set_child(Some(&overlay));
+        });
+        factory.connect_bind(move |_item, list_item| {
+            let position = list_item.position() as usize;
+            let dice_type = types_for_setup[position % types_for_setup.len()];
+            let icon = create_icon(dice_type);
+            icon.set_hexpand(true);
+            icon.set_vexpand(true);
+            icon.set_halign(gtk4::Align::Center);
+            icon.set_valign(gtk4::Align::Center);
+            let label = gtk4::Label::builder()
+                .label(dice_type.to_string())
+                .css_classes(vec!["dice-type-label"])
+                .halign(gtk4::Align::Center)
+                .valign(gtk4::Align::Center)
+                .build();
+            let overlay = list_item
+                .child()
+                .and_downcast::<gtk4::Overlay>()
+                .expect("child is Overlay");
+            overlay.set_child(Some(&icon));
+            overlay.add_overlay(&label);
+        });
+        dice_type_selector.set_factory(Some(&factory));
+
+        // Square size matching face display.
+        dice_type_selector.set_size_request(80, 80);
+        dice_type_selector.set_margin_top(8);
+        dice_type_selector.set_margin_end(8);
+
+        // Select the current dice type.
+        let current_type = dice.dice_type();
+        if let Some(pos) = dice_types.iter().position(|t| *t == current_type) {
+            dice_type_selector.set_selected(pos as u32);
+        }
 
         let dice_for_type = dice.clone();
         let dice_3d_for_type = dice_3d.clone();
@@ -148,8 +194,6 @@ impl DiceRow {
         header.append(tap_widget);
 
         dice_type_selector.set_valign(gtk4::Align::Center);
-        dice_type_selector.set_halign(gtk4::Align::End);
-        dice_type_selector.set_hexpand(true);
         header.append(&dice_type_selector);
 
         info_box.append(&header);
@@ -185,8 +229,8 @@ impl DiceRow {
             .spacing(12)
             .margin_start(12)
             .margin_end(12)
-            .margin_top(12)
-            .margin_bottom(12)
+            .margin_top(0)
+            .margin_bottom(0)
             .css_classes(vec!["dice-row"])
             .build();
         container.append(&dice_3d_frame);

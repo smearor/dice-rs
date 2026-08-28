@@ -19,6 +19,7 @@ assert_cmd = "2"
 async-trait = "0.1"
 bytemuck = { version = "1", features = ["derive"] }
 btleplug = "0.12"
+cairo-rs = "0.22"
 clap = { version = "4", features = ["derive"] }
 futures = "0.3"
 gl_loader = "0.1"

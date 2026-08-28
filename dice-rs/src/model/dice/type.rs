@@ -119,6 +119,18 @@ impl DiceType {
             Self::D12 => Some(&D12_TRANSFORM),
         }
     }
+
+    pub fn sorted_by_count() -> Vec<DiceType> {
+        vec![
+            DiceType::D4,
+            DiceType::D6,
+            DiceType::D8,
+            DiceType::D10,
+            DiceType::D10X,
+            DiceType::D12,
+            DiceType::D20
+        ]
+    }
 }
 
 #[cfg(test)]

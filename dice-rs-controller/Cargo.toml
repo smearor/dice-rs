@@ -14,6 +14,7 @@ path = "src/main.rs"
 
 [dependencies]
 bytemuck = { workspace = true }
+cairo-rs = { workspace = true }
 dice-rs = { path = "../dice-rs" }
 gl_loader = { workspace = true }
 glam = { workspace = true }

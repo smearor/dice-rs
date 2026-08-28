@@ -8,6 +8,7 @@ mod dice_3d;
 mod dice_style;
 mod dice_renderer;
 mod dice_row;
+mod dice_type_icon;
 mod event_controller;
 mod face_display;
 mod info_dialog;
