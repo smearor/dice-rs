@@ -87,18 +87,8 @@ impl LedControls {
 
     /// Update color picker buttons from saved LED colors.
     pub fn set_colors(&self, color1: LedColor, color2: LedColor) {
-        let rgba1 = gtk4::gdk::RGBA::new(
-            color1.r as f32 / 255.0,
-            color1.g as f32 / 255.0,
-            color1.b as f32 / 255.0,
-            1.0,
-        );
-        let rgba2 = gtk4::gdk::RGBA::new(
-            color2.r as f32 / 255.0,
-            color2.g as f32 / 255.0,
-            color2.b as f32 / 255.0,
-            1.0,
-        );
+        let rgba1 = gtk4::gdk::RGBA::new(color1.r as f32 / 255.0, color1.g as f32 / 255.0, color1.b as f32 / 255.0, 1.0);
+        let rgba2 = gtk4::gdk::RGBA::new(color2.r as f32 / 255.0, color2.g as f32 / 255.0, color2.b as f32 / 255.0, 1.0);
         self.color_button1.set_rgba(&rgba1);
         self.color_button2.set_rgba(&rgba2);
     }

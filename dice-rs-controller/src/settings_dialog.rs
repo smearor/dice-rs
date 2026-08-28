@@ -83,21 +83,37 @@ impl SettingsDialog {
         });
 
         let e = emit_settings.clone();
-        show_dice_3d_switch.connect_notify_local(Some("active"), move |_, _| { e(); });
+        show_dice_3d_switch.connect_notify_local(Some("active"), move |_, _| {
+            e();
+        });
         let e = emit_settings.clone();
-        rotate_dice_3d_switch.connect_notify_local(Some("active"), move |_, _| { e(); });
+        rotate_dice_3d_switch.connect_notify_local(Some("active"), move |_, _| {
+            e();
+        });
         let e = emit_settings.clone();
-        show_stability_switch.connect_notify_local(Some("active"), move |_, _| { e(); });
+        show_stability_switch.connect_notify_local(Some("active"), move |_, _| {
+            e();
+        });
         let e = emit_settings.clone();
-        show_tap_switch.connect_notify_local(Some("active"), move |_, _| { e(); });
+        show_tap_switch.connect_notify_local(Some("active"), move |_, _| {
+            e();
+        });
         let e = emit_settings.clone();
-        show_led_switch.connect_notify_local(Some("active"), move |_, _| { e(); });
+        show_led_switch.connect_notify_local(Some("active"), move |_, _| {
+            e();
+        });
         let e = emit_settings.clone();
-        show_battery_switch.connect_notify_local(Some("active"), move |_, _| { e(); });
+        show_battery_switch.connect_notify_local(Some("active"), move |_, _| {
+            e();
+        });
         let e = emit_settings.clone();
-        show_dice_type_switch.connect_notify_local(Some("active"), move |_, _| { e(); });
+        show_dice_type_switch.connect_notify_local(Some("active"), move |_, _| {
+            e();
+        });
         let e = emit_settings.clone();
-        show_history_switch.connect_notify_local(Some("active"), move |_, _| { e(); });
+        show_history_switch.connect_notify_local(Some("active"), move |_, _| {
+            e();
+        });
 
         dialog.set_child(Some(&content));
 
@@ -106,10 +122,7 @@ impl SettingsDialog {
 
     /// Create a single setting row with a label and switch.
     fn create_setting_row(label: &str, switch: &gtk4::Switch) -> gtk4::Box {
-        let row = gtk4::Box::builder()
-            .orientation(gtk4::Orientation::Horizontal)
-            .spacing(12)
-            .build();
+        let row = gtk4::Box::builder().orientation(gtk4::Orientation::Horizontal).spacing(12).build();
         row.append(&gtk4::Label::builder().label(label).hexpand(true).halign(gtk4::Align::Start).build());
         switch.set_halign(gtk4::Align::End);
         row.append(switch);

@@ -1,8 +1,8 @@
 use glam::Vec3;
 
-use crate::models::add_pent_face;
 use crate::models::DiceModel;
 use crate::models::DiceModelTrait;
+use crate::models::add_pent_face;
 
 /// D12 dodecahedron model with 12 pentagonal faces.
 ///
@@ -20,26 +20,26 @@ impl DiceModelTrait for D12Model {
 
         // 20 vertices of a dodecahedron
         let v: [[f32; 3]; 20] = [
-            [s, s, s],       //  0
-            [s, s, -s],      //  1
-            [s, -s, s],      //  2
-            [s, -s, -s],     //  3
-            [-s, s, s],      //  4
-            [-s, s, -s],     //  5
-            [-s, -s, s],     //  6
-            [-s, -s, -s],    //  7
-            [0.0, ip, p],    //  8
-            [0.0, ip, -p],   //  9
-            [0.0, -ip, p],   // 10
-            [0.0, -ip, -p],  // 11
-            [ip, p, 0.0],    // 12
-            [ip, -p, 0.0],   // 13
-            [-ip, p, 0.0],   // 14
-            [-ip, -p, 0.0],  // 15
-            [p, 0.0, ip],    // 16
-            [p, 0.0, -ip],   // 17
-            [-p, 0.0, ip],   // 18
-            [-p, 0.0, -ip],  // 19
+            [s, s, s],      //  0
+            [s, s, -s],     //  1
+            [s, -s, s],     //  2
+            [s, -s, -s],    //  3
+            [-s, s, s],     //  4
+            [-s, s, -s],    //  5
+            [-s, -s, s],    //  6
+            [-s, -s, -s],   //  7
+            [0.0, ip, p],   //  8
+            [0.0, ip, -p],  //  9
+            [0.0, -ip, p],  // 10
+            [0.0, -ip, -p], // 11
+            [ip, p, 0.0],   // 12
+            [ip, -p, 0.0],  // 13
+            [-ip, p, 0.0],  // 14
+            [-ip, -p, 0.0], // 15
+            [p, 0.0, ip],   // 16
+            [p, 0.0, -ip],  // 17
+            [-p, 0.0, ip],  // 18
+            [-p, 0.0, -ip], // 19
         ];
 
         // 12 pentagonal faces — each defined by 5 vertex indices
@@ -69,13 +69,18 @@ impl DiceModelTrait for D12Model {
             let center = centroid(&[v[idxs[0]], v[idxs[1]], v[idxs[2]], v[idxs[3]], v[idxs[4]]]);
             let corners = [v[idxs[0]], v[idxs[1]], v[idxs[2]], v[idxs[3]], v[idxs[4]]];
             let n = face_normal(&corners);
-            add_pent_face(
-                &mut positions, &mut normals, &mut uvs, &mut face_ids, &mut indices,
-                center, corners, n, fid,
-            );
+            add_pent_face(&mut positions, &mut normals, &mut uvs, &mut face_ids, &mut indices, center, corners, n, fid);
         }
 
-        DiceModel { positions, normals, uvs, face_ids, indices, face_shape: 2, is_d10x: false }
+        DiceModel {
+            positions,
+            normals,
+            uvs,
+            face_ids,
+            indices,
+            face_shape: 2,
+            is_d10x: false,
+        }
     }
 }
 

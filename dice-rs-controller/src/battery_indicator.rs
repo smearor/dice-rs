@@ -1,9 +1,9 @@
 use std::cell::Cell;
 
+use crate::battery_level_style::BatteryLevelStyle;
 use dice_rs::model::battery_level::BatteryLevel;
 use dice_rs::model::charging_state::ChargingState;
 use gtk4::prelude::*;
-use crate::battery_level_style::BatteryLevelStyle;
 
 /// Battery level indicator widget with color-coded thresholds.
 ///

@@ -185,9 +185,9 @@ impl DiceRenderer {
             })?;
             gl.uniform_1_i32(Some(&shape_loc), self.face_shape);
 
-            let d10x_loc = gl.get_uniform_location(self.program, "u_is_d10x").ok_or(RendererError::UniformNotFound {
-                name: "u_is_d10x".to_string(),
-            })?;
+            let d10x_loc = gl
+                .get_uniform_location(self.program, "u_is_d10x")
+                .ok_or(RendererError::UniformNotFound { name: "u_is_d10x".to_string() })?;
             gl.uniform_1_i32(Some(&d10x_loc), self.is_d10x);
 
             gl.enable(glow::DEPTH_TEST);

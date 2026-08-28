@@ -130,7 +130,7 @@ impl DiceType {
             DiceType::D10,
             DiceType::D10X,
             DiceType::D12,
-            DiceType::D20
+            DiceType::D20,
         ]
     }
 }

@@ -1,6 +1,6 @@
-use crate::models::add_quad_face;
 use crate::models::DiceModel;
 use crate::models::DiceModelTrait;
+use crate::models::add_quad_face;
 
 /// D6 cube model with per-face normals, UVs, and face IDs.
 ///
@@ -27,11 +27,28 @@ impl DiceModelTrait for D6Model {
 
         for (corners, normal, face_value) in &cube_faces {
             add_quad_face(
-                &mut positions, &mut normals, &mut uvs, &mut face_ids, &mut indices,
-                corners[0], corners[1], corners[2], corners[3], *normal, *face_value,
+                &mut positions,
+                &mut normals,
+                &mut uvs,
+                &mut face_ids,
+                &mut indices,
+                corners[0],
+                corners[1],
+                corners[2],
+                corners[3],
+                *normal,
+                *face_value,
             );
         }
 
-        DiceModel { positions, normals, uvs, face_ids, indices, face_shape: 1, is_d10x: false }
+        DiceModel {
+            positions,
+            normals,
+            uvs,
+            face_ids,
+            indices,
+            face_shape: 1,
+            is_d10x: false,
+        }
     }
 }

@@ -34,10 +34,7 @@ impl TapControls {
 
         let dice = Rc::new(RefCell::new(None::<Dice>));
 
-        let widget = Self {
-            container,
-            dice,
-        };
+        let widget = Self { container, dice };
 
         widget.connect_signals(tap_switch, double_tap_switch);
         widget
@@ -54,47 +51,49 @@ impl TapControls {
     }
 
     fn connect_signals(&self, tap_switch: gtk4::Switch, double_tap_switch: gtk4::Switch) {
-        tap_switch.connect_notify_local(Some("active"), clone!(
-            #[strong(rename_to = dice_cell)]
-            self.dice.clone(),
-            move |switch, _| {
-                let enable = switch.is_active();
-                if let Some(dice) = dice_cell.borrow().as_ref() {
-                    let dice = dice.clone();
-                    tokio::spawn(async move {
-                        let result = if enable {
-                            dice.enable_tap().await
-                        } else {
-                            dice.disable_tap().await
-                        };
-                        if let Err(error) = result {
-                            debug!(error = %error, "failed to set tap interrupt");
-                        }
-                    });
+        tap_switch.connect_notify_local(
+            Some("active"),
+            clone!(
+                #[strong(rename_to = dice_cell)]
+                self.dice.clone(),
+                move |switch, _| {
+                    let enable = switch.is_active();
+                    if let Some(dice) = dice_cell.borrow().as_ref() {
+                        let dice = dice.clone();
+                        tokio::spawn(async move {
+                            let result = if enable { dice.enable_tap().await } else { dice.disable_tap().await };
+                            if let Err(error) = result {
+                                debug!(error = %error, "failed to set tap interrupt");
+                            }
+                        });
+                    }
                 }
-            }
-        ));
+            ),
+        );
 
-        double_tap_switch.connect_notify_local(Some("active"), clone!(
-            #[strong(rename_to = dice_cell)]
-            self.dice.clone(),
-            move |switch, _| {
-                let enable = switch.is_active();
-                if let Some(dice) = dice_cell.borrow().as_ref() {
-                    let dice = dice.clone();
-                    tokio::spawn(async move {
-                        let result = if enable {
-                            dice.enable_double_tap().await
-                        } else {
-                            dice.disable_double_tap().await
-                        };
-                        if let Err(error) = result {
-                            debug!(error = %error, "failed to set double tap interrupt");
-                        }
-                    });
+        double_tap_switch.connect_notify_local(
+            Some("active"),
+            clone!(
+                #[strong(rename_to = dice_cell)]
+                self.dice.clone(),
+                move |switch, _| {
+                    let enable = switch.is_active();
+                    if let Some(dice) = dice_cell.borrow().as_ref() {
+                        let dice = dice.clone();
+                        tokio::spawn(async move {
+                            let result = if enable {
+                                dice.enable_double_tap().await
+                            } else {
+                                dice.disable_double_tap().await
+                            };
+                            if let Err(error) = result {
+                                debug!(error = %error, "failed to set double tap interrupt");
+                            }
+                        });
+                    }
                 }
-            }
-        ));
+            ),
+        );
     }
 }
 

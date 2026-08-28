@@ -13,8 +13,8 @@ use tracing::debug;
 use crate::app_settings::AppSettingsData;
 use crate::battery_indicator::BatteryIndicator;
 use crate::dice_3d::Dice3D;
-use crate::dice_type_icon::create_icon;
 use crate::dice_style::DiceColorStyle;
+use crate::dice_type_icon::create_icon;
 use crate::event_controller::EventController;
 use crate::face_display::FaceDisplay;
 use crate::led_controls::LedControls;
@@ -99,9 +99,7 @@ impl DiceRow {
         let factory = gtk4::SignalListItemFactory::new();
         let types_for_setup = dice_types.clone();
         factory.connect_setup(move |_item, list_item| {
-            let overlay = gtk4::Overlay::builder()
-                .css_classes(vec!["dice-type-item"])
-                .build();
+            let overlay = gtk4::Overlay::builder().css_classes(vec!["dice-type-item"]).build();
             list_item.set_child(Some(&overlay));
         });
         factory.connect_bind(move |_item, list_item| {
@@ -118,10 +116,7 @@ impl DiceRow {
                 .halign(gtk4::Align::Center)
                 .valign(gtk4::Align::Center)
                 .build();
-            let overlay = list_item
-                .child()
-                .and_downcast::<gtk4::Overlay>()
-                .expect("child is Overlay");
+            let overlay = list_item.child().and_downcast::<gtk4::Overlay>().expect("child is Overlay");
             overlay.set_child(Some(&icon));
             overlay.add_overlay(&label);
         });
@@ -152,8 +147,7 @@ impl DiceRow {
                 Ok(dt) => {
                     dice_for_type.set_dice_type(dt);
                     dice_3d_for_type.set_dice_type(dt);
-                    let mut settings = crate::config_dir::load_dice_settings(&device_name_for_type)
-                        .unwrap_or_default();
+                    let mut settings = crate::config_dir::load_dice_settings(&device_name_for_type).unwrap_or_default();
                     settings.dice_type = dt;
                     crate::config_dir::save_dice_settings(&device_name_for_type, &settings);
                 }

@@ -1,8 +1,8 @@
 use glam::Vec3;
 
-use crate::models::add_kite_face;
 use crate::models::DiceModel;
 use crate::models::DiceModelTrait;
+use crate::models::add_kite_face;
 
 /// D10 pentagonal trapezohedron model with 10 kite-shaped faces.
 ///
@@ -53,10 +53,7 @@ impl DiceModelTrait for D10Model {
 
             // Upper kite: top, eq[i0], eq[i1], eq[i2]
             let n = tri_normal(top, eq[i0], eq[i1]);
-            add_kite_face(
-                &mut positions, &mut normals, &mut uvs, &mut face_ids, &mut indices,
-                top, eq[i0], eq[i1], eq[i2], n, fid,
-            );
+            add_kite_face(&mut positions, &mut normals, &mut uvs, &mut face_ids, &mut indices, top, eq[i0], eq[i1], eq[i2], n, fid);
         }
 
         for i in 0..5 {
@@ -68,13 +65,18 @@ impl DiceModelTrait for D10Model {
 
             // Lower kite: bottom, eq[i2], eq[i1], eq[i0]
             let n = tri_normal(bottom, eq[i2], eq[i1]);
-            add_kite_face(
-                &mut positions, &mut normals, &mut uvs, &mut face_ids, &mut indices,
-                bottom, eq[i2], eq[i1], eq[i0], n, fid,
-            );
+            add_kite_face(&mut positions, &mut normals, &mut uvs, &mut face_ids, &mut indices, bottom, eq[i2], eq[i1], eq[i0], n, fid);
         }
 
-        DiceModel { positions, normals, uvs, face_ids, indices, face_shape: 3, is_d10x: false }
+        DiceModel {
+            positions,
+            normals,
+            uvs,
+            face_ids,
+            indices,
+            face_shape: 3,
+            is_d10x: false,
+        }
     }
 }
 

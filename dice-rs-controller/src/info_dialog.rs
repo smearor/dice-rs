@@ -28,10 +28,7 @@ impl InfoDialog {
             .halign(gtk4::Align::Center)
             .build();
 
-        let app_name = gtk4::Label::builder()
-            .label("dice-rs Controller")
-            .css_classes(vec!["info-app-name"])
-            .build();
+        let app_name = gtk4::Label::builder().label("dice-rs Controller").css_classes(vec!["info-app-name"]).build();
         content.append(&app_name);
 
         let app_desc = gtk4::Label::builder()

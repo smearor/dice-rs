@@ -10,13 +10,9 @@ impl BatteryLevelStyle {
             _ => "battery-ok",
         }
     }
-    
+
     pub fn all_css_classes() -> [&'static str; 3] {
-        [
-            "battery-critical",
-            "battery-low",
-            "battery-ok",
-        ]
+        ["battery-critical", "battery-low", "battery-ok"]
     }
 }
 

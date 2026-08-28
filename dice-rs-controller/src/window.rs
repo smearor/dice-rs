@@ -73,17 +73,11 @@ impl MainWindow {
 
         let popover = gtk4::Popover::builder().child(&menu_box).build();
 
-        let menu_button = gtk4::MenuButton::builder()
-            .icon_name("open-menu-symbolic")
-            .popover(&popover)
-            .build();
+        let menu_button = gtk4::MenuButton::builder().icon_name("open-menu-symbolic").popover(&popover).build();
         header_bar.pack_end(&menu_button);
 
         // Compact mode switch in the titlebar.
-        let compact_switch = gtk4::Switch::builder()
-            .tooltip_text("Compact mode")
-            .valign(gtk4::Align::Center)
-            .build();
+        let compact_switch = gtk4::Switch::builder().tooltip_text("Compact mode").valign(gtk4::Align::Center).build();
         header_bar.pack_end(&compact_switch);
 
         let content = gtk4::Box::builder()

@@ -36,9 +36,7 @@ fn draw_cube(cr: &Context, cx: f64, cy: f64, scale: f64) {
     let sin30 = 30.0_f64.to_radians().sin();
 
     // Isometric projection: (x, y, z) -> screen
-    let proj = |x: f64, y: f64, z: f64| -> (f64, f64) {
-        (cx + (x - y) * cos30 * s, cy + (x + y) * sin30 * s - z * s)
-    };
+    let proj = |x: f64, y: f64, z: f64| -> (f64, f64) { (cx + (x - y) * cos30 * s, cy + (x + y) * sin30 * s - z * s) };
 
     // 8 cube vertices
     let v = [
@@ -86,9 +84,15 @@ fn draw_cube(cr: &Context, cx: f64, cy: f64, scale: f64) {
     cr.set_source_rgb(0.15, 0.15, 0.18);
     cr.set_line_width(1.5);
     let edges = [
-        (4, 5), (5, 6), (6, 7), (7, 4), // top
-        (5, 1), (6, 2), (7, 3), // verticals
-        (1, 2), (2, 3), // bottom visible
+        (4, 5),
+        (5, 6),
+        (6, 7),
+        (7, 4), // top
+        (5, 1),
+        (6, 2),
+        (7, 3), // verticals
+        (1, 2),
+        (2, 3), // bottom visible
     ];
     for &(a, b) in &edges {
         cr.new_path();
@@ -200,9 +204,16 @@ fn draw_octahedron(cr: &Context, cx: f64, cy: f64, scale: f64) {
     cr.set_source_rgb(0.15, 0.15, 0.18);
     cr.set_line_width(1.5);
     let edges = [
-        (top, eq[0]), (top, eq[1]), (top, eq[2]), (top, eq[3]),
-        (bottom, eq[0]), (bottom, eq[1]), (bottom, eq[2]), (bottom, eq[3]),
-        (eq[0], eq[1]), (eq[2], eq[3]),
+        (top, eq[0]),
+        (top, eq[1]),
+        (top, eq[2]),
+        (top, eq[3]),
+        (bottom, eq[0]),
+        (bottom, eq[1]),
+        (bottom, eq[2]),
+        (bottom, eq[3]),
+        (eq[0], eq[1]),
+        (eq[2], eq[3]),
     ];
     for &(a, b) in &edges {
         cr.new_path();
@@ -476,8 +487,7 @@ fn draw_dodecahedron(cr: &Context, cx: f64, cy: f64, scale: f64) {
 
 /// Render a dice type icon to a `gtk4::Image` widget.
 pub fn create_icon(dice_type: DiceType) -> gtk4::Image {
-    let mut surface = ImageSurface::create(Format::ARgb32, ICON_SIZE, ICON_SIZE)
-        .expect("failed to create Cairo surface");
+    let mut surface = ImageSurface::create(Format::ARgb32, ICON_SIZE, ICON_SIZE).expect("failed to create Cairo surface");
     let cr = Context::new(&surface).expect("failed to create Cairo context");
 
     // Transparent background
@@ -493,13 +503,7 @@ pub fn create_icon(dice_type: DiceType) -> gtk4::Image {
     let data = surface.data().expect("failed to get surface data");
     let bytes = Bytes::from(&data.to_vec());
     let rowstride = (ICON_SIZE * 4) as usize;
-    let texture = MemoryTexture::new(
-        ICON_SIZE,
-        ICON_SIZE,
-        MemoryFormat::B8g8r8a8,
-        &bytes,
-        rowstride,
-    );
+    let texture = MemoryTexture::new(ICON_SIZE, ICON_SIZE, MemoryFormat::B8g8r8a8, &bytes, rowstride);
 
     let image = gtk4::Image::from_paintable(Some(&texture));
     let pixel_size = match dice_type {

@@ -49,7 +49,7 @@ impl StabilityDescriptorStyle {
             StabilityDescriptor::FakeStable => {
                 widget.add_css_class(self.css_class());
             }
-            StabilityDescriptor::Rolling => {},
+            StabilityDescriptor::Rolling => {}
         }
     }
 }

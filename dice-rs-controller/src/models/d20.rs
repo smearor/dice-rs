@@ -1,8 +1,8 @@
 use glam::Vec3;
 
-use crate::models::add_tri_face;
 use crate::models::DiceModel;
 use crate::models::DiceModelTrait;
+use crate::models::add_tri_face;
 
 /// D20 icosahedron model with 20 triangular faces.
 ///
@@ -67,12 +67,17 @@ impl DiceModelTrait for D20Model {
             let e01 = Vec3::from(v[i1]) - Vec3::from(v[i0]);
             let e02 = Vec3::from(v[i2]) - Vec3::from(v[i0]);
             let n: [f32; 3] = e01.cross(e02).normalize().into();
-            add_tri_face(
-                &mut positions, &mut normals, &mut uvs, &mut face_ids, &mut indices,
-                v[i0], v[i1], v[i2], n, fid,
-            );
+            add_tri_face(&mut positions, &mut normals, &mut uvs, &mut face_ids, &mut indices, v[i0], v[i1], v[i2], n, fid);
         }
 
-        DiceModel { positions, normals, uvs, face_ids, indices, face_shape: 0, is_d10x: false }
+        DiceModel {
+            positions,
+            normals,
+            uvs,
+            face_ids,
+            indices,
+            face_shape: 0,
+            is_d10x: false,
+        }
     }
 }

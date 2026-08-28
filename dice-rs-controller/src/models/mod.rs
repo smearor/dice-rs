@@ -1,9 +1,9 @@
-pub mod d4;
-pub mod d6;
-pub mod d8;
 pub mod d10;
 pub mod d12;
 pub mod d20;
+pub mod d4;
+pub mod d6;
+pub mod d8;
 pub mod dice_model;
 
 pub use d4::D4Model;
@@ -133,13 +133,7 @@ fn add_pent_face(
     uvs.extend_from_slice(&[0.5, 0.5]);
     face_ids.push(face_id);
     // 5 corner vertices
-    let corner_uvs: [[f32; 2]; 5] = [
-        [0.5, 0.0],
-        [0.95, 0.35],
-        [0.78, 0.9],
-        [0.22, 0.9],
-        [0.05, 0.35],
-    ];
+    let corner_uvs: [[f32; 2]; 5] = [[0.5, 0.0], [0.95, 0.35], [0.78, 0.9], [0.22, 0.9], [0.05, 0.35]];
     for (i, c) in corners.iter().enumerate() {
         positions.extend_from_slice(c);
         normals.extend_from_slice(&normal);
