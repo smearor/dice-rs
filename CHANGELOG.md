@@ -51,3 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cargo workspace with 4 crates
 - GitHub Actions: fmt, clippy, test, audit, mdBook build, docs build
 - `BleTransport` trait for testability and future platform backends
+- Cross-platform CI: Windows and macOS runners for `dice-rs`, `dice-rs-cli`, and `dice-rs-ws` (build + test)
+- Linux aarch64 CI: native `ubuntu-24.04-arm` runner for lint, build, and test
+- CI matrix: `lint` and `test` jobs now run on `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`
+- CI matrix: `build_linux` renamed from `build`, `build_cross_platform` and `test_cross_platform` jobs added
