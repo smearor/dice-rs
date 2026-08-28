@@ -1,5 +1,4 @@
 use dice_rs::error::Result;
-use dice_rs::model::battery_level::BatteryLevel;
 use dice_rs::model::dice::DiceColor;
 use dice_rs::model::dice::DiceType;
 use dice_rs::model::led::LedColor;
@@ -36,11 +35,6 @@ impl DiceService {
     /// Returns a reference to the underlying dice.
     pub fn dice(&self) -> &Dice {
         &self.dice
-    }
-
-    /// Returns the device name used for config persistence.
-    pub fn device_name(&self) -> &str {
-        &self.device_name
     }
 
     // --- Config ---
@@ -180,8 +174,4 @@ impl DiceService {
         self.dice.get_color().await
     }
 
-    /// Request the current battery level.
-    pub async fn get_battery_level(&self) -> Result<BatteryLevel> {
-        self.dice.get_battery_level().await
-    }
 }

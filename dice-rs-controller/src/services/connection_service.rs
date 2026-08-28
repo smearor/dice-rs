@@ -55,11 +55,6 @@ impl ConnectionService {
         }
     }
 
-    /// Returns a reference to the underlying dice manager.
-    pub fn manager(&self) -> &Arc<DiceManager> {
-        &self.manager
-    }
-
     /// Reset tracked connections (e.g. before a fresh manual scan).
     pub fn clear_connected(&self) {
         if let Ok(mut ids) = self.connected_ids.lock() {
