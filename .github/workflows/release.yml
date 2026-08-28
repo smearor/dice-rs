@@ -26,8 +26,18 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Build (Release Mode)
         run: cargo build --release --verbose
-      - name: Publish to crates.io
-        run: cargo publish --locked --token ${{ secrets.CRATES_IO_TOKEN }}
+      - name: Dry-run publish dice-rs
+        run: cargo publish --dry-run --locked -p dice-rs --token ${{ secrets.CRATES_IO_TOKEN }}
+      - name: Dry-run publish dice-rs-cli
+        run: cargo publish --dry-run --locked -p dice-rs-cli --token ${{ secrets.CRATES_IO_TOKEN }}
+      - name: Dry-run publish dice-rs-ws
+        run: cargo publish --dry-run --locked -p dice-rs-ws --token ${{ secrets.CRATES_IO_TOKEN }}
+      - name: Publish dice-rs
+        run: cargo publish --locked -p dice-rs --token ${{ secrets.CRATES_IO_TOKEN }}
+      - name: Publish dice-rs-cli
+        run: cargo publish --locked -p dice-rs-cli --token ${{ secrets.CRATES_IO_TOKEN }}
+      - name: Publish dice-rs-ws
+        run: cargo publish --locked -p dice-rs-ws --token ${{ secrets.CRATES_IO_TOKEN }}
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
