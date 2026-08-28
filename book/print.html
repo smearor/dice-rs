@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9eac52b4.js";
+            window.path_to_searchindex_js = "searchindex-63f22284.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-65f3e578.js"></script>
@@ -348,8 +348,30 @@ protocol was reverse-engineered from the official
 remains in a single file and the book stays in sync automatically.</p>
 <h1 id="ble-specifications"><a class="header" href="#ble-specifications">BLE Specifications</a></h1>
 <p>BLE specification of the GoDice dice.</p>
-<p>The dice use the Nordic UART Service (NUS) profile internally.
-The full protocol was reverse-engineered from the official
+<p>The dice are powered by the <a href="https://www.nordicsemi.com/Products/nRF52805">Nordic nRF52805</a>
+SoC - a Bluetooth 5.2 System-on-Chip with a 64 MHz ARM Cortex-M4 processor,
+192 KB Flash, and 24 KB RAM. The nRF52805 is optimized for small two-layer PCB
+designs in a 2.48 x 2.46 mm WLCSP package. The SoC’s 64 MHz Cortex-M4 processes
+the dice’s 3D sensor data to calculate roll results and detect movement,
+tilting, free fall, and taps.</p>
+<p><a href="https://www.nordicsemi.com/Nordic-news/2022/08/Particulas-GoDice-employs-Nordics-nRF52805-SoC">Particula selected the nRF52805</a>
+for its reliability and low power consumption. GoDice uses supercapacitor
+technology for ultra-fast battery-free charging - thanks in part to
+the ultra-low power characteristics of the Nordic SoC (4.6 mA in TX at 0 dBm,
+4.6 mA in RX, and 0.3 uA in System OFF).</p>
+<p>The dice use the <a href="https://docs.nordicsemi.com/bundle/ncs-3.2.1/page/nrf/libraries/bluetooth/services/nus.html">Nordic UART Service (NUS)</a>
+profile internally. NUS is a custom GATT service that emulates a serial port
+over BLE, originally designed by Nordic for UART-to-BLE bridging. GoDice
+repurposes it as a raw byte transport: the application protocol (opcodes and
+events) is layered on top of the NUS RX/TX characteristics.</p>
+<p>The nRF52805 runs a <a href="https://www.nordicsemi.com/Products/nRF52805/Download">SoftDevice S112 or S113</a></p>
+<ul>
+<li>a memory-optimized Peripheral-only Bluetooth LE protocol stack suited to the
+SoC’s 24 KB RAM. Both stacks support up to 4 concurrent Peripheral connections
+with a Broadcaster, Bluetooth 5.1 qualification, 2 Mbps high-throughput, and
+Channel Selection Algorithm #2.</li>
+</ul>
+<p>The full protocol was reverse-engineered from the official
 <a href="https://github.com/ParticulaCode/GoDiceJavaScriptAPI/blob/main/godice.js">JavaScript API</a>,
 <a href="https://github.com/ParticulaCode/GoDicePythonAPI/blob/main/godice/dice.py">Python API</a>,
 and <a href="https://github.com/ParticulaCode/GoDiceAndroid_iOS_API/blob/main/common/godiceapi.c">C API</a>
@@ -362,12 +384,26 @@ source code.</p>
 </thead>
 <tbody>
 <tr><td>Device name</td><td>Prefix</td><td>GoDice_</td></tr>
-<tr><td>Service UUID</td><td></td><td>6e400001-b5a3-f393-e0a9-e50e24dcca9e</td></tr>
-<tr><td>Write Characteristic</td><td>Send commands</td><td>6e400002-b5a3-f393-e0a9-e50e24dcca9e</td></tr>
-<tr><td>Notify Characteristic</td><td>Receive events / results</td><td>6e400003-b5a3-f393-e0a9-e50e24dcca9e</td></tr>
+<tr><td>Service UUID</td><td>NUS Service (16-bit offset 0x0001)</td><td>6e400001-b5a3-f393-e0a9-e50e24dcca9e</td></tr>
+<tr><td>Write Characteristic</td><td>NUS RX - host writes commands</td><td>6e400002-b5a3-f393-e0a9-e50e24dcca9e</td></tr>
+<tr><td>Notify Characteristic</td><td>NUS TX - dice sends notifications</td><td>6e400003-b5a3-f393-e0a9-e50e24dcca9e</td></tr>
 </tbody>
 </table>
 </div>
+<h3 id="nus-transport-details"><a class="header" href="#nus-transport-details">NUS Transport Details</a></h3>
+<ul>
+<li><strong>Write type</strong>: Both Write Request (with response) and Write Command (without
+response) are supported on the RX characteristic</li>
+<li><strong>Notifications</strong>: The dice sends all data via Handle Value Notifications on
+the TX characteristic; the host must enable notifications by writing to the
+CCCD (Client Characteristic Configuration Descriptor, value <code>0x0001</code>)</li>
+<li><strong>Security</strong>: All permissions are open (SEC_OPEN) - no pairing or bonding
+required</li>
+<li><strong>Max payload</strong>: <code>MTU_SIZE - 3</code> bytes (20 bytes with the default 23-byte ATT
+MTU)</li>
+<li><strong>No encryption</strong>: Communication is unencrypted; the dice accept connections
+from any central</li>
+</ul>
 <h2 id="byte-commands-host--dice"><a class="header" href="#byte-commands-host--dice">Byte Commands (Host → Dice)</a></h2>
 <p>All commands are written as byte arrays to the Write Characteristic.
 The first byte is always the opcode.</p>
@@ -1213,8 +1249,9 @@ GoDice devices with a graphical interface and 3D dice rendering.</p>
 <ul>
 <li><strong>Auto-scan</strong> on startup with manual rescan button</li>
 <li><strong>Dice list</strong> showing all connected dice with face value, battery, and color</li>
+<li><strong>Dice type selector</strong> - dropdown to choose between D6, D20, D10, D10X, D4, D8, D12</li>
 <li><strong>3D dice rendering</strong> using OpenGL (<code>glow</code> + <code>glam</code>) with real-time
-orientation from accelerometer data</li>
+orientation from accelerometer data and per-type geometry</li>
 <li><strong>LED controls</strong> - color pickers, set/pulse/off buttons</li>
 <li><strong>Tap controls</strong> - enable/disable tap and double tap notifications</li>
 <li><strong>Battery indicator</strong> with visual gauge</li>
@@ -1247,6 +1284,8 @@ Connected dice appear as rows with interactive controls.</p>
     (async → GTK bridge)"]
     dice3d["Dice3D
     (OpenGL renderer)"]
+    models["Models
+    (DiceModelTrait)"]
     led["LedControls
     (color pickers)"]
     tap["TapControls
@@ -1254,16 +1293,21 @@ Connected dice appear as rows with interactive controls.</p>
     battery["BatteryIndicator"]
     history["RollHistory"]
     face["FaceDisplay"]
+    typesel["DropDown
+    (dice type)"]
 
     app --&gt; window
     window --&gt; row
     row --&gt; controller
     row --&gt; dice3d
+    dice3d --&gt; models
     row --&gt; led
     row --&gt; tap
     row --&gt; battery
     row --&gt; history
     row --&gt; face
+    row --&gt; typesel
+    typesel --&gt;|set_dice_type| dice3d
 </pre>
 
 <h3 id="eventcontroller"><a class="header" href="#eventcontroller">EventController</a></h3>
@@ -1271,6 +1315,40 @@ Connected dice appear as rows with interactive controls.</p>
 runs a background tokio task that receives <code>DiceEvent</code>s and sends UI updates
 through an <code>mpsc</code> channel to the GTK main thread. This avoids blocking the
 UI while waiting for BLE events.</p>
+<h3 id="dice-type-selection"><a class="header" href="#dice-type-selection">Dice Type Selection</a></h3>
+<p>Each <code>DiceRow</code> includes a <code>DropDown</code> widget for selecting the dice type
+(D6, D20, D10, D10X, D4, D8, D12). Changing the selection calls
+<code>dice.set_dice_type()</code> on the <code>dice-rs</code> library handle (client-side setting,
+no BLE command) and updates the 3D model geometry via <code>Dice3D::set_dice_type()</code>.</p>
+<p>The dice type controls how accelerometer data is interpreted into face
+values using vector tables and shell transforms. See
+<a href="#architecture">Architecture</a> for details on the interpretation pipeline.</p>
+<h3 id="3d-dice-models"><a class="header" href="#3d-dice-models">3D Dice Models</a></h3>
+<p>The <code>DiceModelTrait</code> defines the interface for 3D geometry generation. Each
+dice type has a dedicated model implementation:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Shape</th><th>Faces</th><th>Vertices</th></tr>
+</thead>
+<tbody>
+<tr><td>D6</td><td>Cube</td><td>6 quads</td><td>24</td></tr>
+<tr><td>D4</td><td>Tetrahedron</td><td>4 triangles</td><td>12</td></tr>
+<tr><td>D8</td><td>Octahedron</td><td>8 triangles</td><td>24</td></tr>
+<tr><td>D10/D10X</td><td>Pentagonal trapezohedron</td><td>10 kites</td><td>60</td></tr>
+<tr><td>D12</td><td>Dodecahedron</td><td>12 pentagons</td><td>72</td></tr>
+<tr><td>D20</td><td>Icosahedron</td><td>20 triangles</td><td>60</td></tr>
+</tbody>
+</table>
+</div>
+<p>The <code>model_for_type()</code> factory function selects the appropriate model based
+on <code>DiceType</code>. The <code>DiceRenderer</code> uploads vertex data (positions, normals,
+UVs, face IDs) to OpenGL and renders with diffuse lighting and edge
+highlighting. D6 faces additionally render procedural pips via the fragment
+shader; other die types show face color with edges only.</p>
+<p>When the dice type changes at runtime, the <code>Dice3D</code> widget discards the
+existing renderer and re-initializes with the new model geometry on the
+next render frame.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="websocket-server"><a class="header" href="#websocket-server">WebSocket Server</a></h1>
 <p>The <code>dice-rs-ws</code> crate provides a WebSocket and REST server for exposing
