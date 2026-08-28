@@ -7,6 +7,9 @@ authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
 description = "Core library for GoDice BLE dice: model, BLE transport, and high-level service API"
+keywords = ["bluetooth", "ble", "dice", "godice", "smart-dice"]
+categories = ["hardware-support", "embedded"]
+readme = "../README.md"
 
 [dependencies]
 async-trait.workspace = true

@@ -7,13 +7,16 @@ authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
 description = "CLI tool for GoDice BLE dice"
+keywords = ["bluetooth", "ble", "dice", "godice", "cli"]
+categories = ["command-line-utilities", "hardware-support"]
+readme = "../README.md"
 
 [[bin]]
 name = "dice-rs"
 path = "src/main.rs"
 
 [dependencies]
-dice-rs = { path = "../dice-rs" }
+dice-rs = { path = "../dice-rs", version = "0.1.0" }
 clap.workspace = true
 tabled.workspace = true
 tokio.workspace = true
