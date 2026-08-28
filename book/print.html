@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-63f22284.js";
+            window.path_to_searchindex_js = "searchindex-6f2c41ae.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-65f3e578.js"></script>
@@ -1495,11 +1495,65 @@ Wait a few minutes and retry.</li>
 <code>set_leds()</code> method includes a 30ms debounce to prevent this. If using
 <code>set_leds_immediate()</code>, throttle your calls.</p>
 <h2 id="macos"><a class="header" href="#macos">macOS</a></h2>
-<p>Not supported in the initial release. The <code>BleTransport</code> trait allows a
-future CoreBluetooth backend.</p>
+<p><code>dice-rs</code> supports macOS via btleplug’s CoreBluetooth backend. The library
+(<code>dice-rs</code>), CLI (<code>dice-rs-cli</code>), and WebSocket server (<code>dice-rs-ws</code>) are
+fully supported. The GTK4 controller (<code>dice-rs-controller</code>) is Linux-only.</p>
+<h3 id="requirements-1"><a class="header" href="#requirements-1">Requirements</a></h3>
+<ul>
+<li>macOS 12 (Monterey) or later</li>
+<li>A Bluetooth adapter with BLE support (built-in on all modern Macs)</li>
+<li>Xcode Command Line Tools: <code>xcode-select --install</code></li>
+</ul>
+<h3 id="permissions-1"><a class="header" href="#permissions-1">Permissions</a></h3>
+<p>macOS requires Bluetooth permission for the process. When running the CLI or
+WebSocket server for the first time, the OS will prompt for Bluetooth access.
+Grant the permission to your terminal or application.</p>
+<h3 id="troubleshooting-1"><a class="header" href="#troubleshooting-1">Troubleshooting</a></h3>
+<p><strong>“No Bluetooth adapter found”</strong></p>
+<p>Ensure Bluetooth is enabled in System Settings &gt; Bluetooth.</p>
+<p><strong>“Device not found during scan”</strong></p>
+<ul>
+<li>Make sure the GoDice is awake (tap or roll to wake)</li>
+<li>Check that the dice is not already connected to another host</li>
+<li>CoreBluetooth may cache device state — try toggling Bluetooth off/on</li>
+</ul>
 <h2 id="windows"><a class="header" href="#windows">Windows</a></h2>
-<p>Not supported in the initial release. The <code>BleTransport</code> trait allows a
-future WinRT backend.</p>
+<p><code>dice-rs</code> supports Windows via btleplug’s WinRT backend. The library
+(<code>dice-rs</code>), CLI (<code>dice-rs-cli</code>), and WebSocket server (<code>dice-rs-ws</code>) are
+fully supported. The GTK4 controller (<code>dice-rs-controller</code>) is Linux-only.</p>
+<h3 id="requirements-2"><a class="header" href="#requirements-2">Requirements</a></h3>
+<ul>
+<li>Windows 10 (build 19041) or later</li>
+<li>A Bluetooth adapter with BLE support</li>
+<li><a href="https://visualstudio.microsoft.com/visual-cpp-build-tools/">Visual Studio C++ Build Tools</a></li>
+</ul>
+<h3 id="permissions-2"><a class="header" href="#permissions-2">Permissions</a></h3>
+<p>Windows requires Bluetooth access for the process. No explicit permission
+prompt is shown, but the Bluetooth radio must be enabled in Settings &gt;
+Bluetooth &amp; devices.</p>
+<h3 id="troubleshooting-2"><a class="header" href="#troubleshooting-2">Troubleshooting</a></h3>
+<p><strong>“No Bluetooth adapter found”</strong></p>
+<p>Ensure Bluetooth is enabled in Settings &gt; Bluetooth &amp; devices and that a
+compatible adapter is present.</p>
+<p><strong>“Device not found during scan”</strong></p>
+<ul>
+<li>Make sure the GoDice is awake (tap or roll to wake)</li>
+<li>Check that the dice is not already connected to another host</li>
+<li>WinRT may not deliver RSSI updates for all devices — the library falls
+back to cached properties when <code>read_rssi()</code> fails</li>
+</ul>
+<p><strong>“Connection failed after 3 retries”</strong></p>
+<ul>
+<li>The dice may be charging from 0% battery and not yet accepting connections.
+Wait a few minutes and retry.</li>
+<li>Move closer to the Bluetooth adapter.</li>
+<li>Check for interference from other BLE devices.</li>
+</ul>
+<h2 id="controller-linux-only"><a class="header" href="#controller-linux-only">Controller (Linux-only)</a></h2>
+<p>The <code>dice-rs-controller</code> GTK4 desktop application is Linux-only. It depends
+on GTK4, OpenGL (<code>glow</code>), and BlueZ-specific behaviors. There are no plans
+to port it to Windows or macOS. For cross-platform UI access, use the
+<code>dice-rs-ws</code> WebSocket server with a web-based or native client.</p>
 
                     </main>
 
