@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["print"],"mod":["battery_level","charging_state","dice_color","dice_event","scan_results","status_row","system_status"],"trait":["OutputFormatter"]};
