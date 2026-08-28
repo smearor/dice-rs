@@ -1,11 +1,15 @@
 use std::sync::Arc;
 
+use std::str::FromStr;
+
 use dice_rs::model::dice::DiceColor;
+use dice_rs::model::dice::DiceType;
 use dice_rs::service::dice::Dice;
 use dice_rs::service::manager::DiceManager;
 use gtk4::gdk;
 use gtk4::glib;
 use gtk4::prelude::*;
+use tracing::debug;
 
 use crate::battery_indicator::BatteryIndicator;
 use crate::dice_3d::Dice3D;
@@ -54,10 +58,60 @@ impl DiceRow {
         // Right side: face value, stability, battery, history, LED controls.
         let info_box = gtk4::Box::builder().orientation(gtk4::Orientation::Vertical).spacing(8).hexpand(true).build();
 
+        let dice_type_model = gtk4::StringList::new(&["D6", "D20", "D10", "D10X", "D4", "D8", "D12"]);
+        let dice_type_selector = gtk4::DropDown::builder()
+            .model(&dice_type_model)
+            .tooltip_text("Dice shell type")
+            .css_classes(vec!["dice-type-selector"])
+            .build();
+
+        let dice_for_type = dice.clone();
+        let dice_3d_for_type = dice_3d.clone();
+        dice_type_selector.connect_notify_local(Some("selected"), move |dropdown, _pspec| {
+            let Some(item) = dropdown.selected_item() else {
+                return;
+            };
+            let Some(text) = item.downcast::<gtk4::StringObject>().ok() else {
+                return;
+            };
+            match DiceType::from_str(text.string().as_str()) {
+                Ok(dt) => {
+                    dice_for_type.set_dice_type(dt);
+                    dice_3d_for_type.set_dice_type(dt);
+                }
+                Err(error) => debug!(error = %error, "invalid dice type selected"),
+            }
+        });
+
+        let face_widget = face_display.widget();
+        face_widget.add_css_class("face-display-frame");
+        face_widget.set_size_request(80, 80);
+        face_widget.set_margin_top(8);
+        face_widget.set_hexpand(false);
+        face_widget.set_vexpand(false);
+
         let header = gtk4::Box::builder().orientation(gtk4::Orientation::Horizontal).spacing(12).build();
-        header.append(face_display.widget());
-        header.append(face_display.stability_label());
-        header.append(tap_indicator.widget());
+        header.append(face_widget);
+
+        let stability_label = face_display.stability_label();
+        stability_label.set_valign(gtk4::Align::Center);
+        stability_label.set_xalign(0.5);
+        stability_label.set_halign(gtk4::Align::Center);
+        stability_label.add_css_class("stability-label-frame");
+        stability_label.set_size_request(80, 80);
+        stability_label.set_margin_top(8);
+        stability_label.set_hexpand(false);
+        stability_label.set_vexpand(false);
+        header.append(stability_label);
+
+        let tap_widget = tap_indicator.widget();
+        tap_widget.set_valign(gtk4::Align::Center);
+        header.append(tap_widget);
+
+        dice_type_selector.set_valign(gtk4::Align::Center);
+        dice_type_selector.set_halign(gtk4::Align::End);
+        dice_type_selector.set_hexpand(true);
+        header.append(&dice_type_selector);
 
         let battery_row = gtk4::Box::builder().orientation(gtk4::Orientation::Horizontal).spacing(8).build();
         battery_row.append(battery_indicator.label());

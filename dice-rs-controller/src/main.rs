@@ -9,6 +9,7 @@ mod dice_row;
 mod event_controller;
 mod face_display;
 mod led_controls;
+mod models;
 mod tap_indicator;
 mod window;
 

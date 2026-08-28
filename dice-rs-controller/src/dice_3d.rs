@@ -12,8 +12,9 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use tracing::error;
 
-use crate::dice_model::DiceModel;
+use crate::dice_model::model_for_type;
 use crate::dice_renderer::DiceRenderer;
+use dice_rs::model::dice::DiceType;
 
 /// Orientation state for smooth interpolation.
 #[derive(Clone)]
@@ -43,6 +44,8 @@ pub struct Dice3D {
     gl_area: gtk4::GLArea,
     orientation: Rc<RefCell<OrientationState>>,
     renderer: Rc<RefCell<Option<DiceRenderer>>>,
+    dice_type: Rc<RefCell<DiceType>>,
+    needs_rebuild: Rc<RefCell<bool>>,
 }
 
 impl Dice3D {
@@ -54,6 +57,8 @@ impl Dice3D {
             gl_area,
             orientation: Rc::new(RefCell::new(OrientationState::default())),
             renderer: Rc::new(RefCell::new(None)),
+            dice_type: Rc::new(RefCell::new(DiceType::D6)),
+            needs_rebuild: Rc::new(RefCell::new(false)),
         };
 
         widget.connect_signals();
@@ -101,13 +106,32 @@ impl Dice3D {
         &self.gl_area
     }
 
+    /// Set the dice type for 3D model selection.
+    ///
+    /// Defers renderer rebuild to the render callback where the GL context
+    /// is current. Dropping OpenGL resources outside the render callback
+    /// causes a segfault because the GL context is not current.
+    pub fn set_dice_type(&self, dice_type: DiceType) {
+        *self.dice_type.borrow_mut() = dice_type;
+        *self.needs_rebuild.borrow_mut() = true;
+        self.gl_area.queue_render();
+    }
+
     fn connect_signals(&self) {
         let orientation = self.orientation.clone();
         let renderer = self.renderer.clone();
+        let dice_type_cell = self.dice_type.clone();
+        let needs_rebuild = self.needs_rebuild.clone();
         let gl_area = self.gl_area.clone();
 
         self.gl_area.connect_render(move |area, _context| {
-            // Initialize renderer on first render.
+            // Rebuild renderer if dice type changed (GL context is current here).
+            if *needs_rebuild.borrow() {
+                *needs_rebuild.borrow_mut() = false;
+                *renderer.borrow_mut() = None;
+            }
+
+            // Initialize renderer on first render or after dice type change.
             if renderer.borrow().is_none() {
                 area.make_current();
 
@@ -119,7 +143,10 @@ impl Dice3D {
                 let loader = |sym: &str| -> *const std::ffi::c_void { gl_loader::get_proc_address(sym) as *const std::ffi::c_void };
 
                 let glow_ctx = unsafe { glow::Context::from_loader_function(loader) };
-                let model = DiceModel::d6();
+                let dt = *dice_type_cell.borrow();
+                let (model_impl, is_d10x) = model_for_type(dt);
+                let mut model = model_impl.model();
+                model.is_d10x = is_d10x;
                 match DiceRenderer::new(Rc::new(glow_ctx), &model) {
                     Ok(r) => *renderer.borrow_mut() = Some(r),
                     Err(e) => {
