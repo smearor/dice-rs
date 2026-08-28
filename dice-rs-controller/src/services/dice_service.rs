@@ -173,5 +173,4 @@ impl DiceService {
     pub async fn get_color(&self) -> Result<DiceColor> {
         self.dice.get_color().await
     }
-
 }
