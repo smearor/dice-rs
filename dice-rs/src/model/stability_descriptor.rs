@@ -29,6 +29,19 @@ impl std::fmt::Display for StabilityDescriptor {
     }
 }
 
+impl StabilityDescriptor {
+    /// Return a short lowercase label describing the stability state.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Rolling => "rolling",
+            Self::Stable => "stable",
+            Self::TiltStable => "tilt",
+            Self::FakeStable => "fake",
+            Self::MoveStable => "move",
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

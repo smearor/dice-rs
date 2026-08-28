@@ -79,6 +79,22 @@ impl std::fmt::Display for DiceColor {
     }
 }
 
+impl DiceColor {
+    /// Return the RGB representation of the color for 3D rendering.
+    ///
+    /// Values are in the range `0.0..=1.0`.
+    pub fn as_rgb(&self) -> [f32; 3] {
+        match self {
+            Self::Black => [0.2, 0.2, 0.2],
+            Self::Red => [0.8, 0.15, 0.15],
+            Self::Green => [0.15, 0.7, 0.2],
+            Self::Blue => [0.15, 0.3, 0.85],
+            Self::Yellow => [0.9, 0.8, 0.1],
+            Self::Orange => [0.9, 0.5, 0.1],
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

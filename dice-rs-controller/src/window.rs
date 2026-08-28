@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
@@ -10,7 +11,10 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use tracing::debug;
 
+use crate::app_settings::AppSettings;
 use crate::dice_row::DiceRow;
+use crate::info_dialog::InfoDialog;
+use crate::settings_dialog::SettingsDialog;
 
 /// Interval for periodic auto-scan after the startup burst (seconds).
 const AUTO_SCAN_INTERVAL_SECS: u64 = 15;
@@ -29,6 +33,8 @@ pub struct MainWindow {
     status_label: gtk4::Label,
     manager: Arc<DiceManager>,
     connected_ids: Arc<std::sync::Mutex<HashSet<String>>>,
+    settings: AppSettings,
+    dice_rows: Rc<std::cell::RefCell<Vec<DiceRow>>>,
 }
 
 impl MainWindow {
@@ -50,6 +56,35 @@ impl MainWindow {
 
         let header_bar = gtk4::HeaderBar::builder().build();
         header_bar.pack_start(&scan_button);
+
+        // Menu button with Settings and Info actions.
+        let menu_box = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Vertical)
+            .spacing(2)
+            .margin_start(6)
+            .margin_end(6)
+            .margin_top(6)
+            .margin_bottom(6)
+            .build();
+        let settings_action = gtk4::Button::builder().label("Settings").css_classes(vec!["flat"]).build();
+        let info_action = gtk4::Button::builder().label("Info").css_classes(vec!["flat"]).build();
+        menu_box.append(&settings_action);
+        menu_box.append(&info_action);
+
+        let popover = gtk4::Popover::builder().child(&menu_box).build();
+
+        let menu_button = gtk4::MenuButton::builder()
+            .icon_name("open-menu-symbolic")
+            .popover(&popover)
+            .build();
+        header_bar.pack_end(&menu_button);
+
+        // Compact mode switch in the titlebar.
+        let compact_switch = gtk4::Switch::builder()
+            .tooltip_text("Compact mode")
+            .valign(gtk4::Align::Center)
+            .build();
+        header_bar.pack_end(&compact_switch);
 
         let content = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
@@ -73,6 +108,9 @@ impl MainWindow {
             .build();
         window.set_titlebar(Some(&header_bar));
 
+        let settings = AppSettings::new();
+        let dice_rows = Rc::new(std::cell::RefCell::new(Vec::<DiceRow>::new()));
+
         let win = Self {
             window,
             scan_button,
@@ -80,9 +118,44 @@ impl MainWindow {
             status_label,
             manager,
             connected_ids: Arc::new(std::sync::Mutex::new(HashSet::new())),
+            settings,
+            dice_rows,
         };
 
         win.connect_signals();
+
+        // Connect menu actions.
+        {
+            let settings_clone = win.settings.clone();
+            let window_clone = win.window.clone();
+            settings_action.connect_clicked(move |_| {
+                let dialog = SettingsDialog::new(&window_clone, &settings_clone);
+                dialog.present();
+            });
+
+            let window_clone = win.window.clone();
+            info_action.connect_clicked(move |_| {
+                let dialog = InfoDialog::new(&window_clone);
+                dialog.present();
+            });
+
+            // Compact mode switch in titlebar.
+            let settings_for_compact = win.settings.clone();
+            compact_switch.connect_notify_local(Some("active"), move |switch, _| {
+                let mut data = settings_for_compact.get();
+                data.compact_mode = switch.is_active();
+                settings_for_compact.set(data);
+            });
+
+            // Apply settings to all dice rows when settings change.
+            let dice_rows_for_change = win.dice_rows.clone();
+            win.settings.connect_changed(move |data| {
+                for row in dice_rows_for_change.borrow().iter() {
+                    row.apply_settings(&data);
+                }
+            });
+        }
+
         win.start_auto_scan();
         win
     }
@@ -98,11 +171,17 @@ impl MainWindow {
             self.status_label.clone(),
             #[strong(rename_to = connected_ids)]
             self.connected_ids.clone(),
+            #[strong(rename_to = dice_rows)]
+            self.dice_rows.clone(),
+            #[strong(rename_to = settings)]
+            self.settings.clone(),
             move |_| {
                 let manager = manager.clone();
                 let dice_list = dice_list.clone();
                 let status_label = status_label.clone();
                 let connected_ids = connected_ids.clone();
+                let dice_rows = dice_rows.clone();
+                let settings = settings.clone();
 
                 // Clear existing dice rows and reset connected IDs.
                 while let Some(child) = dice_list.first_child() {
@@ -111,6 +190,7 @@ impl MainWindow {
                 if let Ok(mut ids) = connected_ids.lock() {
                     ids.clear();
                 }
+                dice_rows.borrow_mut().clear();
 
                 status_label.set_text("Scanning...");
                 let manager_scan = manager.clone();
@@ -138,7 +218,10 @@ impl MainWindow {
                                 match connect_result {
                                     Ok(Ok(dice)) => {
                                         let row = DiceRow::new(dice, manager.clone());
+                                        row.apply_settings(&settings.get());
                                         dice_list.append(row.widget());
+                                        dice_list.append(row.compact_widget());
+                                        dice_rows.borrow_mut().push(row);
                                         let n = connected.fetch_add(1, Ordering::Relaxed) + 1;
                                         status_label.set_text(&format!("Connected {n}/{count}"));
                                     }
@@ -176,6 +259,8 @@ impl MainWindow {
         let dice_list = self.dice_list.clone();
         let status_label = self.status_label.clone();
         let connected_ids = self.connected_ids.clone();
+        let dice_rows = self.dice_rows.clone();
+        let settings = self.settings.clone();
 
         // UI updates from the tokio scan task are marshaled via std::sync::mpsc.
         enum ScanUiUpdate {
@@ -192,7 +277,10 @@ impl MainWindow {
                 match update {
                     ScanUiUpdate::NewDice { dice, manager } => {
                         let row = DiceRow::new(dice, manager);
+                        row.apply_settings(&settings.get());
                         dice_list.append(row.widget());
+                        dice_list.append(row.compact_widget());
+                        dice_rows.borrow_mut().push(row);
                         status_label.set_text("New dice connected.");
                     }
                 }

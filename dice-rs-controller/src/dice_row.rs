@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use std::str::FromStr;
 
-use dice_rs::model::dice::DiceColor;
 use dice_rs::model::dice::DiceType;
 use dice_rs::service::dice::Dice;
 use dice_rs::service::manager::DiceManager;
@@ -11,29 +10,45 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use tracing::debug;
 
+use crate::app_settings::AppSettingsData;
 use crate::battery_indicator::BatteryIndicator;
 use crate::dice_3d::Dice3D;
+use crate::dice_style::DiceColorStyle;
 use crate::event_controller::EventController;
 use crate::face_display::FaceDisplay;
-use crate::face_display::RollHistory;
 use crate::led_controls::LedControls;
+use crate::roll_history::RollHistory;
+use crate::tap_controls::TapControls;
 use crate::tap_indicator::TapIndicator;
 
-/// Map a DiceColor to a CSS class name for the border.
-fn dice_color_to_css_class(color: DiceColor) -> &'static str {
-    match color {
-        DiceColor::Black => "dice-border-black",
-        DiceColor::Red => "dice-border-red",
-        DiceColor::Green => "dice-border-green",
-        DiceColor::Blue => "dice-border-blue",
-        DiceColor::Yellow => "dice-border-yellow",
-        DiceColor::Orange => "dice-border-orange",
-    }
-}
-
 /// A list row representing a single connected dice.
+///
+/// Displays all UI elements for one dice: 3D view, face value, stability,
+/// battery, roll history, LED controls, tap indicator/controls, and dice
+/// type selector. Supports a compact single-line mode.
 pub struct DiceRow {
+    /// The main horizontal container holding the 3D frame and info box.
     container: gtk4::Box,
+    /// The 3D dice renderer widget.
+    dice_3d: Dice3D,
+    /// Frame wrapping the 3D dice view on the left side.
+    dice_3d_frame: gtk4::Frame,
+    /// Label displaying the current stability descriptor.
+    stability_label: gtk4::Label,
+    /// Widget showing transient tap and double-tap notifications.
+    tap_indicator: TapIndicator,
+    /// Widget with switches to enable/disable tap and double-tap interrupts.
+    tap_controls: TapControls,
+    /// The container holding the LED control widgets.
+    led_controls_widget: gtk4::Box,
+    /// Horizontal box with battery label and level bar.
+    battery_row: gtk4::Box,
+    /// Dropdown for selecting the dice shell type (D6, D20, etc.).
+    dice_type_selector: gtk4::DropDown,
+    /// The container holding the roll history widget.
+    roll_history_widget: gtk4::Box,
+    /// Compact single-line row shown when compact mode is enabled.
+    compact_box: gtk4::Box,
 }
 
 impl DiceRow {
@@ -45,7 +60,9 @@ impl DiceRow {
         let dice_3d = Dice3D::new();
         let roll_history = RollHistory::new();
         let tap_indicator = TapIndicator::new();
+        let tap_controls = TapControls::new();
         led_controls.set_dice(dice.clone());
+        tap_controls.set_dice(dice.clone());
 
         // Left side: 3D dice view.
         let dice_3d_frame = gtk4::Frame::builder()
@@ -104,6 +121,28 @@ impl DiceRow {
         stability_label.set_vexpand(false);
         header.append(stability_label);
 
+        let battery_row = gtk4::Box::builder().orientation(gtk4::Orientation::Horizontal).spacing(8).build();
+        battery_row.append(battery_indicator.label());
+        let level_bar = battery_indicator.level_bar();
+        level_bar.set_hexpand(true);
+        level_bar.set_valign(gtk4::Align::Center);
+        level_bar.add_css_class("battery-level-bar");
+        battery_row.append(level_bar);
+
+        let roll_history_widget = roll_history.widget().clone();
+        let led_controls_widget = led_controls.widget().clone();
+
+        // Vertical box combining roll history and battery indicator.
+        let history_battery_box = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Vertical)
+            .spacing(4)
+            .valign(gtk4::Align::Center)
+            .hexpand(true)
+            .build();
+        history_battery_box.append(&roll_history_widget);
+        history_battery_box.append(&battery_row);
+        header.append(&history_battery_box);
+
         let tap_widget = tap_indicator.widget();
         tap_widget.set_valign(gtk4::Align::Center);
         header.append(tap_widget);
@@ -113,18 +152,33 @@ impl DiceRow {
         dice_type_selector.set_hexpand(true);
         header.append(&dice_type_selector);
 
-        let battery_row = gtk4::Box::builder().orientation(gtk4::Orientation::Horizontal).spacing(8).build();
-        battery_row.append(battery_indicator.label());
-        let level_bar = battery_indicator.level_bar();
-        level_bar.set_hexpand(true);
-        level_bar.set_valign(gtk4::Align::Center);
-        level_bar.add_css_class("battery-level-bar");
-        battery_row.append(level_bar);
-
         info_box.append(&header);
-        info_box.append(roll_history.widget());
         info_box.append(led_controls.widget());
-        info_box.append(&battery_row);
+        info_box.append(tap_controls.widget());
+
+        // Compact mode: single-line row with face value and battery.
+        let compact_label = gtk4::Label::builder()
+            .label("?")
+            .css_classes(vec!["compact-face"])
+            .halign(gtk4::Align::Start)
+            .build();
+        let compact_battery_label = gtk4::Label::builder()
+            .label("N/A")
+            .css_classes(vec!["compact-battery"])
+            .halign(gtk4::Align::End)
+            .hexpand(true)
+            .build();
+        let compact_box = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Horizontal)
+            .spacing(12)
+            .margin_start(12)
+            .margin_end(12)
+            .margin_top(6)
+            .margin_bottom(6)
+            .css_classes(vec!["dice-row", "compact-row"])
+            .build();
+        compact_box.append(&compact_label);
+        compact_box.append(&compact_battery_label);
 
         let container = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Horizontal)
@@ -140,20 +194,36 @@ impl DiceRow {
 
         // Apply colored border based on dice physical color.
         let container_clone = container.clone();
+        let compact_box_clone = compact_box.clone();
         let dice_for_color = dice.clone();
         let face_display_for_color = face_display.clone();
         let roll_history_for_color = roll_history.clone();
         let dice_3d_for_color = dice_3d.clone();
+        let compact_battery_for_color = compact_battery_label.clone();
         glib::spawn_future_local(async move {
             if let Ok(color) = dice_for_color.get_color().await {
-                container_clone.add_css_class(dice_color_to_css_class(color));
+                let style = DiceColorStyle::from(color);
+                container_clone.add_css_class(style.border_css_class());
+                compact_box_clone.add_css_class(style.border_css_class());
                 face_display_for_color.set_dice_color(color);
                 roll_history_for_color.set_dice_color(color);
                 dice_3d_for_color.set_color(color);
             }
+            if let Ok(level) = dice_for_color.get_battery_level().await {
+                compact_battery_for_color.set_label(&format!("{}%", level.get()));
+            }
         });
 
-        let controller = EventController::new(dice, manager, face_display, battery_indicator, dice_3d, roll_history, tap_indicator);
+        let controller = EventController::new(
+            dice,
+            manager,
+            face_display.clone(),
+            battery_indicator,
+            dice_3d.clone(),
+            roll_history,
+            tap_indicator.clone(),
+            Some(compact_label.clone()),
+        );
         controller.start();
 
         // --- Drag-and-drop reordering ---
@@ -252,11 +322,49 @@ impl DiceRow {
 
         container.add_controller(drop_target);
 
-        Self { container }
+        Self {
+            container,
+            dice_3d,
+            dice_3d_frame,
+            stability_label: stability_label.clone(),
+            tap_indicator,
+            tap_controls,
+            led_controls_widget,
+            battery_row,
+            dice_type_selector,
+            roll_history_widget,
+            compact_box,
+        }
     }
 
     /// Returns the root widget for packing.
     pub fn widget(&self) -> &gtk4::Box {
         &self.container
+    }
+
+    /// Returns the compact mode widget for packing.
+    pub fn compact_widget(&self) -> &gtk4::Box {
+        &self.compact_box
+    }
+
+    /// Apply settings to control visibility of UI elements.
+    pub fn apply_settings(&self, settings: &AppSettingsData) {
+        self.dice_3d_frame.set_visible(settings.show_dice_3d);
+        self.dice_3d.set_rotation_enabled(settings.rotate_dice_3d);
+        self.stability_label.set_visible(settings.show_stability_indicator);
+        self.tap_indicator.widget().set_visible(settings.show_tap_controls);
+        self.tap_controls.widget().set_visible(settings.show_tap_controls);
+        self.led_controls_widget.set_visible(settings.show_led_controls);
+        self.battery_row.set_visible(settings.show_battery_indicator);
+        self.dice_type_selector.set_visible(settings.show_dice_type_selector);
+        self.roll_history_widget.set_visible(settings.show_roll_history);
+
+        if settings.compact_mode {
+            self.container.set_visible(false);
+            self.compact_box.set_visible(true);
+        } else {
+            self.container.set_visible(true);
+            self.compact_box.set_visible(false);
+        }
     }
 }

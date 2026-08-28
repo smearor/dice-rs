@@ -1,3 +1,4 @@
+use dice_rs::DiceColor;
 use glam::Quat;
 
 /// Orientation state for smooth interpolation of dice rotation and color.
@@ -13,12 +14,13 @@ pub struct OrientationState {
     /// The target orientation derived from accelerometer gravity data.
     /// The dice smoothly interpolates toward this orientation.
     pub target: Quat,
-    /// RGB color of the dice surface, set from `DiceColor`.
-    /// Stored as `[r, g, b]` with values in the range `0.0..=1.0`.
-    pub color: [f32; 3],
+    /// Physical color of the dice surface, used for 3D rendering.
+    pub color: DiceColor,
     /// Continuously advancing angle (in radians) for idle Y-axis spin animation.
     /// Incremented each render frame to produce smooth rotation.
     pub spin_angle: f32,
+    /// Whether the idle Y-axis spin animation is enabled.
+    pub rotation_enabled: bool,
 }
 
 impl Default for OrientationState {
@@ -26,8 +28,9 @@ impl Default for OrientationState {
         Self {
             orientation: Quat::IDENTITY,
             target: Quat::IDENTITY,
-            color: [0.95, 0.95, 0.95],
+            color: DiceColor::Black,
             spin_angle: 0.0,
+            rotation_enabled: true,
         }
     }
 }

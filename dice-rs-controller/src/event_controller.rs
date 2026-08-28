@@ -5,6 +5,7 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use dice_rs::model::acceleration::Acceleration;
+use dice_rs::model::battery_level::BatteryLevel;
 use dice_rs::model::charging_state::ChargingState;
 use dice_rs::model::face::FaceValue;
 use dice_rs::model::stability_descriptor::StabilityDescriptor;
@@ -19,7 +20,7 @@ use tracing::debug;
 use crate::battery_indicator::BatteryIndicator;
 use crate::dice_3d::Dice3D;
 use crate::face_display::FaceDisplay;
-use crate::face_display::RollHistory;
+use crate::roll_history::RollHistory;
 use crate::tap_indicator::TapIndicator;
 
 /// Interval for periodic battery level refresh.
@@ -45,7 +46,7 @@ enum UiUpdate {
     Tap,
     DoubleTap,
     Disconnected,
-    BatteryLevel(u8),
+    BatteryLevel(BatteryLevel),
 }
 
 /// Bridges async dice events into the GTK main loop.
@@ -61,10 +62,12 @@ pub struct EventController {
     dice_3d: Dice3D,
     roll_history: RollHistory,
     tap_indicator: TapIndicator,
+    compact_label: Option<gtk4::Label>,
 }
 
 impl EventController {
     /// Create a new event controller.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         dice: Dice,
         manager: Arc<DiceManager>,
@@ -73,6 +76,7 @@ impl EventController {
         dice_3d: Dice3D,
         roll_history: RollHistory,
         tap_indicator: TapIndicator,
+        compact_label: Option<gtk4::Label>,
     ) -> Self {
         Self {
             dice,
@@ -82,6 +86,7 @@ impl EventController {
             dice_3d,
             roll_history,
             tap_indicator,
+            compact_label,
         }
     }
 
@@ -95,6 +100,7 @@ impl EventController {
         let roll_history = self.roll_history.clone();
         let battery_indicator = self.battery_indicator.clone();
         let tap_indicator = self.tap_indicator.clone();
+        let compact_label = self.compact_label.clone();
         glib::timeout_add_local(Duration::from_millis(UI_POLL_INTERVAL_MS), move || {
             // Drain all pending updates in one batch.
             while let Ok(update) = receiver.try_recv() {
@@ -102,12 +108,18 @@ impl EventController {
                     UiUpdate::Rolling => {
                         face_display.set_rolling();
                         face_display.set_stability(StabilityDescriptor::Rolling);
+                        if let Some(ref label) = compact_label {
+                            label.set_text("...");
+                        }
                     }
                     UiUpdate::Stable { face, acceleration } => {
                         face_display.set_face(face);
                         face_display.set_stability(StabilityDescriptor::Stable);
                         roll_history.add_roll(face, StabilityDescriptor::Stable);
                         dice_3d.set_orientation(acceleration);
+                        if let Some(ref label) = compact_label {
+                            label.set_text(&face.to_string());
+                        }
                     }
                     UiUpdate::TiltStable { face, acceleration } => {
                         face_display.set_face(face);
@@ -115,6 +127,9 @@ impl EventController {
                         face_display.set_stability(StabilityDescriptor::TiltStable);
                         roll_history.add_roll(face, StabilityDescriptor::TiltStable);
                         dice_3d.set_orientation(acceleration);
+                        if let Some(ref label) = compact_label {
+                            label.set_text(&face.to_string());
+                        }
                     }
                     UiUpdate::FakeStable { face, acceleration } => {
                         face_display.set_face(face);
@@ -122,12 +137,18 @@ impl EventController {
                         face_display.set_stability(StabilityDescriptor::FakeStable);
                         roll_history.add_roll(face, StabilityDescriptor::FakeStable);
                         dice_3d.set_orientation(acceleration);
+                        if let Some(ref label) = compact_label {
+                            label.set_text(&face.to_string());
+                        }
                     }
                     UiUpdate::MoveStable { face, acceleration } => {
                         face_display.set_face(face);
                         face_display.set_stability(StabilityDescriptor::MoveStable);
                         roll_history.add_roll(face, StabilityDescriptor::MoveStable);
                         dice_3d.set_orientation(acceleration);
+                        if let Some(ref label) = compact_label {
+                            label.set_text(&face.to_string());
+                        }
                     }
                     UiUpdate::Charging { state } => {
                         battery_indicator.set_charging(state);
@@ -141,6 +162,9 @@ impl EventController {
                     UiUpdate::Disconnected => {
                         face_display.set_disconnected();
                         face_display.set_stability(StabilityDescriptor::Rolling);
+                        if let Some(ref label) = compact_label {
+                            label.set_text("-");
+                        }
                     }
                     UiUpdate::BatteryLevel(level) => {
                         battery_indicator.set_level(level);
@@ -239,7 +263,7 @@ impl EventController {
             tokio::time::sleep(Duration::from_secs(2)).await;
             match battery_dice.get_battery_level().await {
                 Ok(level) => {
-                    let _ = battery_sender.send(UiUpdate::BatteryLevel(level.get()));
+                    let _ = battery_sender.send(UiUpdate::BatteryLevel(level));
                 }
                 Err(error) => debug!(device = %battery_name, error = %error, "initial battery fetch failed"),
             }
@@ -281,7 +305,7 @@ impl EventController {
                 match battery_dice.get_battery_level().await {
                     Ok(level) => {
                         debug!(device = %battery_name, charging, level = level.get(), "battery refresh succeeded");
-                        let _ = battery_sender.send(UiUpdate::BatteryLevel(level.get()));
+                        let _ = battery_sender.send(UiUpdate::BatteryLevel(level));
                     }
                     Err(error) => debug!(device = %battery_name, error = %error, charging, "battery refresh failed"),
                 }

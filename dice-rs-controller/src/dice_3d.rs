@@ -68,17 +68,15 @@ impl Dice3D {
         self.gl_area.queue_render();
     }
 
+    /// Enable or disable the idle Y-axis spin rotation.
+    pub fn set_rotation_enabled(&self, enabled: bool) {
+        self.orientation.borrow_mut().rotation_enabled = enabled;
+        self.gl_area.queue_render();
+    }
+
     /// Set the dice color for rendering.
     pub fn set_color(&self, color: DiceColor) {
-        let rgb = match color {
-            DiceColor::Black => [0.2, 0.2, 0.2],
-            DiceColor::Red => [0.8, 0.15, 0.15],
-            DiceColor::Green => [0.15, 0.7, 0.2],
-            DiceColor::Blue => [0.15, 0.3, 0.85],
-            DiceColor::Yellow => [0.9, 0.8, 0.1],
-            DiceColor::Orange => [0.9, 0.5, 0.1],
-        };
-        self.orientation.borrow_mut().color = rgb;
+        self.orientation.borrow_mut().color = color;
         self.gl_area.queue_render();
     }
 
@@ -117,7 +115,7 @@ impl Dice3D {
                 area.make_current();
 
                 if area.error().is_some() {
-                    return gtk4::glib::Propagation::Proceed;
+                    return glib::Propagation::Proceed;
                 }
 
                 gl_loader::init_gl();
@@ -132,14 +130,14 @@ impl Dice3D {
                     Ok(r) => *renderer.borrow_mut() = Some(r),
                     Err(e) => {
                         error!(error = %miette::Report::new(e), "failed to initialize dice renderer");
-                        return gtk4::glib::Propagation::Proceed;
+                        return glib::Propagation::Proceed;
                     }
                 }
             }
 
             let r = renderer.borrow();
             let Some(renderer) = r.as_ref() else {
-                return gtk4::glib::Propagation::Proceed;
+                return glib::Propagation::Proceed;
             };
 
             let width = area.width() as f32;
@@ -148,7 +146,9 @@ impl Dice3D {
 
             // Snap to target orientation, then apply continuous Y-axis spin.
             let mut state = orientation.borrow_mut();
-            state.spin_angle += 0.02;
+            if state.rotation_enabled {
+                state.spin_angle += 0.02;
+            }
             let spin = Quat::from_rotation_y(state.spin_angle);
             let render_orientation = spin * state.target;
             state.orientation = render_orientation;
@@ -160,12 +160,12 @@ impl Dice3D {
             }
 
             renderer
-                .render(render_orientation, aspect, [0.95, 0.95, 0.95], orientation.borrow().color)
+                .render(render_orientation, aspect, [0.95, 0.95, 0.95], orientation.borrow().color.as_rgb())
                 .unwrap_or_else(|e| {
                     error!(error = %miette::Report::new(e), "dice render failed");
                 });
 
-            gtk4::glib::Propagation::Proceed
+            glib::Propagation::Proceed
         });
 
         // Drive continuous rendering with a timer for smooth animation.

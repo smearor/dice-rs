@@ -1,7 +1,9 @@
 use std::cell::Cell;
 
+use dice_rs::model::battery_level::BatteryLevel;
 use dice_rs::model::charging_state::ChargingState;
 use gtk4::prelude::*;
+use crate::battery_level_style::BatteryLevelStyle;
 
 /// Battery level indicator widget with color-coded thresholds.
 ///
@@ -11,7 +13,7 @@ pub struct BatteryIndicator {
     level_bar: gtk4::LevelBar,
     label: gtk4::Label,
     charging: Cell<ChargingState>,
-    last_level: Cell<Option<u8>>,
+    last_level: Cell<Option<BatteryLevel>>,
 }
 
 impl BatteryIndicator {
@@ -30,27 +32,21 @@ impl BatteryIndicator {
     }
 
     /// Update the battery level display.
-    pub fn set_level(&self, level: u8) {
+    pub fn set_level(&self, level: BatteryLevel) {
         self.last_level.set(Some(level));
-        self.level_bar.set_value(level as f64);
+        self.level_bar.set_value(f64::from(level.get()));
 
         let text = if matches!(self.charging.get(), ChargingState::Charging) {
-            format!("⚡ {level}%")
+            format!("⚡ {level}")
         } else {
-            format!("{level}%")
+            format!("{level}")
         };
         self.label.set_label(&text);
 
-        let css_class = match level {
-            0..=14 => "battery-critical",
-            15..=29 => "battery-low",
-            _ => "battery-ok",
-        };
-
-        self.level_bar.remove_css_class("battery-critical");
-        self.level_bar.remove_css_class("battery-low");
-        self.level_bar.remove_css_class("battery-ok");
-        self.level_bar.add_css_class(css_class);
+        for class in BatteryLevelStyle::all_css_classes() {
+            self.level_bar.remove_css_class(class);
+        }
+        self.level_bar.add_css_class(BatteryLevelStyle::from(level).css_class());
     }
 
     /// Update the charging state display.
@@ -58,16 +54,18 @@ impl BatteryIndicator {
     pub fn set_charging(&self, state: ChargingState) {
         self.charging.set(state);
 
-        let is_charging = matches!(state, ChargingState::Charging);
-        if is_charging {
-            self.level_bar.add_css_class("battery-charging");
-        } else {
-            self.level_bar.remove_css_class("battery-charging");
+        match state {
+            ChargingState::NotCharging => {
+                self.level_bar.remove_css_class("battery-charging");
+            }
+            ChargingState::Charging => {
+                self.level_bar.add_css_class("battery-charging");
+            }
         }
 
         if let Some(level) = self.last_level.get() {
             self.set_level(level);
-        } else if is_charging {
+        } else if state == ChargingState::Charging {
             self.label.set_label("⚡ N/A");
         }
     }
