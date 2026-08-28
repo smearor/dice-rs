@@ -7,7 +7,7 @@ use glow::HasContext;
 use miette::Diagnostic;
 use thiserror::Error;
 
-use crate::dice_model::DiceModel;
+use crate::models::DiceModel;
 
 /// Errors that can occur during OpenGL renderer initialization or rendering.
 #[derive(Debug, Error, Diagnostic)]

@@ -12,7 +12,7 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use tracing::error;
 
-use crate::dice_model::model_for_type;
+use crate::models::model_for_type;
 use crate::dice_renderer::DiceRenderer;
 use dice_rs::model::dice::DiceType;
 

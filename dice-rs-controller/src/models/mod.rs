@@ -4,6 +4,7 @@ pub mod d8;
 pub mod d10;
 pub mod d12;
 pub mod d20;
+pub mod dice_model;
 
 pub use d4::D4Model;
 pub use d6::D6Model;
@@ -11,28 +12,10 @@ pub use d8::D8Model;
 pub use d10::D10Model;
 pub use d12::D12Model;
 pub use d20::D20Model;
+pub use dice_model::DiceModel;
+pub use dice_model::DiceModelTrait;
 
 use dice_rs::model::dice::DiceType;
-
-/// Vertex data for a 3D dice model.
-pub struct DiceModel {
-    pub positions: Vec<f32>,
-    pub normals: Vec<f32>,
-    pub uvs: Vec<f32>,
-    pub face_ids: Vec<f32>,
-    pub indices: Vec<u32>,
-    /// 0 = triangle/kite, 1 = quad, 2 = pentagon — controls shader edge detection.
-    pub face_shape: i32,
-    /// True for D10X (face values shown as 00, 10, ..., 90 instead of 1-10).
-    pub is_d10x: bool,
-}
-
-/// Trait for 3D dice geometry generation.
-/// Each die type implements this to provide vertex data for OpenGL rendering.
-pub trait DiceModelTrait {
-    /// Build the vertex data for this die type.
-    fn model(&self) -> DiceModel;
-}
 
 /// Select the appropriate model implementation for a dice type.
 /// Returns the model and whether it is a D10X (tens die).

@@ -3,7 +3,6 @@
 mod application;
 mod battery_indicator;
 mod dice_3d;
-mod dice_model;
 mod dice_renderer;
 mod dice_row;
 mod event_controller;
