@@ -1,3 +1,5 @@
+use glam::Vec3;
+
 use crate::models::add_pent_face;
 use crate::models::DiceModel;
 use crate::models::DiceModelTrait;
@@ -78,30 +80,15 @@ impl DiceModelTrait for D12Model {
 }
 
 fn centroid(pts: &[[f32; 3]; 5]) -> [f32; 3] {
-    let mut c = [0.0; 3];
+    let mut c = Vec3::ZERO;
     for p in pts {
-        c[0] += p[0];
-        c[1] += p[1];
-        c[2] += p[2];
+        c += Vec3::from(*p);
     }
-    [c[0] / 5.0, c[1] / 5.0, c[2] / 5.0]
+    (c / 5.0).into()
 }
 
 fn face_normal(corners: &[[f32; 3]; 5]) -> [f32; 3] {
-    let e0 = [corners[1][0] - corners[0][0], corners[1][1] - corners[0][1], corners[1][2] - corners[0][2]];
-    let e1 = [corners[2][0] - corners[0][0], corners[2][1] - corners[0][1], corners[2][2] - corners[0][2]];
-    let n = cross(e0, e1);
-    normalize(n)
-}
-
-fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
-    [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
-}
-
-fn normalize(v: [f32; 3]) -> [f32; 3] {
-    let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
-    if len < 1e-10 {
-        return [0.0, 1.0, 0.0];
-    }
-    [v[0] / len, v[1] / len, v[2] / len]
+    let e0 = Vec3::from(corners[1]) - Vec3::from(corners[0]);
+    let e1 = Vec3::from(corners[2]) - Vec3::from(corners[0]);
+    e0.cross(e1).normalize().into()
 }

@@ -1,3 +1,5 @@
+use glam::Vec3;
+
 use crate::models::add_kite_face;
 use crate::models::DiceModel;
 use crate::models::DiceModelTrait;
@@ -17,7 +19,7 @@ impl DiceModelTrait for D10Model {
         // Even indices are "wing" vertices (shared between two same-pole kites) → larger radius.
         // Odd indices are "belly" vertices (shared between upper and lower kites) → smaller radius.
         let r_wing = 0.6;
-        let r_belly = r_wing * 0.809016994; // cos(36°)
+        let r_belly = r_wing * 0.809_017; // cos(36°)
 
         // Upper polar vertex
         let top = [0.0, h, 0.0];
@@ -77,20 +79,7 @@ impl DiceModelTrait for D10Model {
 }
 
 fn tri_normal(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> [f32; 3] {
-    let e0 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-    let e1 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
-    let n = cross(e0, e1);
-    normalize(n)
-}
-
-fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
-    [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
-}
-
-fn normalize(v: [f32; 3]) -> [f32; 3] {
-    let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
-    if len < 1e-10 {
-        return [0.0, 1.0, 0.0];
-    }
-    [v[0] / len, v[1] / len, v[2] / len]
+    let e0 = Vec3::from(b) - Vec3::from(a);
+    let e1 = Vec3::from(c) - Vec3::from(a);
+    e0.cross(e1).normalize().into()
 }
