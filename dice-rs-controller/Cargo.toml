@@ -7,6 +7,7 @@ authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
 description = "GTK 4 desktop controller application for GoDice BLE dice"
+publish = false
 
 [[bin]]
 name = "dice-rs-controller"
