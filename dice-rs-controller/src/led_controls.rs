@@ -44,7 +44,6 @@ impl LedControls {
             .orientation(gtk4::Orientation::Horizontal)
             .spacing(8)
             .css_classes(vec!["led-controls"])
-            .margin_bottom(8)
             .build();
         container.append(&color_button1);
         container.append(&color_button2);

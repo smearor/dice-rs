@@ -25,6 +25,7 @@ impl TapControls {
             .orientation(gtk4::Orientation::Horizontal)
             .spacing(8)
             .css_classes(vec!["tap-controls"])
+            .margin_end(12)
             .build();
         container.append(&tap_label);
         container.append(&tap_switch);

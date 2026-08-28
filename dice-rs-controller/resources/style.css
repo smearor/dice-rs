@@ -248,3 +248,11 @@
 .led-controls dropdown {
     min-height: 0;
 }
+
+.tap-controls {
+    min-height: 0;
+}
+
+.tap-controls switch {
+    min-height: 0;
+}

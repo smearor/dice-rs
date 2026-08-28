@@ -197,8 +197,17 @@ impl DiceRow {
         header.append(&dice_type_selector);
 
         info_box.append(&header);
-        info_box.append(led_controls.widget());
-        info_box.append(tap_controls.widget());
+
+        let controls_row = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Horizontal)
+            .spacing(12)
+            .margin_bottom(8)
+            .build();
+        controls_row.append(led_controls.widget());
+        tap_controls.widget().set_hexpand(true);
+        tap_controls.widget().set_halign(gtk4::Align::End);
+        controls_row.append(tap_controls.widget());
+        info_box.append(&controls_row);
 
         // Compact mode: single-line row with face value and battery.
         let compact_label = gtk4::Label::builder()
