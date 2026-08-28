@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.0 - 2026-08-28
 
 ### Added
+
 - BLE transport abstraction with `BleTransport` and `BlePeripheral` traits
 - `BtleplugTransport` implementation for Linux (BlueZ DBus)
 - `DiceScanner` with name-prefix filtering for `GoDice_` devices
@@ -49,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Root `README.md` with badges, quick start, and workspace layout
 
 ### Infrastructure
+
 - Cargo workspace with 4 crates
 - GitHub Actions: fmt, clippy, test, audit, mdBook build, docs build
 - `BleTransport` trait for testability and future platform backends
@@ -56,3 +58,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Linux aarch64 CI: native `ubuntu-24.04-arm` runner for lint, build, and test
 - CI matrix: `lint` and `test` jobs now run on `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`
 - CI matrix: `build_linux` renamed from `build`, `build_cross_platform` and `test_cross_platform` jobs added
+- MSRV 1.88
