@@ -213,6 +213,7 @@ async fn handle_set_led(state: &Arc<AppState>, sender: &WsSender, session_id: St
     send_message(sender, &msg).await;
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_pulse_led(
     state: &Arc<AppState>,
     sender: &WsSender,
