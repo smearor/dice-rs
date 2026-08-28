@@ -59,3 +59,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI matrix: `lint` and `test` jobs now run on `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`
 - CI matrix: `build_linux` renamed from `build`, `build_cross_platform` and `test_cross_platform` jobs added
 - MSRV 1.88
+- Publishing on crates.io
