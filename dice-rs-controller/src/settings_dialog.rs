@@ -67,7 +67,7 @@ impl SettingsDialog {
         let s8 = show_history_switch.clone();
 
         let emit_settings = Rc::new(move || {
-            let data = AppSettingsData {
+            let mut data = AppSettingsData {
                 show_dice_3d: s1.is_active(),
                 rotate_dice_3d: s2.is_active(),
                 show_stability_indicator: s3.is_active(),
@@ -78,6 +78,7 @@ impl SettingsDialog {
                 show_roll_history: s8.is_active(),
                 compact_mode: false,
             };
+            data.compact_mode = settings_clone.get().compact_mode;
             settings_clone.set(data);
         });
 

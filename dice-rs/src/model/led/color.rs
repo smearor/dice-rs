@@ -1,11 +1,13 @@
 use std::str::FromStr;
 
 use crate::model::led::color_error::LedColorError;
+use serde::Deserialize;
+use serde::Serialize;
 
 /// An RGB color for a GoDice LED.
 ///
 /// Each channel is in the range 0–255. `(0, 0, 0)` turns the LED off.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct LedColor {
     /// Red channel (0–255).
     pub r: u8,

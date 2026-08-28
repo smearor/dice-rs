@@ -20,6 +20,7 @@ pub struct LedControls {
     blink_mode_dropdown: gtk4::DropDown,
     leds_dropdown: gtk4::DropDown,
     dice: Rc<RefCell<Option<Dice>>>,
+    device_name: Rc<RefCell<Option<String>>>,
 }
 
 impl LedControls {
@@ -55,6 +56,8 @@ impl LedControls {
 
         let dice = Rc::new(RefCell::new(None::<Dice>));
 
+        let device_name = Rc::new(RefCell::new(None::<String>));
+
         let widget = Self {
             container,
             color_button1,
@@ -65,6 +68,7 @@ impl LedControls {
             blink_mode_dropdown,
             leds_dropdown,
             dice,
+            device_name,
         };
 
         widget.connect_signals();
@@ -76,6 +80,29 @@ impl LedControls {
         *self.dice.borrow_mut() = Some(dice);
     }
 
+    /// Set the device name for per-dice config persistence.
+    pub fn set_device_name(&self, name: String) {
+        *self.device_name.borrow_mut() = Some(name);
+    }
+
+    /// Update color picker buttons from saved LED colors.
+    pub fn set_colors(&self, color1: LedColor, color2: LedColor) {
+        let rgba1 = gtk4::gdk::RGBA::new(
+            color1.r as f32 / 255.0,
+            color1.g as f32 / 255.0,
+            color1.b as f32 / 255.0,
+            1.0,
+        );
+        let rgba2 = gtk4::gdk::RGBA::new(
+            color2.r as f32 / 255.0,
+            color2.g as f32 / 255.0,
+            color2.b as f32 / 255.0,
+            1.0,
+        );
+        self.color_button1.set_rgba(&rgba1);
+        self.color_button2.set_rgba(&rgba2);
+    }
+
     /// Returns the root widget for packing.
     pub fn widget(&self) -> &gtk4::Box {
         &self.container
@@ -83,12 +110,18 @@ impl LedControls {
 
     fn connect_signals(&self) {
         // LED 1 color picker - set LED 1 only (LED 2 stays off).
+        let save_name1 = self.device_name.clone();
         self.color_button1.connect_color_set(clone!(
             #[strong(rename_to = dice_cell)]
             self.dice.clone(),
             move |button| {
                 let rgba = button.rgba();
                 let color = LedColor::new((rgba.red() * 255.0) as u8, (rgba.green() * 255.0) as u8, (rgba.blue() * 255.0) as u8);
+                if let Some(name) = save_name1.borrow().as_ref() {
+                    let mut settings = crate::config_dir::load_dice_settings(name).unwrap_or_default();
+                    settings.led_color1 = color;
+                    crate::config_dir::save_dice_settings(name, &settings);
+                }
                 if let Some(dice) = dice_cell.borrow().as_ref() {
                     let dice = dice.clone();
                     tokio::spawn(async move {
@@ -101,12 +134,18 @@ impl LedControls {
         ));
 
         // LED 2 color picker - set LED 2 only (LED 1 stays off).
+        let save_name2 = self.device_name.clone();
         self.color_button2.connect_color_set(clone!(
             #[strong(rename_to = dice_cell)]
             self.dice.clone(),
             move |button| {
                 let rgba = button.rgba();
                 let color = LedColor::new((rgba.red() * 255.0) as u8, (rgba.green() * 255.0) as u8, (rgba.blue() * 255.0) as u8);
+                if let Some(name) = save_name2.borrow().as_ref() {
+                    let mut settings = crate::config_dir::load_dice_settings(name).unwrap_or_default();
+                    settings.led_color2 = color;
+                    crate::config_dir::save_dice_settings(name, &settings);
+                }
                 if let Some(dice) = dice_cell.borrow().as_ref() {
                     let dice = dice.clone();
                     tokio::spawn(async move {
@@ -119,6 +158,7 @@ impl LedControls {
         ));
 
         // Set button - set both LEDs to their respective picker colors.
+        let save_name_set = self.device_name.clone();
         self.set_button.connect_clicked(clone!(
             #[strong(rename_to = dice_cell)]
             self.dice.clone(),
@@ -131,6 +171,12 @@ impl LedControls {
                 let color1 = LedColor::new((rgba1.red() * 255.0) as u8, (rgba1.green() * 255.0) as u8, (rgba1.blue() * 255.0) as u8);
                 let rgba2 = color_button2.rgba();
                 let color2 = LedColor::new((rgba2.red() * 255.0) as u8, (rgba2.green() * 255.0) as u8, (rgba2.blue() * 255.0) as u8);
+                if let Some(name) = save_name_set.borrow().as_ref() {
+                    let mut settings = crate::config_dir::load_dice_settings(name).unwrap_or_default();
+                    settings.led_color1 = color1;
+                    settings.led_color2 = color2;
+                    crate::config_dir::save_dice_settings(name, &settings);
+                }
                 if let Some(dice) = dice_cell.borrow().as_ref() {
                     let dice = dice.clone();
                     tokio::spawn(async move {
@@ -176,10 +222,17 @@ impl LedControls {
         ));
 
         // Off button - turn both LEDs off.
+        let save_name_off = self.device_name.clone();
         self.off_button.connect_clicked(clone!(
             #[strong(rename_to = dice_cell)]
             self.dice.clone(),
             move |_| {
+                if let Some(name) = save_name_off.borrow().as_ref() {
+                    let mut settings = crate::config_dir::load_dice_settings(name).unwrap_or_default();
+                    settings.led_color1 = LedColor::OFF;
+                    settings.led_color2 = LedColor::OFF;
+                    crate::config_dir::save_dice_settings(name, &settings);
+                }
                 if let Some(dice) = dice_cell.borrow().as_ref() {
                     let dice = dice.clone();
                     tokio::spawn(async move {

@@ -1,10 +1,13 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use serde::Deserialize;
+use serde::Serialize;
+
 /// Application display settings data.
 ///
 /// Controls visibility of various UI elements in the dice controller.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AppSettingsData {
     /// Whether the 3D dice view is shown.
     pub show_dice_3d: bool,
@@ -56,10 +59,11 @@ pub struct AppSettings {
 }
 
 impl AppSettings {
-    /// Create a new settings instance with defaults.
+    /// Create a new settings instance, loading from disk if available.
     pub fn new() -> Self {
+        let data = crate::config_dir::load_app_settings().unwrap_or_default();
         Self {
-            data: Rc::new(RefCell::new(AppSettingsData::default())),
+            data: Rc::new(RefCell::new(data)),
             listeners: Rc::new(RefCell::new(Vec::new())),
         }
     }
@@ -72,6 +76,7 @@ impl AppSettings {
     /// Update settings and notify all listeners.
     pub fn set(&self, data: AppSettingsData) {
         *self.data.borrow_mut() = data.clone();
+        crate::config_dir::save_app_settings(&data);
         for listener in self.listeners.borrow().iter() {
             listener(data.clone());
         }

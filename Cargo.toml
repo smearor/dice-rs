@@ -21,6 +21,7 @@ bytemuck = { version = "1", features = ["derive"] }
 btleplug = "0.12"
 cairo-rs = "0.22"
 clap = { version = "4", features = ["derive"] }
+dirs = "6"
 futures = "0.3"
 gl_loader = "0.1"
 glam = "0.33"
@@ -35,6 +36,7 @@ smallvec = "1"
 tabled = "0.21"
 thiserror = "2"
 tokio = { version = "1", features = ["sync", "rt", "rt-multi-thread", "time", "macros", "signal", "io-std", "io-util"] }
+toml = "1.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 typed-builder = "0.23"

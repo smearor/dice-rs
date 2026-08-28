@@ -7,6 +7,8 @@ use crate::model::dice::type_error::DiceTypeError;
 use crate::model::dice::vectors::D6_VECTORS;
 use crate::model::dice::vectors::D20_VECTORS;
 use crate::model::dice::vectors::D24_VECTORS;
+use serde::Deserialize;
+use serde::Serialize;
 use std::str::FromStr;
 
 /// Determines which vector table and shell transform are used to interpret
@@ -14,7 +16,7 @@ use std::str::FromStr;
 ///
 /// `#[repr(u8)]` allows storage as `AtomicU8` for lock-free reads
 /// in the notification task hot path.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum DiceType {
     /// Standard 6-sided die (default).

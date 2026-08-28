@@ -65,6 +65,16 @@ impl DiceRow {
         led_controls.set_dice(dice.clone());
         tap_controls.set_dice(dice.clone());
 
+        // Load per-dice settings from disk if available.
+        let device_name = dice.name().to_string();
+        led_controls.set_device_name(device_name.clone());
+        let dice_settings = crate::config_dir::load_dice_settings(&device_name);
+        if let Some(ref settings) = dice_settings {
+            dice.set_dice_type(settings.dice_type);
+            dice_3d.set_dice_type(settings.dice_type);
+            led_controls.set_colors(settings.led_color1, settings.led_color2);
+        }
+
         // Left side: 3D dice view.
         let dice_3d_frame = gtk4::Frame::builder()
             .css_classes(vec!["dice-3d-frame"])
@@ -130,6 +140,7 @@ impl DiceRow {
 
         let dice_for_type = dice.clone();
         let dice_3d_for_type = dice_3d.clone();
+        let device_name_for_type = device_name.clone();
         dice_type_selector.connect_notify_local(Some("selected"), move |dropdown, _pspec| {
             let Some(item) = dropdown.selected_item() else {
                 return;
@@ -141,6 +152,10 @@ impl DiceRow {
                 Ok(dt) => {
                     dice_for_type.set_dice_type(dt);
                     dice_3d_for_type.set_dice_type(dt);
+                    let mut settings = crate::config_dir::load_dice_settings(&device_name_for_type)
+                        .unwrap_or_default();
+                    settings.dice_type = dt;
+                    crate::config_dir::save_dice_settings(&device_name_for_type, &settings);
                 }
                 Err(error) => debug!(error = %error, "invalid dice type selected"),
             }
