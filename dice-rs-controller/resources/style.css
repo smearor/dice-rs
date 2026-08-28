@@ -221,10 +221,6 @@
     margin-top: 12px;
 }
 
-/* Compact mode */
-.compact-row {
-    padding: 4px 12px;
-}
 
 .compact-face {
     font-size: 18px;
@@ -233,6 +229,11 @@
 
 .compact-battery {
     font-size: 12px;
+}
+
+/* Compact mode */
+.compact-row {
+    margin-bottom: 0;
 }
 
 .led-controls button {

@@ -1,6 +1,7 @@
 use std::cell::Cell;
 
-use crate::battery_level_style::BatteryLevelStyle;
+use crate::platform::widget_container::WidgetContainer;
+use crate::styling::battery_level::BatteryLevelStyle;
 use dice_rs::model::battery_level::BatteryLevel;
 use dice_rs::model::charging_state::ChargingState;
 use gtk4::prelude::*;
@@ -10,6 +11,7 @@ use gtk4::prelude::*;
 /// Cloneable - all clones share the same underlying GTK widgets.
 #[derive(Clone)]
 pub struct BatteryIndicator {
+    container: gtk4::Box,
     level_bar: gtk4::LevelBar,
     label: gtk4::Label,
     charging: Cell<ChargingState>,
@@ -20,10 +22,18 @@ impl BatteryIndicator {
     /// Create a new battery indicator.
     pub fn new() -> Self {
         let level_bar = gtk4::LevelBar::builder().min_value(0.0).max_value(100.0).value(0.0).build();
+        level_bar.set_hexpand(true);
+        level_bar.set_valign(gtk4::Align::Center);
+        level_bar.add_css_class("battery-level-bar");
 
         let label = gtk4::Label::builder().label("N/A").build();
 
+        let container = gtk4::Box::builder().orientation(gtk4::Orientation::Horizontal).spacing(8).build();
+        container.append(&label);
+        container.append(&level_bar);
+
         Self {
+            container,
             level_bar,
             label,
             charging: Cell::new(ChargingState::default()),
@@ -69,15 +79,11 @@ impl BatteryIndicator {
             self.label.set_label("⚡ N/A");
         }
     }
+}
 
-    /// Returns the label widget.
-    pub fn label(&self) -> &gtk4::Label {
-        &self.label
-    }
-
-    /// Returns the level bar widget.
-    pub fn level_bar(&self) -> &gtk4::LevelBar {
-        &self.level_bar
+impl WidgetContainer for BatteryIndicator {
+    fn widget(&self) -> &gtk4::Widget {
+        self.container.as_ref()
     }
 }
 

@@ -1,6 +1,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::config::config_dir::load_app_settings;
+use crate::config::config_dir::save_app_settings;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -61,7 +63,7 @@ pub struct AppSettings {
 impl AppSettings {
     /// Create a new settings instance, loading from disk if available.
     pub fn new() -> Self {
-        let data = crate::config_dir::load_app_settings().unwrap_or_default();
+        let data = load_app_settings().unwrap_or_default();
         Self {
             data: Rc::new(RefCell::new(data)),
             listeners: Rc::new(RefCell::new(Vec::new())),
@@ -76,7 +78,7 @@ impl AppSettings {
     /// Update settings and notify all listeners.
     pub fn set(&self, data: AppSettingsData) {
         *self.data.borrow_mut() = data.clone();
-        crate::config_dir::save_app_settings(&data);
+        save_app_settings(&data);
         for listener in self.listeners.borrow().iter() {
             listener(data.clone());
         }

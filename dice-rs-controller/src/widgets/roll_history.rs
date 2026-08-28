@@ -6,7 +6,8 @@ use dice_rs::model::face::FaceValue;
 use dice_rs::model::stability_descriptor::StabilityDescriptor;
 use gtk4::prelude::*;
 
-use crate::stability_style::StabilityDescriptorStyle;
+use crate::platform::widget_container::WidgetContainer;
+use crate::styling::stability::StabilityDescriptorStyle;
 
 /// Number of history entries to display.
 const HISTORY_SIZE: usize = 10;
@@ -90,10 +91,11 @@ impl RollHistory {
             }
         }
     }
+}
 
-    /// Returns the root widget for packing.
-    pub fn widget(&self) -> &gtk4::Box {
-        &self.container
+impl WidgetContainer for RollHistory {
+    fn widget(&self) -> &gtk4::Widget {
+        self.container.as_ref()
     }
 }
 

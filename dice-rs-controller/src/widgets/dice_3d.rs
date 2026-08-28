@@ -12,9 +12,10 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use tracing::error;
 
-use crate::dice_renderer::DiceRenderer;
 use crate::models::model_for_type;
 use crate::orientation_state::OrientationState;
+use crate::platform::widget_container::WidgetContainer;
+use crate::widgets::dice_renderer::DiceRenderer;
 use dice_rs::model::dice::DiceType;
 
 /// GTK4 widget that renders a 3D dice model using OpenGL (glow + glam).
@@ -174,6 +175,12 @@ impl Dice3D {
             timer_area.queue_render();
             glib::ControlFlow::Continue
         });
+    }
+}
+
+impl WidgetContainer for Dice3D {
+    fn widget(&self) -> &gtk4::Widget {
+        self.gl_area.as_ref()
     }
 }
 

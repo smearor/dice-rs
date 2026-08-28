@@ -2,7 +2,7 @@ use dice_rs::model::dice::DiceColor;
 use dice_rs::model::stability_descriptor::StabilityDescriptor;
 use gtk4::prelude::*;
 
-use crate::dice_style::DiceColorStyle;
+use crate::styling::dice::DiceColorStyle;
 
 /// Map a StabilityDescriptor to a CSS class name.
 pub struct StabilityDescriptorStyle(StabilityDescriptor);

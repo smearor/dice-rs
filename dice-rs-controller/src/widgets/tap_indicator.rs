@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::platform::widget_container::WidgetContainer;
 use gtk4::glib;
 use gtk4::prelude::*;
 
@@ -60,6 +61,12 @@ impl TapIndicator {
     /// Returns the label widget for packing.
     pub fn widget(&self) -> &gtk4::Label {
         &self.label
+    }
+}
+
+impl WidgetContainer for TapIndicator {
+    fn widget(&self) -> &gtk4::Widget {
+        self.label.as_ref()
     }
 }
 

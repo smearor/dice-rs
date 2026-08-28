@@ -1,12 +1,12 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::platform::widget_container::WidgetContainer;
+use crate::styling::stability::StabilityDescriptorStyle;
 use dice_rs::model::dice::DiceColor;
 use dice_rs::model::face::FaceValue;
 use dice_rs::model::stability_descriptor::StabilityDescriptor;
 use gtk4::prelude::*;
-
-use crate::stability_style::StabilityDescriptorStyle;
 
 /// Displays the current face value of a dice with visual feedback for stability state.
 ///
@@ -95,6 +95,12 @@ impl FaceDisplay {
         }
         self.label.add_css_class(class);
         classes.push(class.to_string());
+    }
+}
+
+impl WidgetContainer for FaceDisplay {
+    fn widget(&self) -> &gtk4::Widget {
+        self.label.as_ref()
     }
 }
 

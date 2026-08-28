@@ -4,24 +4,14 @@ use std::sync::atomic::Ordering;
 use std::sync::mpsc;
 use std::time::Duration;
 
-use dice_rs::model::acceleration::Acceleration;
-use dice_rs::model::battery_level::BatteryLevel;
-use dice_rs::model::charging_state::ChargingState;
-use dice_rs::model::face::FaceValue;
-use dice_rs::model::stability_descriptor::StabilityDescriptor;
 use dice_rs::service::dice::Dice;
 use dice_rs::service::dice::DiceEvent;
 use dice_rs::service::manager::DiceManager;
-use gtk4::glib;
 use tokio::sync::Notify;
 use tokio::sync::broadcast::error::RecvError;
 use tracing::debug;
 
-use crate::battery_indicator::BatteryIndicator;
-use crate::dice_3d::Dice3D;
-use crate::face_display::FaceDisplay;
-use crate::roll_history::RollHistory;
-use crate::tap_indicator::TapIndicator;
+use crate::platform::ui_update::UiUpdate;
 
 /// Interval for periodic battery level refresh.
 const BATTERY_REFRESH_INTERVAL_SECS: u64 = 30;
@@ -32,148 +22,24 @@ const BATTERY_CHARGING_REFRESH_INTERVAL_SECS: u64 = 1;
 /// Delay before first reconnect attempt after a disconnect.
 const RECONNECT_INITIAL_DELAY_SECS: u64 = 2;
 
-/// Polling interval for draining UI updates on the GTK main thread (milliseconds).
-const UI_POLL_INTERVAL_MS: u64 = 10;
-
-/// UI update commands sent from the tokio event loop to the GTK main thread.
-enum UiUpdate {
-    Rolling,
-    Stable { face: FaceValue, acceleration: Acceleration },
-    TiltStable { face: FaceValue, acceleration: Acceleration },
-    FakeStable { face: FaceValue, acceleration: Acceleration },
-    MoveStable { face: FaceValue, acceleration: Acceleration },
-    Charging { state: ChargingState },
-    Tap,
-    DoubleTap,
-    Disconnected,
-    BatteryLevel(BatteryLevel),
-}
-
-/// Bridges async dice events into the GTK main loop.
+/// Bridges async dice events into a channel for the UI to consume.
 ///
 /// The event loop runs on a `tokio::spawn` task so it never blocks the GTK
 /// main thread. UI updates are marshaled back via a `std::sync::mpsc` channel
-/// that is polled on the GTK side with `glib::timeout_add_local`.
+/// that the caller polls on the GTK side.
 pub struct EventController {
     dice: Dice,
     manager: Arc<DiceManager>,
-    face_display: FaceDisplay,
-    battery_indicator: BatteryIndicator,
-    dice_3d: Dice3D,
-    roll_history: RollHistory,
-    tap_indicator: TapIndicator,
-    compact_label: Option<gtk4::Label>,
 }
 
 impl EventController {
     /// Create a new event controller.
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        dice: Dice,
-        manager: Arc<DiceManager>,
-        face_display: FaceDisplay,
-        battery_indicator: BatteryIndicator,
-        dice_3d: Dice3D,
-        roll_history: RollHistory,
-        tap_indicator: TapIndicator,
-        compact_label: Option<gtk4::Label>,
-    ) -> Self {
-        Self {
-            dice,
-            manager,
-            face_display,
-            battery_indicator,
-            dice_3d,
-            roll_history,
-            tap_indicator,
-            compact_label,
-        }
+    pub fn new(dice: Dice, manager: Arc<DiceManager>) -> Self {
+        Self { dice, manager }
     }
 
-    /// Start listening for dice events and updating widgets.
-    pub fn start(&self) {
-        let (sender, receiver) = mpsc::channel::<UiUpdate>();
-
-        // GTK main thread: poll the channel and apply UI updates.
-        let face_display = self.face_display.clone();
-        let dice_3d = self.dice_3d.clone();
-        let roll_history = self.roll_history.clone();
-        let battery_indicator = self.battery_indicator.clone();
-        let tap_indicator = self.tap_indicator.clone();
-        let compact_label = self.compact_label.clone();
-        glib::timeout_add_local(Duration::from_millis(UI_POLL_INTERVAL_MS), move || {
-            // Drain all pending updates in one batch.
-            while let Ok(update) = receiver.try_recv() {
-                match update {
-                    UiUpdate::Rolling => {
-                        face_display.set_rolling();
-                        face_display.set_stability(StabilityDescriptor::Rolling);
-                        if let Some(ref label) = compact_label {
-                            label.set_text("...");
-                        }
-                    }
-                    UiUpdate::Stable { face, acceleration } => {
-                        face_display.set_face(face);
-                        face_display.set_stability(StabilityDescriptor::Stable);
-                        roll_history.add_roll(face, StabilityDescriptor::Stable);
-                        dice_3d.set_orientation(acceleration);
-                        if let Some(ref label) = compact_label {
-                            label.set_text(&face.to_string());
-                        }
-                    }
-                    UiUpdate::TiltStable { face, acceleration } => {
-                        face_display.set_face(face);
-                        face_display.set_tilted(true);
-                        face_display.set_stability(StabilityDescriptor::TiltStable);
-                        roll_history.add_roll(face, StabilityDescriptor::TiltStable);
-                        dice_3d.set_orientation(acceleration);
-                        if let Some(ref label) = compact_label {
-                            label.set_text(&face.to_string());
-                        }
-                    }
-                    UiUpdate::FakeStable { face, acceleration } => {
-                        face_display.set_face(face);
-                        face_display.set_fake(true);
-                        face_display.set_stability(StabilityDescriptor::FakeStable);
-                        roll_history.add_roll(face, StabilityDescriptor::FakeStable);
-                        dice_3d.set_orientation(acceleration);
-                        if let Some(ref label) = compact_label {
-                            label.set_text(&face.to_string());
-                        }
-                    }
-                    UiUpdate::MoveStable { face, acceleration } => {
-                        face_display.set_face(face);
-                        face_display.set_stability(StabilityDescriptor::MoveStable);
-                        roll_history.add_roll(face, StabilityDescriptor::MoveStable);
-                        dice_3d.set_orientation(acceleration);
-                        if let Some(ref label) = compact_label {
-                            label.set_text(&face.to_string());
-                        }
-                    }
-                    UiUpdate::Charging { state } => {
-                        battery_indicator.set_charging(state);
-                    }
-                    UiUpdate::Tap => {
-                        tap_indicator.flash_tap();
-                    }
-                    UiUpdate::DoubleTap => {
-                        tap_indicator.flash_double_tap();
-                    }
-                    UiUpdate::Disconnected => {
-                        face_display.set_disconnected();
-                        face_display.set_stability(StabilityDescriptor::Rolling);
-                        if let Some(ref label) = compact_label {
-                            label.set_text("-");
-                        }
-                    }
-                    UiUpdate::BatteryLevel(level) => {
-                        battery_indicator.set_level(level);
-                    }
-                }
-            }
-            glib::ControlFlow::Continue
-        });
-
+    /// Start listening for dice events and sending UI updates via `sender`.
+    pub fn start(&self, sender: mpsc::Sender<UiUpdate>) {
         // Tokio task: event loop - runs entirely off the GTK main thread.
         let dice = self.dice.clone();
         let dice_name = dice.name().to_string();

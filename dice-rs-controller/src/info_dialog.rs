@@ -1,6 +1,6 @@
 use gtk4::prelude::*;
 
-use crate::dice_3d::Dice3D;
+use crate::widgets::dice_3d::Dice3D;
 
 /// About / info dialog showing app name, spinning dice, links, and license.
 pub struct InfoDialog {

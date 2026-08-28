@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use gtk4::prelude::*;
 
-use crate::app_settings::AppSettings;
-use crate::app_settings::AppSettingsData;
+use crate::config::app_settings::AppSettings;
+use crate::config::app_settings::AppSettingsData;
 
 /// Settings dialog with toggle switches for UI display options.
 pub struct SettingsDialog {

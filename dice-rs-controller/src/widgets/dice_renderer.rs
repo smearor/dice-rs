@@ -67,8 +67,8 @@ pub struct DiceRenderer {
     is_d10x: i32,
 }
 
-const VERTEX_SHADER_SOURCE: &str = include_str!("../shaders/vertex.glsl");
-const FRAGMENT_SHADER_SOURCE: &str = include_str!("../shaders/fragment.glsl");
+const VERTEX_SHADER_SOURCE: &str = include_str!("../../shaders/vertex.glsl");
+const FRAGMENT_SHADER_SOURCE: &str = include_str!("../../shaders/fragment.glsl");
 
 impl DiceRenderer {
     /// Create a new renderer with the given GL context.

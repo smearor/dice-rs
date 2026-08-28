@@ -1,27 +1,15 @@
 //! dice-rs-controller - GTK 4 desktop controller application for GoDice.
 
-mod app_settings;
 mod application;
-mod battery_indicator;
-mod battery_level_style;
-mod config_dir;
-mod dice_3d;
-mod dice_renderer;
-mod dice_row;
-mod dice_settings;
-mod dice_style;
-mod dice_type_icon;
-mod event_controller;
-mod face_display;
+mod config;
 mod info_dialog;
-mod led_controls;
 mod models;
 mod orientation_state;
-mod roll_history;
+mod platform;
+mod services;
 mod settings_dialog;
-mod stability_style;
-mod tap_controls;
-mod tap_indicator;
+mod styling;
+mod widgets;
 mod window;
 
 use std::sync::Arc;

@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use tracing::debug;
 
-use crate::app_settings::AppSettingsData;
-use crate::dice_settings::DiceSettings;
+use crate::config::app_settings::AppSettingsData;
+use crate::config::dice_settings::DiceSettings;
 
 /// Returns the config directory path: `~/.config/dice-rs/`.
 fn config_dir() -> PathBuf {
