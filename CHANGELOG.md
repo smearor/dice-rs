@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LED debounce (30ms coalescing) to prevent BlueZ/DBus socket buffer overflow
 - Software calibration via `AccelerationOffset` computation
 - Hardware calibration via BLE command (tentative)
-- Tap and double tap interrupt enable/disable
+- Tap and double tap interrupt enable/disable (tentative)
 - Connection monitor with periodic health check
 - Reconnect with exponential backoff (500ms → 5s, up to 10 retries)
 - `dice-rs-cli` with scan, listen, battery, led, tap, double-tap, calibrate, status, color, charging, disconnect, disconnect-all, interactive subcommands
@@ -56,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `BleTransport` trait for testability and future platform backends
 - Cross-platform CI: Windows and macOS runners for `dice-rs`, `dice-rs-cli`, and `dice-rs-ws` (build + test)
 - Linux aarch64 CI: native `ubuntu-24.04-arm` runner for lint, build, and test
-- CI matrix: `lint` and `test` jobs now run on `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`
-- CI matrix: `build_linux` renamed from `build`, `build_cross_platform` and `test_cross_platform` jobs added
+- CI matrix: `lint` and `test` jobs run on `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`
+- CI matrix: `build_linux`, `build_cross_platform` and `test_cross_platform` jobs added
 - MSRV 1.88
 - Publishing on crates.io
