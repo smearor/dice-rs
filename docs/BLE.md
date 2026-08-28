@@ -2,7 +2,31 @@
 
 BLE specification of the GoDice dice.
 
-The dice use the Nordic UART Service (NUS) profile internally.
+The dice are powered by the [Nordic nRF52805](https://www.nordicsemi.com/Products/nRF52805)
+SoC - a Bluetooth 5.2 System-on-Chip with a 64 MHz ARM Cortex-M4 processor,
+192 KB Flash, and 24 KB RAM. The nRF52805 is optimized for small two-layer PCB
+designs in a 2.48 x 2.46 mm WLCSP package. The SoC's 64 MHz Cortex-M4 processes
+the dice's 3D sensor data to calculate roll results and detect movement,
+tilting, free fall, and taps.
+
+[Particula selected the nRF52805](https://www.nordicsemi.com/Nordic-news/2022/08/Particulas-GoDice-employs-Nordics-nRF52805-SoC)
+for its reliability and low power consumption. GoDice uses supercapacitor
+technology for ultra-fast battery-free charging - thanks in part to
+the ultra-low power characteristics of the Nordic SoC (4.6 mA in TX at 0 dBm,
+4.6 mA in RX, and 0.3 uA in System OFF).
+
+The dice use the [Nordic UART Service (NUS)](https://docs.nordicsemi.com/bundle/ncs-3.2.1/page/nrf/libraries/bluetooth/services/nus.html)
+profile internally. NUS is a custom GATT service that emulates a serial port
+over BLE, originally designed by Nordic for UART-to-BLE bridging. GoDice
+repurposes it as a raw byte transport: the application protocol (opcodes and
+events) is layered on top of the NUS RX/TX characteristics.
+
+The nRF52805 runs a [SoftDevice S112 or S113](https://www.nordicsemi.com/Products/nRF52805/Download)
+- a memory-optimized Peripheral-only Bluetooth LE protocol stack suited to the
+SoC's 24 KB RAM. Both stacks support up to 4 concurrent Peripheral connections
+with a Broadcaster, Bluetooth 5.1 qualification, 2 Mbps high-throughput, and
+Channel Selection Algorithm #2.
+
 The full protocol was reverse-engineered from the official
 [JavaScript API](https://github.com/ParticulaCode/GoDiceJavaScriptAPI/blob/main/godice.js),
 [Python API](https://github.com/ParticulaCode/GoDicePythonAPI/blob/main/godice/dice.py),
@@ -11,12 +35,26 @@ source code.
 
 ## Device Properties
 
-| Property              | Description                    | Value                                |
-|-----------------------|--------------------------------|--------------------------------------|
-| Device name           | Prefix                         | GoDice_                              |
-| Service UUID          |                                | 6e400001-b5a3-f393-e0a9-e50e24dcca9e |
-| Write Characteristic  | Send commands                  | 6e400002-b5a3-f393-e0a9-e50e24dcca9e |
-| Notify Characteristic | Receive events / results       | 6e400003-b5a3-f393-e0a9-e50e24dcca9e |
+| Property              | Description                        | Value                                |
+|-----------------------|------------------------------------|--------------------------------------|
+| Device name           | Prefix                             | GoDice_                              |
+| Service UUID          | NUS Service (16-bit offset 0x0001) | 6e400001-b5a3-f393-e0a9-e50e24dcca9e |
+| Write Characteristic  | NUS RX - host writes commands      | 6e400002-b5a3-f393-e0a9-e50e24dcca9e |
+| Notify Characteristic | NUS TX - dice sends notifications  | 6e400003-b5a3-f393-e0a9-e50e24dcca9e |
+
+### NUS Transport Details
+
+- **Write type**: Both Write Request (with response) and Write Command (without
+  response) are supported on the RX characteristic
+- **Notifications**: The dice sends all data via Handle Value Notifications on
+  the TX characteristic; the host must enable notifications by writing to the
+  CCCD (Client Characteristic Configuration Descriptor, value `0x0001`)
+- **Security**: All permissions are open (SEC_OPEN) - no pairing or bonding
+  required
+- **Max payload**: `MTU_SIZE - 3` bytes (20 bytes with the default 23-byte ATT
+  MTU)
+- **No encryption**: Communication is unencrypted; the dice accept connections
+  from any central
 
 ## Byte Commands (Host → Dice)
 
