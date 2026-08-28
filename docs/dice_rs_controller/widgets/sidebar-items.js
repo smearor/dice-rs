@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["battery_indicator","dice_3d","dice_renderer","dice_row","dice_type_selector","face_display","led_controls","roll_history","tap_controls","tap_indicator"]};

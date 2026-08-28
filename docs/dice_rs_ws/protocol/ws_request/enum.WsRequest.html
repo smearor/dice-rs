@@ -19,8 +19,8 @@
         count: <a class="primitive" href="https://doc.rust-lang.org/1.98.0/std/primitive.u8.html">u8</a>,
         on_time: <a class="primitive" href="https://doc.rust-lang.org/1.98.0/std/primitive.u8.html">u8</a>,
         off_time: <a class="primitive" href="https://doc.rust-lang.org/1.98.0/std/primitive.u8.html">u8</a>,
-        blink_mode: <a class="enum" href="../../../dice_rs/model/led/pulse_blink_mode/enum.PulseBlinkMode.html" title="enum dice_rs::model::led::pulse_blink_mode::PulseBlinkMode">PulseBlinkMode</a>,
-        leds: <a class="enum" href="../../../dice_rs/model/led/pulse_leds/enum.PulseLeds.html" title="enum dice_rs::model::led::pulse_leds::PulseLeds">PulseLeds</a>,
+        blink_mode: PulseBlinkMode,
+        leds: PulseLeds,
     },
     TurnOffLeds {
         session_id: <a class="struct" href="https://doc.rust-lang.org/1.98.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>,
@@ -59,8 +59,8 @@
 </div></div><div class="sub-variant-field"><span id="variant.PulseLed.field.count" class="section-header"><a href="#variant.PulseLed.field.count" class="anchor field">§</a><code>count: <a class="primitive" href="https://doc.rust-lang.org/1.98.0/std/primitive.u8.html">u8</a></code></span><div class="docblock"><p>Number of pulse cycles.</p>
 </div></div><div class="sub-variant-field"><span id="variant.PulseLed.field.on_time" class="section-header"><a href="#variant.PulseLed.field.on_time" class="anchor field">§</a><code>on_time: <a class="primitive" href="https://doc.rust-lang.org/1.98.0/std/primitive.u8.html">u8</a></code></span><div class="docblock"><p>On time in 10ms units.</p>
 </div></div><div class="sub-variant-field"><span id="variant.PulseLed.field.off_time" class="section-header"><a href="#variant.PulseLed.field.off_time" class="anchor field">§</a><code>off_time: <a class="primitive" href="https://doc.rust-lang.org/1.98.0/std/primitive.u8.html">u8</a></code></span><div class="docblock"><p>Off time in 10ms units.</p>
-</div></div><div class="sub-variant-field"><span id="variant.PulseLed.field.blink_mode" class="section-header"><a href="#variant.PulseLed.field.blink_mode" class="anchor field">§</a><code>blink_mode: <a class="enum" href="../../../dice_rs/model/led/pulse_blink_mode/enum.PulseBlinkMode.html" title="enum dice_rs::model::led::pulse_blink_mode::PulseBlinkMode">PulseBlinkMode</a></code></span><div class="docblock"><p>Blink mode: “rainbow” or “color”.</p>
-</div></div><div class="sub-variant-field"><span id="variant.PulseLed.field.leds" class="section-header"><a href="#variant.PulseLed.field.leds" class="anchor field">§</a><code>leds: <a class="enum" href="../../../dice_rs/model/led/pulse_leds/enum.PulseLeds.html" title="enum dice_rs::model::led::pulse_leds::PulseLeds">PulseLeds</a></code></span><div class="docblock"><p>LED selection: “both”, “led1”, or “led2”.</p>
+</div></div><div class="sub-variant-field"><span id="variant.PulseLed.field.blink_mode" class="section-header"><a href="#variant.PulseLed.field.blink_mode" class="anchor field">§</a><code>blink_mode: PulseBlinkMode</code></span><div class="docblock"><p>Blink mode: “rainbow” or “color”.</p>
+</div></div><div class="sub-variant-field"><span id="variant.PulseLed.field.leds" class="section-header"><a href="#variant.PulseLed.field.leds" class="anchor field">§</a><code>leds: PulseLeds</code></span><div class="docblock"><p>LED selection: “both”, “led1”, or “led2”.</p>
 </div></div></div><section id="variant.TurnOffLeds" class="variant"><a href="#variant.TurnOffLeds" class="anchor">§</a><h3 class="code-header">TurnOffLeds</h3></section><div class="docblock"><p>Turn LEDs off.</p>
 </div><div class="sub-variant" id="variant.TurnOffLeds.fields"><h4>Fields</h4><div class="sub-variant-field"><span id="variant.TurnOffLeds.field.session_id" class="section-header"><a href="#variant.TurnOffLeds.field.session_id" class="anchor field">§</a><code>session_id: <a class="struct" href="https://doc.rust-lang.org/1.98.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a></code></span><div class="docblock"><p>Session ID associated with the dice.</p>
 </div></div></div><section id="variant.GetBattery" class="variant"><a href="#variant.GetBattery" class="anchor">§</a><h3 class="code-header">GetBattery</h3></section><div class="docblock"><p>Query battery level.</p>

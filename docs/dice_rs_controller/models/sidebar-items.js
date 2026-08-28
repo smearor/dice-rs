@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["add_kite_face","add_pent_face","add_quad_face","add_tri_face","model_for_type"],"mod":["d10","d12","d20","d4","d6","d8","dice_model"]};

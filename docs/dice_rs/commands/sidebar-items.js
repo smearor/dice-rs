@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["run_command"],"mod":["battery","calibrate","charging","color","disconnect","disconnect_all","interactive","led","listen","repl_command","scan","status","tap"]};

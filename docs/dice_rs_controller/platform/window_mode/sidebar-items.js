@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["COMPACT_HEIGHT","TITLEBAR_HEIGHT"],"enum":["WindowMode"]};

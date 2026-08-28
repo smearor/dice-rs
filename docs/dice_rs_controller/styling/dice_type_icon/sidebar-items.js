@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["ICON_SIZE"],"fn":["create_icon","draw_cube","draw_dice","draw_dodecahedron","draw_icosahedron","draw_octahedron","draw_pentagonal_trapezohedron","draw_tetrahedron"]};

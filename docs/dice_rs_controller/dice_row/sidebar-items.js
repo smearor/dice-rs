@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["dice_color_to_css_class"],"struct":["DiceRow"]};

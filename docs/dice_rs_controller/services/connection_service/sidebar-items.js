@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["AUTO_SCAN_BURST_DURATION_SECS","AUTO_SCAN_FAST_INTERVAL_SECS","AUTO_SCAN_INTERVAL_SECS"],"enum":["ConnectionEvent"],"struct":["ConnectionService"]};

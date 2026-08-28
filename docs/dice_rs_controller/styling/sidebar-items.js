@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["battery_level","dice","dice_type_icon","stability"]};

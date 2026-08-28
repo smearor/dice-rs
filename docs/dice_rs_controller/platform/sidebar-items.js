@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["drag_reorder","event_controller","ui_update","widget_container","window_mode"]};

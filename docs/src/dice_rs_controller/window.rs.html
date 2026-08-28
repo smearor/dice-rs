@@ -1,275 +1,267 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dice-rs-controller/src/window.rs`."><title>window.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="dice_rs_controller" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0 (88d9e12ae 2026-08-18)" data-channel="1.98.0" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">dice_rs_controller/</div>window.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::HashSet;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dice-rs-controller/src/window.rs`."><title>window.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="dice_rs_controller" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0 (88d9e12ae 2026-08-18)" data-channel="1.98.0" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">dice_rs_controller/</div>window.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::rc::Rc;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>std::sync::Arc;
-<a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>std::sync::atomic::AtomicUsize;
-<a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>std::sync::atomic::Ordering;
-<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>std::time::Duration;
-<a href=#6 id=6 data-nosnippet>6</a>
-<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>dice_rs::service::manager::DiceManager;
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>glib::clone;
-<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>gtk4::glib;
-<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>gtk4::prelude::<span class="kw-2">*</span>;
-<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>tracing::debug;
-<a href=#12 id=12 data-nosnippet>12</a>
-<a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span><span class="kw">crate</span>::dice_row::DiceRow;
-<a href=#14 id=14 data-nosnippet>14</a>
-<a href=#15 id=15 data-nosnippet>15</a><span class="doccomment">/// Interval for periodic auto-scan after the startup burst (seconds).
-<a href=#16 id=16 data-nosnippet>16</a></span><span class="kw">const </span>AUTO_SCAN_INTERVAL_SECS: u64 = <span class="number">15</span>;
+<a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>std::time::Duration;
+<a href=#4 id=4 data-nosnippet>4</a>
+<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>dice_rs::service::manager::DiceManager;
+<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>gtk4::glib;
+<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>gtk4::prelude::<span class="kw-2">*</span>;
+<a href=#8 id=8 data-nosnippet>8</a>
+<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span><span class="kw">crate</span>::config::app_settings::AppSettings;
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span><span class="kw">crate</span>::info_dialog::InfoDialog;
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span><span class="kw">crate</span>::platform::widget_container::WidgetContainer;
+<a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span><span class="kw">crate</span>::platform::window_mode::WindowMode;
+<a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span><span class="kw">crate</span>::services::connection_service::ConnectionEvent;
+<a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span><span class="kw">crate</span>::services::connection_service::ConnectionService;
+<a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span><span class="kw">crate</span>::settings_dialog::SettingsDialog;
+<a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span><span class="kw">crate</span>::widgets::dice_row::DiceRow;
 <a href=#17 id=17 data-nosnippet>17</a>
-<a href=#18 id=18 data-nosnippet>18</a><span class="doccomment">/// Fast auto-scan interval during startup burst (seconds).
-<a href=#19 id=19 data-nosnippet>19</a></span><span class="kw">const </span>AUTO_SCAN_FAST_INTERVAL_SECS: u64 = <span class="number">5</span>;
-<a href=#20 id=20 data-nosnippet>20</a>
-<a href=#21 id=21 data-nosnippet>21</a><span class="doccomment">/// Duration of the startup burst period (seconds).
-<a href=#22 id=22 data-nosnippet>22</a></span><span class="kw">const </span>AUTO_SCAN_BURST_DURATION_SECS: u64 = <span class="number">60</span>;
-<a href=#23 id=23 data-nosnippet>23</a>
-<a href=#24 id=24 data-nosnippet>24</a><span class="doccomment">/// Main application window.
-<a href=#25 id=25 data-nosnippet>25</a></span><span class="kw">pub struct </span>MainWindow {
-<a href=#26 id=26 data-nosnippet>26</a>    window: gtk4::ApplicationWindow,
-<a href=#27 id=27 data-nosnippet>27</a>    scan_button: gtk4::Button,
-<a href=#28 id=28 data-nosnippet>28</a>    dice_list: gtk4::Box,
-<a href=#29 id=29 data-nosnippet>29</a>    status_label: gtk4::Label,
-<a href=#30 id=30 data-nosnippet>30</a>    manager: Arc&lt;DiceManager&gt;,
-<a href=#31 id=31 data-nosnippet>31</a>    connected_ids: Arc&lt;std::sync::Mutex&lt;HashSet&lt;String&gt;&gt;&gt;,
-<a href=#32 id=32 data-nosnippet>32</a>}
+<a href=#18 id=18 data-nosnippet>18</a><span class="doccomment">/// Main application window.
+<a href=#19 id=19 data-nosnippet>19</a></span><span class="kw">pub struct </span>MainWindow {
+<a href=#20 id=20 data-nosnippet>20</a>    window: gtk4::ApplicationWindow,
+<a href=#21 id=21 data-nosnippet>21</a>    scan_button: gtk4::Button,
+<a href=#22 id=22 data-nosnippet>22</a>    dice_list: gtk4::Box,
+<a href=#23 id=23 data-nosnippet>23</a>    status_label: gtk4::Label,
+<a href=#24 id=24 data-nosnippet>24</a>    connection_service: ConnectionService,
+<a href=#25 id=25 data-nosnippet>25</a>    settings: AppSettings,
+<a href=#26 id=26 data-nosnippet>26</a>    dice_rows: Rc&lt;std::cell::RefCell&lt;Vec&lt;DiceRow&gt;&gt;&gt;,
+<a href=#27 id=27 data-nosnippet>27</a>}
+<a href=#28 id=28 data-nosnippet>28</a>
+<a href=#29 id=29 data-nosnippet>29</a><span class="kw">impl </span>MainWindow {
+<a href=#30 id=30 data-nosnippet>30</a>    <span class="doccomment">/// Create the main window.
+<a href=#31 id=31 data-nosnippet>31</a>    </span><span class="kw">pub fn </span>new(app: <span class="kw-2">&amp;</span>gtk4::Application, manager: Arc&lt;DiceManager&gt;) -&gt; <span class="self">Self </span>{
+<a href=#32 id=32 data-nosnippet>32</a>        <span class="kw">let </span>scan_button = gtk4::Button::builder().label(<span class="string">"Scan for GoDice"</span>).css_classes(<span class="macro">vec!</span>[<span class="string">"suggested-action"</span>]).build();
 <a href=#33 id=33 data-nosnippet>33</a>
-<a href=#34 id=34 data-nosnippet>34</a><span class="kw">impl </span>MainWindow {
-<a href=#35 id=35 data-nosnippet>35</a>    <span class="doccomment">/// Create the main window.
-<a href=#36 id=36 data-nosnippet>36</a>    </span><span class="kw">pub fn </span>new(app: <span class="kw-2">&amp;</span>gtk4::Application, manager: Arc&lt;DiceManager&gt;) -&gt; <span class="self">Self </span>{
-<a href=#37 id=37 data-nosnippet>37</a>        <span class="kw">let </span>scan_button = gtk4::Button::builder().label(<span class="string">"Scan for GoDice"</span>).css_classes(<span class="macro">vec!</span>[<span class="string">"suggested-action"</span>]).build();
-<a href=#38 id=38 data-nosnippet>38</a>
-<a href=#39 id=39 data-nosnippet>39</a>        <span class="kw">let </span>dice_list = gtk4::Box::builder()
-<a href=#40 id=40 data-nosnippet>40</a>            .orientation(gtk4::Orientation::Vertical)
-<a href=#41 id=41 data-nosnippet>41</a>            .spacing(<span class="number">6</span>)
-<a href=#42 id=42 data-nosnippet>42</a>            .css_classes(<span class="macro">vec!</span>[<span class="string">"dice-list"</span>])
-<a href=#43 id=43 data-nosnippet>43</a>            .build();
-<a href=#44 id=44 data-nosnippet>44</a>
-<a href=#45 id=45 data-nosnippet>45</a>        <span class="kw">let </span>status_label = gtk4::Label::builder()
-<a href=#46 id=46 data-nosnippet>46</a>            .label(<span class="string">"Ready"</span>)
-<a href=#47 id=47 data-nosnippet>47</a>            .css_classes(<span class="macro">vec!</span>[<span class="string">"dim-label"</span>])
-<a href=#48 id=48 data-nosnippet>48</a>            .halign(gtk4::Align::Start)
-<a href=#49 id=49 data-nosnippet>49</a>            .build();
-<a href=#50 id=50 data-nosnippet>50</a>
-<a href=#51 id=51 data-nosnippet>51</a>        <span class="kw">let </span>header_bar = gtk4::HeaderBar::builder().build();
-<a href=#52 id=52 data-nosnippet>52</a>        header_bar.pack_start(<span class="kw-2">&amp;</span>scan_button);
-<a href=#53 id=53 data-nosnippet>53</a>
-<a href=#54 id=54 data-nosnippet>54</a>        <span class="kw">let </span>content = gtk4::Box::builder()
-<a href=#55 id=55 data-nosnippet>55</a>            .orientation(gtk4::Orientation::Vertical)
-<a href=#56 id=56 data-nosnippet>56</a>            .spacing(<span class="number">12</span>)
-<a href=#57 id=57 data-nosnippet>57</a>            .margin_start(<span class="number">12</span>)
-<a href=#58 id=58 data-nosnippet>58</a>            .margin_end(<span class="number">12</span>)
-<a href=#59 id=59 data-nosnippet>59</a>            .margin_top(<span class="number">12</span>)
-<a href=#60 id=60 data-nosnippet>60</a>            .margin_bottom(<span class="number">12</span>)
-<a href=#61 id=61 data-nosnippet>61</a>            .build();
-<a href=#62 id=62 data-nosnippet>62</a>        content.append(<span class="kw-2">&amp;</span>dice_list);
-<a href=#63 id=63 data-nosnippet>63</a>        content.append(<span class="kw-2">&amp;</span>status_label);
+<a href=#34 id=34 data-nosnippet>34</a>        <span class="kw">let </span>dice_list = gtk4::Box::builder()
+<a href=#35 id=35 data-nosnippet>35</a>            .orientation(gtk4::Orientation::Vertical)
+<a href=#36 id=36 data-nosnippet>36</a>            .spacing(<span class="number">12</span>)
+<a href=#37 id=37 data-nosnippet>37</a>            .css_classes(<span class="macro">vec!</span>[<span class="string">"dice-list"</span>])
+<a href=#38 id=38 data-nosnippet>38</a>            .build();
+<a href=#39 id=39 data-nosnippet>39</a>
+<a href=#40 id=40 data-nosnippet>40</a>        <span class="kw">let </span>status_label = gtk4::Label::builder()
+<a href=#41 id=41 data-nosnippet>41</a>            .label(<span class="string">"Ready"</span>)
+<a href=#42 id=42 data-nosnippet>42</a>            .css_classes(<span class="macro">vec!</span>[<span class="string">"dim-label"</span>])
+<a href=#43 id=43 data-nosnippet>43</a>            .halign(gtk4::Align::Start)
+<a href=#44 id=44 data-nosnippet>44</a>            .build();
+<a href=#45 id=45 data-nosnippet>45</a>
+<a href=#46 id=46 data-nosnippet>46</a>        <span class="kw">let </span>header_bar = gtk4::HeaderBar::builder().build();
+<a href=#47 id=47 data-nosnippet>47</a>        header_bar.pack_start(<span class="kw-2">&amp;</span>scan_button);
+<a href=#48 id=48 data-nosnippet>48</a>
+<a href=#49 id=49 data-nosnippet>49</a>        <span class="comment">// Menu button with Settings and Info actions.
+<a href=#50 id=50 data-nosnippet>50</a>        </span><span class="kw">let </span>menu_box = gtk4::Box::builder()
+<a href=#51 id=51 data-nosnippet>51</a>            .orientation(gtk4::Orientation::Vertical)
+<a href=#52 id=52 data-nosnippet>52</a>            .spacing(<span class="number">2</span>)
+<a href=#53 id=53 data-nosnippet>53</a>            .margin_start(<span class="number">6</span>)
+<a href=#54 id=54 data-nosnippet>54</a>            .margin_end(<span class="number">6</span>)
+<a href=#55 id=55 data-nosnippet>55</a>            .margin_top(<span class="number">6</span>)
+<a href=#56 id=56 data-nosnippet>56</a>            .margin_bottom(<span class="number">6</span>)
+<a href=#57 id=57 data-nosnippet>57</a>            .build();
+<a href=#58 id=58 data-nosnippet>58</a>        <span class="kw">let </span>settings_action = gtk4::Button::builder().label(<span class="string">"Settings"</span>).css_classes(<span class="macro">vec!</span>[<span class="string">"flat"</span>]).build();
+<a href=#59 id=59 data-nosnippet>59</a>        <span class="kw">let </span>info_action = gtk4::Button::builder().label(<span class="string">"Info"</span>).css_classes(<span class="macro">vec!</span>[<span class="string">"flat"</span>]).build();
+<a href=#60 id=60 data-nosnippet>60</a>        menu_box.append(<span class="kw-2">&amp;</span>settings_action);
+<a href=#61 id=61 data-nosnippet>61</a>        menu_box.append(<span class="kw-2">&amp;</span>info_action);
+<a href=#62 id=62 data-nosnippet>62</a>
+<a href=#63 id=63 data-nosnippet>63</a>        <span class="kw">let </span>popover = gtk4::Popover::builder().child(<span class="kw-2">&amp;</span>menu_box).build();
 <a href=#64 id=64 data-nosnippet>64</a>
-<a href=#65 id=65 data-nosnippet>65</a>        <span class="kw">let </span>scrolled = gtk4::ScrolledWindow::builder().hexpand(<span class="bool-val">true</span>).vexpand(<span class="bool-val">true</span>).child(<span class="kw-2">&amp;</span>content).build();
-<a href=#66 id=66 data-nosnippet>66</a>
-<a href=#67 id=67 data-nosnippet>67</a>        <span class="kw">let </span>window = gtk4::ApplicationWindow::builder()
-<a href=#68 id=68 data-nosnippet>68</a>            .application(app)
-<a href=#69 id=69 data-nosnippet>69</a>            .title(<span class="string">"dice-rs Controller"</span>)
-<a href=#70 id=70 data-nosnippet>70</a>            .default_width(<span class="number">800</span>)
-<a href=#71 id=71 data-nosnippet>71</a>            .default_height(<span class="number">1000</span>)
-<a href=#72 id=72 data-nosnippet>72</a>            .child(<span class="kw-2">&amp;</span>scrolled)
-<a href=#73 id=73 data-nosnippet>73</a>            .build();
-<a href=#74 id=74 data-nosnippet>74</a>        window.set_titlebar(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>header_bar));
-<a href=#75 id=75 data-nosnippet>75</a>
-<a href=#76 id=76 data-nosnippet>76</a>        <span class="kw">let </span>win = <span class="self">Self </span>{
-<a href=#77 id=77 data-nosnippet>77</a>            window,
-<a href=#78 id=78 data-nosnippet>78</a>            scan_button,
-<a href=#79 id=79 data-nosnippet>79</a>            dice_list,
-<a href=#80 id=80 data-nosnippet>80</a>            status_label,
-<a href=#81 id=81 data-nosnippet>81</a>            manager,
-<a href=#82 id=82 data-nosnippet>82</a>            connected_ids: Arc::new(std::sync::Mutex::new(HashSet::new())),
-<a href=#83 id=83 data-nosnippet>83</a>        };
+<a href=#65 id=65 data-nosnippet>65</a>        <span class="kw">let </span>menu_button = gtk4::MenuButton::builder().icon_name(<span class="string">"open-menu-symbolic"</span>).popover(<span class="kw-2">&amp;</span>popover).build();
+<a href=#66 id=66 data-nosnippet>66</a>        header_bar.pack_end(<span class="kw-2">&amp;</span>menu_button);
+<a href=#67 id=67 data-nosnippet>67</a>
+<a href=#68 id=68 data-nosnippet>68</a>        <span class="comment">// Compact mode switch in the titlebar.
+<a href=#69 id=69 data-nosnippet>69</a>        </span><span class="kw">let </span>compact_switch = gtk4::Switch::builder().tooltip_text(<span class="string">"Compact mode"</span>).valign(gtk4::Align::Center).build();
+<a href=#70 id=70 data-nosnippet>70</a>        header_bar.pack_end(<span class="kw-2">&amp;</span>compact_switch);
+<a href=#71 id=71 data-nosnippet>71</a>
+<a href=#72 id=72 data-nosnippet>72</a>        <span class="kw">let </span>content = gtk4::Box::builder()
+<a href=#73 id=73 data-nosnippet>73</a>            .orientation(gtk4::Orientation::Vertical)
+<a href=#74 id=74 data-nosnippet>74</a>            .spacing(<span class="number">12</span>)
+<a href=#75 id=75 data-nosnippet>75</a>            .margin_start(<span class="number">12</span>)
+<a href=#76 id=76 data-nosnippet>76</a>            .margin_end(<span class="number">12</span>)
+<a href=#77 id=77 data-nosnippet>77</a>            .margin_top(<span class="number">12</span>)
+<a href=#78 id=78 data-nosnippet>78</a>            .margin_bottom(<span class="number">12</span>)
+<a href=#79 id=79 data-nosnippet>79</a>            .build();
+<a href=#80 id=80 data-nosnippet>80</a>        content.append(<span class="kw-2">&amp;</span>dice_list);
+<a href=#81 id=81 data-nosnippet>81</a>        content.append(<span class="kw-2">&amp;</span>status_label);
+<a href=#82 id=82 data-nosnippet>82</a>
+<a href=#83 id=83 data-nosnippet>83</a>        <span class="kw">let </span>scrolled = gtk4::ScrolledWindow::builder().hexpand(<span class="bool-val">true</span>).vexpand(<span class="bool-val">true</span>).child(<span class="kw-2">&amp;</span>content).build();
 <a href=#84 id=84 data-nosnippet>84</a>
-<a href=#85 id=85 data-nosnippet>85</a>        win.connect_signals();
-<a href=#86 id=86 data-nosnippet>86</a>        win.start_auto_scan();
-<a href=#87 id=87 data-nosnippet>87</a>        win
-<a href=#88 id=88 data-nosnippet>88</a>    }
-<a href=#89 id=89 data-nosnippet>89</a>
-<a href=#90 id=90 data-nosnippet>90</a>    <span class="doccomment">/// Connect signal handlers.
-<a href=#91 id=91 data-nosnippet>91</a>    </span><span class="kw">fn </span>connect_signals(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-<a href=#92 id=92 data-nosnippet>92</a>        <span class="self">self</span>.scan_button.connect_clicked(<span class="macro">clone!</span>(
-<a href=#93 id=93 data-nosnippet>93</a>            <span class="attr">#[strong(rename_to = manager)]
-<a href=#94 id=94 data-nosnippet>94</a>            </span><span class="self">self</span>.manager.clone(),
-<a href=#95 id=95 data-nosnippet>95</a>            <span class="attr">#[strong(rename_to = dice_list)]
-<a href=#96 id=96 data-nosnippet>96</a>            </span><span class="self">self</span>.dice_list.clone(),
-<a href=#97 id=97 data-nosnippet>97</a>            <span class="attr">#[strong(rename_to = status_label)]
-<a href=#98 id=98 data-nosnippet>98</a>            </span><span class="self">self</span>.status_label.clone(),
-<a href=#99 id=99 data-nosnippet>99</a>            <span class="attr">#[strong(rename_to = connected_ids)]
-<a href=#100 id=100 data-nosnippet>100</a>            </span><span class="self">self</span>.connected_ids.clone(),
-<a href=#101 id=101 data-nosnippet>101</a>            <span class="kw">move </span>|<span class="kw">_</span>| {
-<a href=#102 id=102 data-nosnippet>102</a>                <span class="kw">let </span>manager = manager.clone();
-<a href=#103 id=103 data-nosnippet>103</a>                <span class="kw">let </span>dice_list = dice_list.clone();
-<a href=#104 id=104 data-nosnippet>104</a>                <span class="kw">let </span>status_label = status_label.clone();
-<a href=#105 id=105 data-nosnippet>105</a>                <span class="kw">let </span>connected_ids = connected_ids.clone();
+<a href=#85 id=85 data-nosnippet>85</a>        <span class="kw">let </span>window = gtk4::ApplicationWindow::builder()
+<a href=#86 id=86 data-nosnippet>86</a>            .application(app)
+<a href=#87 id=87 data-nosnippet>87</a>            .title(<span class="string">"dice-rs Controller"</span>)
+<a href=#88 id=88 data-nosnippet>88</a>            .default_width(<span class="number">1000</span>)
+<a href=#89 id=89 data-nosnippet>89</a>            .default_height(<span class="number">1000</span>)
+<a href=#90 id=90 data-nosnippet>90</a>            .child(<span class="kw-2">&amp;</span>scrolled)
+<a href=#91 id=91 data-nosnippet>91</a>            .build();
+<a href=#92 id=92 data-nosnippet>92</a>        window.set_titlebar(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>header_bar));
+<a href=#93 id=93 data-nosnippet>93</a>
+<a href=#94 id=94 data-nosnippet>94</a>        <span class="kw">let </span>settings = AppSettings::new();
+<a href=#95 id=95 data-nosnippet>95</a>        <span class="kw">let </span>dice_rows = Rc::new(std::cell::RefCell::new(Vec::&lt;DiceRow&gt;::new()));
+<a href=#96 id=96 data-nosnippet>96</a>        <span class="kw">let </span>connection_service = ConnectionService::new(manager);
+<a href=#97 id=97 data-nosnippet>97</a>
+<a href=#98 id=98 data-nosnippet>98</a>        compact_switch.set_active(settings.get().compact_mode);
+<a href=#99 id=99 data-nosnippet>99</a>        window.set_size_request(-<span class="number">1</span>, WindowMode::min_height());
+<a href=#100 id=100 data-nosnippet>100</a>        <span class="kw">let </span>mode = WindowMode::from(settings.get().compact_mode);
+<a href=#101 id=101 data-nosnippet>101</a>        <span class="kw">if </span>mode.is_compact() {
+<a href=#102 id=102 data-nosnippet>102</a>            dice_list.set_orientation(mode.orientation());
+<a href=#103 id=103 data-nosnippet>103</a>            window.set_default_size(<span class="number">1000</span>, mode.window_height(<span class="number">0</span>));
+<a href=#104 id=104 data-nosnippet>104</a>            status_label.set_visible(<span class="bool-val">false</span>);
+<a href=#105 id=105 data-nosnippet>105</a>        }
 <a href=#106 id=106 data-nosnippet>106</a>
-<a href=#107 id=107 data-nosnippet>107</a>                <span class="comment">// Clear existing dice rows and reset connected IDs.
-<a href=#108 id=108 data-nosnippet>108</a>                </span><span class="kw">while let </span><span class="prelude-val">Some</span>(child) = dice_list.first_child() {
-<a href=#109 id=109 data-nosnippet>109</a>                    dice_list.remove(<span class="kw-2">&amp;</span>child);
-<a href=#110 id=110 data-nosnippet>110</a>                }
-<a href=#111 id=111 data-nosnippet>111</a>                <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>ids) = connected_ids.lock() {
-<a href=#112 id=112 data-nosnippet>112</a>                    ids.clear();
-<a href=#113 id=113 data-nosnippet>113</a>                }
-<a href=#114 id=114 data-nosnippet>114</a>
-<a href=#115 id=115 data-nosnippet>115</a>                status_label.set_text(<span class="string">"Scanning..."</span>);
-<a href=#116 id=116 data-nosnippet>116</a>                <span class="kw">let </span>manager_scan = manager.clone();
-<a href=#117 id=117 data-nosnippet>117</a>                glib::spawn_future_local(<span class="kw">async move </span>{
-<a href=#118 id=118 data-nosnippet>118</a>                    <span class="kw">let </span>scan_result = tokio::spawn(<span class="kw">async move </span>{ manager_scan.scan().<span class="kw">await </span>}).<span class="kw">await</span>;
-<a href=#119 id=119 data-nosnippet>119</a>                    <span class="kw">match </span>scan_result {
-<a href=#120 id=120 data-nosnippet>120</a>                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(devices)) =&gt; {
-<a href=#121 id=121 data-nosnippet>121</a>                            <span class="kw">if </span>devices.is_empty() {
-<a href=#122 id=122 data-nosnippet>122</a>                                status_label.set_text(<span class="string">"No GoDice devices found."</span>);
-<a href=#123 id=123 data-nosnippet>123</a>                                <span class="kw">return</span>;
-<a href=#124 id=124 data-nosnippet>124</a>                            }
-<a href=#125 id=125 data-nosnippet>125</a>                            <span class="kw">let </span>count = devices.len();
-<a href=#126 id=126 data-nosnippet>126</a>                            status_label.set_text(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"Found {count} device(s), connecting..."</span>));
+<a href=#107 id=107 data-nosnippet>107</a>        <span class="kw">let </span>win = <span class="self">Self </span>{
+<a href=#108 id=108 data-nosnippet>108</a>            window,
+<a href=#109 id=109 data-nosnippet>109</a>            scan_button,
+<a href=#110 id=110 data-nosnippet>110</a>            dice_list,
+<a href=#111 id=111 data-nosnippet>111</a>            status_label,
+<a href=#112 id=112 data-nosnippet>112</a>            connection_service,
+<a href=#113 id=113 data-nosnippet>113</a>            settings,
+<a href=#114 id=114 data-nosnippet>114</a>            dice_rows,
+<a href=#115 id=115 data-nosnippet>115</a>        };
+<a href=#116 id=116 data-nosnippet>116</a>
+<a href=#117 id=117 data-nosnippet>117</a>        win.connect_signals();
+<a href=#118 id=118 data-nosnippet>118</a>
+<a href=#119 id=119 data-nosnippet>119</a>        <span class="comment">// Connect menu actions.
+<a href=#120 id=120 data-nosnippet>120</a>        </span>{
+<a href=#121 id=121 data-nosnippet>121</a>            <span class="kw">let </span>settings_clone = win.settings.clone();
+<a href=#122 id=122 data-nosnippet>122</a>            <span class="kw">let </span>window_clone = win.window.clone();
+<a href=#123 id=123 data-nosnippet>123</a>            settings_action.connect_clicked(<span class="kw">move </span>|<span class="kw">_</span>| {
+<a href=#124 id=124 data-nosnippet>124</a>                <span class="kw">let </span>dialog = SettingsDialog::new(<span class="kw-2">&amp;</span>window_clone, <span class="kw-2">&amp;</span>settings_clone);
+<a href=#125 id=125 data-nosnippet>125</a>                dialog.present();
+<a href=#126 id=126 data-nosnippet>126</a>            });
 <a href=#127 id=127 data-nosnippet>127</a>
-<a href=#128 id=128 data-nosnippet>128</a>                            <span class="kw">let </span>connected = Arc::new(AtomicUsize::new(<span class="number">0</span>));
-<a href=#129 id=129 data-nosnippet>129</a>                            <span class="kw">for </span>device <span class="kw">in </span>devices {
-<a href=#130 id=130 data-nosnippet>130</a>                                <span class="kw">let </span>device_id = <span class="macro">format!</span>(<span class="string">"{:?}"</span>, device.id);
-<a href=#131 id=131 data-nosnippet>131</a>                                <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>ids) = connected_ids.lock() {
-<a href=#132 id=132 data-nosnippet>132</a>                                    ids.insert(device_id);
-<a href=#133 id=133 data-nosnippet>133</a>                                }
-<a href=#134 id=134 data-nosnippet>134</a>
-<a href=#135 id=135 data-nosnippet>135</a>                                <span class="kw">let </span>device_name = device.name.clone();
-<a href=#136 id=136 data-nosnippet>136</a>                                <span class="kw">let </span>connect_manager = manager.clone();
-<a href=#137 id=137 data-nosnippet>137</a>                                <span class="kw">let </span>connect_result = tokio::spawn(<span class="kw">async move </span>{ connect_manager.connect(<span class="kw-2">&amp;</span>device).<span class="kw">await </span>}).<span class="kw">await</span>;
-<a href=#138 id=138 data-nosnippet>138</a>                                <span class="kw">match </span>connect_result {
-<a href=#139 id=139 data-nosnippet>139</a>                                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(dice)) =&gt; {
-<a href=#140 id=140 data-nosnippet>140</a>                                        <span class="kw">let </span>row = DiceRow::new(dice, manager.clone());
-<a href=#141 id=141 data-nosnippet>141</a>                                        dice_list.append(row.widget());
-<a href=#142 id=142 data-nosnippet>142</a>                                        <span class="kw">let </span>n = connected.fetch_add(<span class="number">1</span>, Ordering::Relaxed) + <span class="number">1</span>;
-<a href=#143 id=143 data-nosnippet>143</a>                                        status_label.set_text(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"Connected {n}/{count}"</span>));
-<a href=#144 id=144 data-nosnippet>144</a>                                    }
-<a href=#145 id=145 data-nosnippet>145</a>                                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(error)) =&gt; {
-<a href=#146 id=146 data-nosnippet>146</a>                                        <span class="macro">debug!</span>(error = %error, device = %device_name, <span class="string">"connection failed"</span>);
-<a href=#147 id=147 data-nosnippet>147</a>                                        status_label.set_text(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"Connection failed for {device_name}: {error}"</span>));
-<a href=#148 id=148 data-nosnippet>148</a>                                    }
-<a href=#149 id=149 data-nosnippet>149</a>                                    <span class="prelude-val">Err</span>(error) =&gt; {
-<a href=#150 id=150 data-nosnippet>150</a>                                        <span class="macro">debug!</span>(error = %error, device = %device_name, <span class="string">"connect task join failed"</span>);
-<a href=#151 id=151 data-nosnippet>151</a>                                    }
-<a href=#152 id=152 data-nosnippet>152</a>                                }
-<a href=#153 id=153 data-nosnippet>153</a>                            }
-<a href=#154 id=154 data-nosnippet>154</a>                        }
-<a href=#155 id=155 data-nosnippet>155</a>                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(error)) =&gt; {
-<a href=#156 id=156 data-nosnippet>156</a>                            status_label.set_text(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"Scan failed: {error}"</span>));
-<a href=#157 id=157 data-nosnippet>157</a>                            <span class="macro">debug!</span>(error = %error, <span class="string">"scan failed"</span>);
-<a href=#158 id=158 data-nosnippet>158</a>                        }
-<a href=#159 id=159 data-nosnippet>159</a>                        <span class="prelude-val">Err</span>(error) =&gt; {
-<a href=#160 id=160 data-nosnippet>160</a>                            status_label.set_text(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"Scan task failed: {error}"</span>));
-<a href=#161 id=161 data-nosnippet>161</a>                            <span class="macro">debug!</span>(error = %error, <span class="string">"scan task join failed"</span>);
-<a href=#162 id=162 data-nosnippet>162</a>                        }
-<a href=#163 id=163 data-nosnippet>163</a>                    }
-<a href=#164 id=164 data-nosnippet>164</a>                });
-<a href=#165 id=165 data-nosnippet>165</a>            }
-<a href=#166 id=166 data-nosnippet>166</a>        ));
-<a href=#167 id=167 data-nosnippet>167</a>    }
-<a href=#168 id=168 data-nosnippet>168</a>
-<a href=#169 id=169 data-nosnippet>169</a>    <span class="doccomment">/// Start periodic auto-scan to discover and connect new dice.
-<a href=#170 id=170 data-nosnippet>170</a>    /// Existing dice rows are preserved - only newly discovered devices are added.
-<a href=#171 id=171 data-nosnippet>171</a>    /// During the first `AUTO_SCAN_BURST_DURATION_SECS` seconds, scans run every
-<a href=#172 id=172 data-nosnippet>172</a>    /// `AUTO_SCAN_FAST_INTERVAL_SECS` seconds; afterwards the interval reverts to
-<a href=#173 id=173 data-nosnippet>173</a>    /// `AUTO_SCAN_INTERVAL_SECS`.
-<a href=#174 id=174 data-nosnippet>174</a>    </span><span class="kw">fn </span>start_auto_scan(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-<a href=#175 id=175 data-nosnippet>175</a>        <span class="kw">let </span>manager = <span class="self">self</span>.manager.clone();
-<a href=#176 id=176 data-nosnippet>176</a>        <span class="kw">let </span>dice_list = <span class="self">self</span>.dice_list.clone();
-<a href=#177 id=177 data-nosnippet>177</a>        <span class="kw">let </span>status_label = <span class="self">self</span>.status_label.clone();
-<a href=#178 id=178 data-nosnippet>178</a>        <span class="kw">let </span>connected_ids = <span class="self">self</span>.connected_ids.clone();
-<a href=#179 id=179 data-nosnippet>179</a>
-<a href=#180 id=180 data-nosnippet>180</a>        <span class="comment">// UI updates from the tokio scan task are marshaled via std::sync::mpsc.
-<a href=#181 id=181 data-nosnippet>181</a>        </span><span class="kw">enum </span>ScanUiUpdate {
-<a href=#182 id=182 data-nosnippet>182</a>            NewDice {
-<a href=#183 id=183 data-nosnippet>183</a>                dice: dice_rs::service::dice::Dice,
-<a href=#184 id=184 data-nosnippet>184</a>                manager: Arc&lt;DiceManager&gt;,
-<a href=#185 id=185 data-nosnippet>185</a>            },
-<a href=#186 id=186 data-nosnippet>186</a>        }
-<a href=#187 id=187 data-nosnippet>187</a>
-<a href=#188 id=188 data-nosnippet>188</a>        <span class="kw">let </span>(sender, receiver) = std::sync::mpsc::channel::&lt;ScanUiUpdate&gt;();
+<a href=#128 id=128 data-nosnippet>128</a>            <span class="kw">let </span>window_clone = win.window.clone();
+<a href=#129 id=129 data-nosnippet>129</a>            info_action.connect_clicked(<span class="kw">move </span>|<span class="kw">_</span>| {
+<a href=#130 id=130 data-nosnippet>130</a>                <span class="kw">let </span>dialog = InfoDialog::new(<span class="kw-2">&amp;</span>window_clone);
+<a href=#131 id=131 data-nosnippet>131</a>                dialog.present();
+<a href=#132 id=132 data-nosnippet>132</a>            });
+<a href=#133 id=133 data-nosnippet>133</a>
+<a href=#134 id=134 data-nosnippet>134</a>            <span class="comment">// Compact mode switch in titlebar.
+<a href=#135 id=135 data-nosnippet>135</a>            </span><span class="kw">let </span>settings_for_compact = win.settings.clone();
+<a href=#136 id=136 data-nosnippet>136</a>            compact_switch.connect_notify_local(<span class="prelude-val">Some</span>(<span class="string">"active"</span>), <span class="kw">move </span>|switch, <span class="kw">_</span>| {
+<a href=#137 id=137 data-nosnippet>137</a>                <span class="kw">let </span><span class="kw-2">mut </span>data = settings_for_compact.get();
+<a href=#138 id=138 data-nosnippet>138</a>                data.compact_mode = switch.is_active();
+<a href=#139 id=139 data-nosnippet>139</a>                settings_for_compact.set(data);
+<a href=#140 id=140 data-nosnippet>140</a>            });
+<a href=#141 id=141 data-nosnippet>141</a>
+<a href=#142 id=142 data-nosnippet>142</a>            <span class="comment">// Apply settings to all dice rows when settings change.
+<a href=#143 id=143 data-nosnippet>143</a>            </span><span class="kw">let </span>dice_rows_for_change = win.dice_rows.clone();
+<a href=#144 id=144 data-nosnippet>144</a>            <span class="kw">let </span>dice_list_for_change = win.dice_list.clone();
+<a href=#145 id=145 data-nosnippet>145</a>            <span class="kw">let </span>status_label_for_change = win.status_label.clone();
+<a href=#146 id=146 data-nosnippet>146</a>            <span class="kw">let </span>window_for_change = win.window.clone();
+<a href=#147 id=147 data-nosnippet>147</a>            win.settings.connect_changed(<span class="kw">move </span>|data| {
+<a href=#148 id=148 data-nosnippet>148</a>                <span class="kw">let </span>mode = WindowMode::from(data.compact_mode);
+<a href=#149 id=149 data-nosnippet>149</a>                dice_list_for_change.set_orientation(mode.orientation());
+<a href=#150 id=150 data-nosnippet>150</a>                status_label_for_change.set_visible(!mode.is_compact());
+<a href=#151 id=151 data-nosnippet>151</a>                <span class="kw">let </span>count = dice_rows_for_change.borrow().len();
+<a href=#152 id=152 data-nosnippet>152</a>                window_for_change.set_default_size(<span class="number">1000</span>, mode.window_height(count));
+<a href=#153 id=153 data-nosnippet>153</a>                <span class="kw">for </span>row <span class="kw">in </span>dice_rows_for_change.borrow().iter() {
+<a href=#154 id=154 data-nosnippet>154</a>                    row.apply_settings(<span class="kw-2">&amp;</span>data);
+<a href=#155 id=155 data-nosnippet>155</a>                }
+<a href=#156 id=156 data-nosnippet>156</a>            });
+<a href=#157 id=157 data-nosnippet>157</a>
+<a href=#158 id=158 data-nosnippet>158</a>            <span class="comment">// Auto-switch mode when window is resized.
+<a href=#159 id=159 data-nosnippet>159</a>            </span><span class="kw">let </span>settings_for_resize = win.settings.clone();
+<a href=#160 id=160 data-nosnippet>160</a>            <span class="kw">let </span>compact_switch_for_resize = compact_switch.clone();
+<a href=#161 id=161 data-nosnippet>161</a>            win.window.connect_notify_local(<span class="prelude-val">Some</span>(<span class="string">"default-height"</span>), <span class="kw">move </span>|window, <span class="kw">_</span>| {
+<a href=#162 id=162 data-nosnippet>162</a>                <span class="kw">let </span>mode = WindowMode::from_height(window.default_height());
+<a href=#163 id=163 data-nosnippet>163</a>                <span class="kw">let </span>current = WindowMode::from(settings_for_resize.get().compact_mode);
+<a href=#164 id=164 data-nosnippet>164</a>                <span class="kw">if </span>mode != current {
+<a href=#165 id=165 data-nosnippet>165</a>                    compact_switch_for_resize.set_active(mode.is_compact());
+<a href=#166 id=166 data-nosnippet>166</a>                }
+<a href=#167 id=167 data-nosnippet>167</a>            });
+<a href=#168 id=168 data-nosnippet>168</a>        }
+<a href=#169 id=169 data-nosnippet>169</a>
+<a href=#170 id=170 data-nosnippet>170</a>        win.start_auto_scan();
+<a href=#171 id=171 data-nosnippet>171</a>        win
+<a href=#172 id=172 data-nosnippet>172</a>    }
+<a href=#173 id=173 data-nosnippet>173</a>
+<a href=#174 id=174 data-nosnippet>174</a>    <span class="doccomment">/// Connect signal handlers.
+<a href=#175 id=175 data-nosnippet>175</a>    </span><span class="kw">fn </span>connect_signals(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+<a href=#176 id=176 data-nosnippet>176</a>        <span class="kw">let </span>connection_service = <span class="self">self</span>.connection_service.clone();
+<a href=#177 id=177 data-nosnippet>177</a>        <span class="kw">let </span>dice_list = <span class="self">self</span>.dice_list.clone();
+<a href=#178 id=178 data-nosnippet>178</a>        <span class="kw">let </span>status_label = <span class="self">self</span>.status_label.clone();
+<a href=#179 id=179 data-nosnippet>179</a>        <span class="kw">let </span>dice_rows = <span class="self">self</span>.dice_rows.clone();
+<a href=#180 id=180 data-nosnippet>180</a>        <span class="kw">let </span>settings = <span class="self">self</span>.settings.clone();
+<a href=#181 id=181 data-nosnippet>181</a>
+<a href=#182 id=182 data-nosnippet>182</a>        <span class="self">self</span>.scan_button.connect_clicked(<span class="kw">move </span>|<span class="kw">_</span>| {
+<a href=#183 id=183 data-nosnippet>183</a>            <span class="comment">// Clear existing dice rows and reset connected IDs.
+<a href=#184 id=184 data-nosnippet>184</a>            </span><span class="kw">while let </span><span class="prelude-val">Some</span>(child) = dice_list.first_child() {
+<a href=#185 id=185 data-nosnippet>185</a>                dice_list.remove(<span class="kw-2">&amp;</span>child);
+<a href=#186 id=186 data-nosnippet>186</a>            }
+<a href=#187 id=187 data-nosnippet>187</a>            connection_service.clear_connected();
+<a href=#188 id=188 data-nosnippet>188</a>            dice_rows.borrow_mut().clear();
 <a href=#189 id=189 data-nosnippet>189</a>
-<a href=#190 id=190 data-nosnippet>190</a>        glib::timeout_add_local(Duration::from_millis(<span class="number">50</span>), <span class="kw">move </span>|| {
-<a href=#191 id=191 data-nosnippet>191</a>            <span class="kw">while let </span><span class="prelude-val">Ok</span>(update) = receiver.try_recv() {
-<a href=#192 id=192 data-nosnippet>192</a>                <span class="kw">match </span>update {
-<a href=#193 id=193 data-nosnippet>193</a>                    ScanUiUpdate::NewDice { dice, manager } =&gt; {
-<a href=#194 id=194 data-nosnippet>194</a>                        <span class="kw">let </span>row = DiceRow::new(dice, manager);
-<a href=#195 id=195 data-nosnippet>195</a>                        dice_list.append(row.widget());
-<a href=#196 id=196 data-nosnippet>196</a>                        status_label.set_text(<span class="string">"New dice connected."</span>);
-<a href=#197 id=197 data-nosnippet>197</a>                    }
-<a href=#198 id=198 data-nosnippet>198</a>                }
-<a href=#199 id=199 data-nosnippet>199</a>            }
-<a href=#200 id=200 data-nosnippet>200</a>            glib::ControlFlow::Continue
-<a href=#201 id=201 data-nosnippet>201</a>        });
-<a href=#202 id=202 data-nosnippet>202</a>
-<a href=#203 id=203 data-nosnippet>203</a>        tokio::spawn(<span class="kw">async move </span>{
-<a href=#204 id=204 data-nosnippet>204</a>            <span class="kw">let </span>start = std::time::Instant::now();
-<a href=#205 id=205 data-nosnippet>205</a>            <span class="kw">loop </span>{
-<a href=#206 id=206 data-nosnippet>206</a>                <span class="kw">let </span>manager_scan = manager.clone();
-<a href=#207 id=207 data-nosnippet>207</a>                <span class="kw">let </span>scan_result = manager_scan.scan().<span class="kw">await</span>;
-<a href=#208 id=208 data-nosnippet>208</a>                <span class="kw">match </span>scan_result {
-<a href=#209 id=209 data-nosnippet>209</a>                    <span class="prelude-val">Ok</span>(devices) =&gt; {
-<a href=#210 id=210 data-nosnippet>210</a>                        <span class="kw">for </span>device <span class="kw">in </span>devices {
-<a href=#211 id=211 data-nosnippet>211</a>                            <span class="kw">let </span>device_id = <span class="macro">format!</span>(<span class="string">"{:?}"</span>, device.id);
-<a href=#212 id=212 data-nosnippet>212</a>                            <span class="kw">let </span>already_connected = {
-<a href=#213 id=213 data-nosnippet>213</a>                                <span class="kw">let </span><span class="kw-2">mut </span>ids = <span class="kw">match </span>connected_ids.lock() {
-<a href=#214 id=214 data-nosnippet>214</a>                                    <span class="prelude-val">Ok</span>(guard) =&gt; guard,
-<a href=#215 id=215 data-nosnippet>215</a>                                    <span class="prelude-val">Err</span>(error) =&gt; {
-<a href=#216 id=216 data-nosnippet>216</a>                                        <span class="macro">debug!</span>(error = %error, <span class="string">"connected_ids mutex poisoned"</span>);
-<a href=#217 id=217 data-nosnippet>217</a>                                        <span class="kw">continue</span>;
-<a href=#218 id=218 data-nosnippet>218</a>                                    }
-<a href=#219 id=219 data-nosnippet>219</a>                                };
-<a href=#220 id=220 data-nosnippet>220</a>                                <span class="kw">if </span>ids.contains(<span class="kw-2">&amp;</span>device_id) {
-<a href=#221 id=221 data-nosnippet>221</a>                                    <span class="bool-val">true
-<a href=#222 id=222 data-nosnippet>222</a>                                </span>} <span class="kw">else </span>{
-<a href=#223 id=223 data-nosnippet>223</a>                                    ids.insert(device_id.clone());
-<a href=#224 id=224 data-nosnippet>224</a>                                    <span class="bool-val">false
-<a href=#225 id=225 data-nosnippet>225</a>                                </span>}
-<a href=#226 id=226 data-nosnippet>226</a>                            };
-<a href=#227 id=227 data-nosnippet>227</a>                            <span class="kw">if </span>already_connected {
-<a href=#228 id=228 data-nosnippet>228</a>                                <span class="kw">continue</span>;
-<a href=#229 id=229 data-nosnippet>229</a>                            }
-<a href=#230 id=230 data-nosnippet>230</a>
-<a href=#231 id=231 data-nosnippet>231</a>                            <span class="kw">let </span>device_name = device.name.clone();
-<a href=#232 id=232 data-nosnippet>232</a>                            <span class="macro">debug!</span>(device = %device_name, <span class="string">"auto-scan: connecting new device"</span>);
-<a href=#233 id=233 data-nosnippet>233</a>                            <span class="kw">let </span>connect_manager = manager.clone();
-<a href=#234 id=234 data-nosnippet>234</a>                            <span class="kw">let </span>connect_sender = sender.clone();
-<a href=#235 id=235 data-nosnippet>235</a>                            <span class="kw">let </span>connect_ids = connected_ids.clone();
-<a href=#236 id=236 data-nosnippet>236</a>                            tokio::spawn(<span class="kw">async move </span>{
-<a href=#237 id=237 data-nosnippet>237</a>                                <span class="kw">match </span>connect_manager.connect(<span class="kw-2">&amp;</span>device).<span class="kw">await </span>{
-<a href=#238 id=238 data-nosnippet>238</a>                                    <span class="prelude-val">Ok</span>(dice) =&gt; {
-<a href=#239 id=239 data-nosnippet>239</a>                                        <span class="kw">let _ </span>= connect_sender.send(ScanUiUpdate::NewDice {
-<a href=#240 id=240 data-nosnippet>240</a>                                            dice,
-<a href=#241 id=241 data-nosnippet>241</a>                                            manager: connect_manager.clone(),
-<a href=#242 id=242 data-nosnippet>242</a>                                        });
-<a href=#243 id=243 data-nosnippet>243</a>                                    }
-<a href=#244 id=244 data-nosnippet>244</a>                                    <span class="prelude-val">Err</span>(error) =&gt; {
-<a href=#245 id=245 data-nosnippet>245</a>                                        <span class="macro">debug!</span>(error = %error, device = %device_name, <span class="string">"auto-scan: connection failed"</span>);
-<a href=#246 id=246 data-nosnippet>246</a>                                        <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>ids) = connect_ids.lock() {
-<a href=#247 id=247 data-nosnippet>247</a>                                            ids.remove(<span class="kw-2">&amp;</span>device_id);
-<a href=#248 id=248 data-nosnippet>248</a>                                        }
-<a href=#249 id=249 data-nosnippet>249</a>                                    }
-<a href=#250 id=250 data-nosnippet>250</a>                                }
-<a href=#251 id=251 data-nosnippet>251</a>                            });
-<a href=#252 id=252 data-nosnippet>252</a>                        }
-<a href=#253 id=253 data-nosnippet>253</a>                    }
-<a href=#254 id=254 data-nosnippet>254</a>                    <span class="prelude-val">Err</span>(error) =&gt; {
-<a href=#255 id=255 data-nosnippet>255</a>                        <span class="macro">debug!</span>(error = %error, <span class="string">"auto-scan failed"</span>);
-<a href=#256 id=256 data-nosnippet>256</a>                    }
-<a href=#257 id=257 data-nosnippet>257</a>                }
-<a href=#258 id=258 data-nosnippet>258</a>
-<a href=#259 id=259 data-nosnippet>259</a>                <span class="kw">let </span>elapsed = start.elapsed().as_secs();
-<a href=#260 id=260 data-nosnippet>260</a>                <span class="kw">let </span>interval = <span class="kw">if </span>elapsed &lt; AUTO_SCAN_BURST_DURATION_SECS {
-<a href=#261 id=261 data-nosnippet>261</a>                    AUTO_SCAN_FAST_INTERVAL_SECS
-<a href=#262 id=262 data-nosnippet>262</a>                } <span class="kw">else </span>{
-<a href=#263 id=263 data-nosnippet>263</a>                    AUTO_SCAN_INTERVAL_SECS
-<a href=#264 id=264 data-nosnippet>264</a>                };
-<a href=#265 id=265 data-nosnippet>265</a>                tokio::time::sleep(Duration::from_secs(interval)).<span class="kw">await</span>;
-<a href=#266 id=266 data-nosnippet>266</a>            }
-<a href=#267 id=267 data-nosnippet>267</a>        });
-<a href=#268 id=268 data-nosnippet>268</a>    }
-<a href=#269 id=269 data-nosnippet>269</a>
-<a href=#270 id=270 data-nosnippet>270</a>    <span class="doccomment">/// Present the window.
-<a href=#271 id=271 data-nosnippet>271</a>    </span><span class="kw">pub fn </span>present(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-<a href=#272 id=272 data-nosnippet>272</a>        <span class="self">self</span>.window.present();
-<a href=#273 id=273 data-nosnippet>273</a>    }
-<a href=#274 id=274 data-nosnippet>274</a>}
+<a href=#190 id=190 data-nosnippet>190</a>            status_label.set_text(<span class="string">"Scanning..."</span>);
+<a href=#191 id=191 data-nosnippet>191</a>
+<a href=#192 id=192 data-nosnippet>192</a>            <span class="kw">let </span>(sender, receiver) = std::sync::mpsc::channel::&lt;ConnectionEvent&gt;();
+<a href=#193 id=193 data-nosnippet>193</a>            connection_service.scan_once(sender);
+<a href=#194 id=194 data-nosnippet>194</a>
+<a href=#195 id=195 data-nosnippet>195</a>            <span class="kw">let </span>dice_list = dice_list.clone();
+<a href=#196 id=196 data-nosnippet>196</a>            <span class="kw">let </span>status_label = status_label.clone();
+<a href=#197 id=197 data-nosnippet>197</a>            <span class="kw">let </span>dice_rows = dice_rows.clone();
+<a href=#198 id=198 data-nosnippet>198</a>            <span class="kw">let </span>settings = settings.clone();
+<a href=#199 id=199 data-nosnippet>199</a>            <span class="kw">let </span>connected_count = Rc::new(std::cell::Cell::new(<span class="number">0usize</span>));
+<a href=#200 id=200 data-nosnippet>200</a>            <span class="kw">let </span>total_count = Rc::new(std::cell::Cell::new(<span class="number">0usize</span>));
+<a href=#201 id=201 data-nosnippet>201</a>            glib::timeout_add_local(Duration::from_millis(<span class="number">50</span>), <span class="kw">move </span>|| {
+<a href=#202 id=202 data-nosnippet>202</a>                <span class="kw">while let </span><span class="prelude-val">Ok</span>(event) = receiver.try_recv() {
+<a href=#203 id=203 data-nosnippet>203</a>                    <span class="kw">match </span>event {
+<a href=#204 id=204 data-nosnippet>204</a>                        ConnectionEvent::ScanStarted =&gt; {}
+<a href=#205 id=205 data-nosnippet>205</a>                        ConnectionEvent::NoDevicesFound =&gt; {
+<a href=#206 id=206 data-nosnippet>206</a>                            status_label.set_text(<span class="string">"No GoDice devices found."</span>);
+<a href=#207 id=207 data-nosnippet>207</a>                        }
+<a href=#208 id=208 data-nosnippet>208</a>                        ConnectionEvent::DevicesFound(count) =&gt; {
+<a href=#209 id=209 data-nosnippet>209</a>                            total_count.set(count);
+<a href=#210 id=210 data-nosnippet>210</a>                            status_label.set_text(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"Found {count} device(s), connecting..."</span>));
+<a href=#211 id=211 data-nosnippet>211</a>                        }
+<a href=#212 id=212 data-nosnippet>212</a>                        ConnectionEvent::DiceConnected { dice, manager } =&gt; {
+<a href=#213 id=213 data-nosnippet>213</a>                            <span class="kw">let </span>row = DiceRow::new(dice, manager);
+<a href=#214 id=214 data-nosnippet>214</a>                            row.apply_settings(<span class="kw-2">&amp;</span>settings.get());
+<a href=#215 id=215 data-nosnippet>215</a>                            row.pack_into(<span class="kw-2">&amp;</span>dice_list);
+<a href=#216 id=216 data-nosnippet>216</a>                            dice_list.append(row.compact_widget());
+<a href=#217 id=217 data-nosnippet>217</a>                            dice_rows.borrow_mut().push(row);
+<a href=#218 id=218 data-nosnippet>218</a>                            <span class="kw">let </span>n = connected_count.get() + <span class="number">1</span>;
+<a href=#219 id=219 data-nosnippet>219</a>                            connected_count.set(n);
+<a href=#220 id=220 data-nosnippet>220</a>                            <span class="kw">let </span>total = total_count.get();
+<a href=#221 id=221 data-nosnippet>221</a>                            status_label.set_text(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"Connected {n}/{total}"</span>));
+<a href=#222 id=222 data-nosnippet>222</a>                        }
+<a href=#223 id=223 data-nosnippet>223</a>                        ConnectionEvent::DiceConnectionFailed { name, error } =&gt; {
+<a href=#224 id=224 data-nosnippet>224</a>                            status_label.set_text(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"Connection failed for {name}: {error}"</span>));
+<a href=#225 id=225 data-nosnippet>225</a>                        }
+<a href=#226 id=226 data-nosnippet>226</a>                        ConnectionEvent::ScanFailed(error) =&gt; {
+<a href=#227 id=227 data-nosnippet>227</a>                            status_label.set_text(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"Scan failed: {error}"</span>));
+<a href=#228 id=228 data-nosnippet>228</a>                        }
+<a href=#229 id=229 data-nosnippet>229</a>                        ConnectionEvent::AutoScanDiceConnected { .. } =&gt; {}
+<a href=#230 id=230 data-nosnippet>230</a>                    }
+<a href=#231 id=231 data-nosnippet>231</a>                }
+<a href=#232 id=232 data-nosnippet>232</a>                glib::ControlFlow::Continue
+<a href=#233 id=233 data-nosnippet>233</a>            });
+<a href=#234 id=234 data-nosnippet>234</a>        });
+<a href=#235 id=235 data-nosnippet>235</a>    }
+<a href=#236 id=236 data-nosnippet>236</a>
+<a href=#237 id=237 data-nosnippet>237</a>    <span class="doccomment">/// Start periodic auto-scan to discover and connect new dice.
+<a href=#238 id=238 data-nosnippet>238</a>    /// Existing dice rows are preserved - only newly discovered devices are added.
+<a href=#239 id=239 data-nosnippet>239</a>    </span><span class="kw">fn </span>start_auto_scan(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+<a href=#240 id=240 data-nosnippet>240</a>        <span class="kw">let </span>(sender, receiver) = std::sync::mpsc::channel::&lt;ConnectionEvent&gt;();
+<a href=#241 id=241 data-nosnippet>241</a>        <span class="self">self</span>.connection_service.start_auto_scan(sender);
+<a href=#242 id=242 data-nosnippet>242</a>
+<a href=#243 id=243 data-nosnippet>243</a>        <span class="kw">let </span>dice_list = <span class="self">self</span>.dice_list.clone();
+<a href=#244 id=244 data-nosnippet>244</a>        <span class="kw">let </span>status_label = <span class="self">self</span>.status_label.clone();
+<a href=#245 id=245 data-nosnippet>245</a>        <span class="kw">let </span>dice_rows = <span class="self">self</span>.dice_rows.clone();
+<a href=#246 id=246 data-nosnippet>246</a>        <span class="kw">let </span>settings = <span class="self">self</span>.settings.clone();
+<a href=#247 id=247 data-nosnippet>247</a>        glib::timeout_add_local(Duration::from_millis(<span class="number">50</span>), <span class="kw">move </span>|| {
+<a href=#248 id=248 data-nosnippet>248</a>            <span class="kw">while let </span><span class="prelude-val">Ok</span>(event) = receiver.try_recv() {
+<a href=#249 id=249 data-nosnippet>249</a>                <span class="kw">if let </span>ConnectionEvent::AutoScanDiceConnected { dice, manager } = event {
+<a href=#250 id=250 data-nosnippet>250</a>                    <span class="kw">let </span>row = DiceRow::new(dice, manager);
+<a href=#251 id=251 data-nosnippet>251</a>                    row.apply_settings(<span class="kw-2">&amp;</span>settings.get());
+<a href=#252 id=252 data-nosnippet>252</a>                    row.pack_into(<span class="kw-2">&amp;</span>dice_list);
+<a href=#253 id=253 data-nosnippet>253</a>                    dice_list.append(row.compact_widget());
+<a href=#254 id=254 data-nosnippet>254</a>                    dice_rows.borrow_mut().push(row);
+<a href=#255 id=255 data-nosnippet>255</a>                    status_label.set_text(<span class="string">"New dice connected."</span>);
+<a href=#256 id=256 data-nosnippet>256</a>                }
+<a href=#257 id=257 data-nosnippet>257</a>            }
+<a href=#258 id=258 data-nosnippet>258</a>            glib::ControlFlow::Continue
+<a href=#259 id=259 data-nosnippet>259</a>        });
+<a href=#260 id=260 data-nosnippet>260</a>    }
+<a href=#261 id=261 data-nosnippet>261</a>
+<a href=#262 id=262 data-nosnippet>262</a>    <span class="doccomment">/// Present the window.
+<a href=#263 id=263 data-nosnippet>263</a>    </span><span class="kw">pub fn </span>present(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+<a href=#264 id=264 data-nosnippet>264</a>        <span class="self">self</span>.window.present();
+<a href=#265 id=265 data-nosnippet>265</a>    }
+<a href=#266 id=266 data-nosnippet>266</a>}
 </code></pre></div></section></main></body></html>

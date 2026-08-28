@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["centroid","face_normal"],"struct":["D12Model"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["D4Model"]};

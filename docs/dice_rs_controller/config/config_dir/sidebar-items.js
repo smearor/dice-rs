@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["app_config_path","config_dir","dice_config_path","ensure_config_dir","load_app_settings","load_dice_settings","save_app_settings","save_app_settings_inner","save_dice_settings","save_dice_settings_inner"]};

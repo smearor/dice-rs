@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["HISTORY_SIZE"],"struct":["HistoryEntry","RollHistory"]};
