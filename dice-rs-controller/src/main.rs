@@ -16,12 +16,15 @@ mod window;
 use std::sync::Arc;
 
 use dice_rs::service::manager::DiceManager;
+use tracing_subscriber::EnvFilter;
 
 use crate::application::Application;
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt().with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        EnvFilter::new("info,bluez_async=warn")
+    })).init();
 
     let manager = match DiceManager::new().await {
         Ok(manager) => Arc::new(manager),
