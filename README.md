@@ -4,6 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/smearor/dice-rs/actions/workflows/build.yml/badge.svg)](https://github.com/smearor/dice-rs/actions/workflows/build.yml)
 [![docs.rs](https://docs.rs/dice-rs/badge.svg)](https://docs.rs/dice-rs)
+[![Book](https://img.shields.io/badge/mdBook-Book-blue)](https://smearor.github.io/dice-rs/book/)
 
 A Rust library and toolkit for controlling
 [GoDice](https://particula-tech.com/products/godice-full-pack) - physical
