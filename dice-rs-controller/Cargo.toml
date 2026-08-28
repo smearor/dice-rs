@@ -2,7 +2,7 @@
 name = "dice-rs-controller"
 version = "0.1.0"
 edition.workspace = true
-rust-version = "1.85"
+rust-version = "1.88"
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
