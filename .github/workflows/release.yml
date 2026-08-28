@@ -7,6 +7,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  APT_PACKAGES: curl build-essential pkg-config libdbus-1-dev
 
 permissions:
   contents: write
@@ -18,6 +19,10 @@ jobs:
     steps:
       - name: VCS Checkout
         uses: actions/checkout@v7
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ env.APT_PACKAGES }}
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -25,7 +30,7 @@ jobs:
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
       - name: Build (Release Mode)
-        run: cargo build --release --verbose
+        run: cargo build --release --verbose --exclude dice-rs-controller
       - name: Dry-run publish dice-rs
         run: cargo publish --dry-run --locked -p dice-rs --token ${{ secrets.CRATES_IO_TOKEN }}
       - name: Dry-run publish dice-rs-cli
