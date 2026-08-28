@@ -9,6 +9,7 @@ mod event_controller;
 mod face_display;
 mod led_controls;
 mod models;
+mod orientation_state;
 mod tap_indicator;
 mod window;
 

@@ -14,27 +14,8 @@ use tracing::error;
 
 use crate::models::model_for_type;
 use crate::dice_renderer::DiceRenderer;
+use crate::orientation_state::OrientationState;
 use dice_rs::model::dice::DiceType;
-
-/// Orientation state for smooth interpolation.
-#[derive(Clone)]
-struct OrientationState {
-    orientation: Quat,
-    target: Quat,
-    color: [f32; 3],
-    spin_angle: f32,
-}
-
-impl Default for OrientationState {
-    fn default() -> Self {
-        Self {
-            orientation: Quat::IDENTITY,
-            target: Quat::IDENTITY,
-            color: [0.95, 0.95, 0.95],
-            spin_angle: 0.0,
-        }
-    }
-}
 
 /// GTK4 widget that renders a 3D dice model using OpenGL (glow + glam).
 ///
