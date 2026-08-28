@@ -39,8 +39,15 @@ jobs:
           tool: cargo-msrv@0.19.3
       - name: Version of cargo msrv
         run: cargo msrv --version
-      - name: Run cargo msrv
-        run: cargo msrv --output-format json verify
-      - name: Run cargo msrv on verify failure
+      - name: Verify MSRV dice-rs
+        run: cargo msrv --output-format json verify --path dice-rs
+      - name: Verify MSRV dice-rs-cli
+        run: cargo msrv --output-format json verify --path dice-rs-cli
+      - name: Verify MSRV dice-rs-ws
+        run: cargo msrv --output-format json verify --path dice-rs-ws
+      - name: Find MSRV on verify failure
         if: ${{ failure() }}
-        run: cargo msrv find --output-format json
+        run: |
+          cargo msrv find --output-format json --path dice-rs || true
+          cargo msrv find --output-format json --path dice-rs-cli || true
+          cargo msrv find --output-format json --path dice-rs-ws || true
