@@ -107,13 +107,20 @@
     --highlight: var(--chartreuse);
 
     --radius: 8px;
+
+    --linear-gradient-3: linear-gradient(
+        90deg,
+        var(--mexican-pink) 0%,
+        var(--celestial-blue-1-adaptive) 35%,
+        var(--malachite-3-adaptive) 100%
+    );
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
+    background: var(--linear-gradient-3);
     color: var(--text);
     min-height: 100vh;
     padding: 20px;
@@ -138,6 +145,65 @@ h2 { font-size: 1.1rem; margin-bottom: 12px; color: var(--text-dim); }
 }
 
 .panel-full { grid-column: 1 / -1; }
+
+.panel-collapsible { overflow: visible; }
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.panel-header h2 { margin-bottom: 0; }
+
+.panel-collapse-arrow {
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    transition: transform 0.2s;
+}
+
+.panel-collapsible.collapsed .panel-collapse-arrow { transform: rotate(-90deg); }
+
+.panel-collapsible.collapsed .panel-content { display: none; }
+
+.panel-content { transition: display 0.2s; }
+
+/* Device Discovery sidebar collapse */
+.layout.sidebar-collapsed { grid-template-columns: 40px 1fr; }
+
+.device-discovery {
+    transition: all 0.2s;
+    overflow: hidden;
+}
+
+.device-discovery .sidebar-toggle {
+    display: none;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    padding: 12px 4px;
+    white-space: nowrap;
+}
+
+.device-discovery.collapsed {
+    padding: 12px 4px;
+}
+
+.device-discovery.collapsed .sidebar-content { display: none; }
+
+.device-discovery.collapsed .sidebar-toggle { display: flex; align-items: center; justify-content: center; flex: 1; }
+
+.device-discovery.collapsed h2 { display: none; }
+
+.device-discovery.collapsed .row { display: none; }
+
+.device-discovery.collapsed .device-list { display: none; }
 
 .row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
 .row-wrap { flex-wrap: wrap; }
@@ -531,15 +597,90 @@ label { font-size: 0.85rem; color: var(--text-dim); min-width: 80px; }
 
 .empty-state { color: var(--text-dim); text-align: center; padding: 20px; font-size: 0.85rem; }
 
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.logo-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.dice-3d-scene {
+    width: 60px;
+    height: 60px;
+    perspective: 300px;
+    flex-shrink: 0;
+}
+
+.dice-3d {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    animation: dice-spin 8s infinite linear;
+}
+
+@keyframes dice-spin {
+    0%   { transform: rotateX(-20deg) rotateY(0deg); }
+    100% { transform: rotateX(-20deg) rotateY(360deg); }
+}
+
+.dice-3d-face {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background: var(--surface);
+    border: 2px solid var(--celestial-blue);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--celestial-blue);
+    box-shadow: inset 0 0 12px var(--celestial-blue-2);
+}
+
+.dice-3d-face.front  { transform: translateZ(30px); }
+.dice-3d-face.back   { transform: rotateY(180deg) translateZ(30px); }
+.dice-3d-face.right  { transform: rotateY(90deg) translateZ(30px); }
+.dice-3d-face.left   { transform: rotateY(-90deg) translateZ(30px); }
+.dice-3d-face.top    { transform: rotateX(90deg) translateZ(30px); }
+.dice-3d-face.bottom { transform: rotateX(-90deg) translateZ(30px); }
+
 @media (max-width: 768px) {
     .layout { grid-template-columns: 1fr; }
     .dice-card-body { flex-direction: column; }
 }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+* { font-family: 'JetBrains Mono', monospace; }
+</style>
 </head>
 <body>
 
-<h1>dice-rs-ws Client</h1>
+<div class="logo-container">
+    <div class="dice-3d-scene">
+        <div class="dice-3d">
+            <div class="dice-3d-face front">1</div>
+            <div class="dice-3d-face back">6</div>
+            <div class="dice-3d-face right">3</div>
+            <div class="dice-3d-face left">4</div>
+            <div class="dice-3d-face top">2</div>
+            <div class="dice-3d-face bottom">5</div>
+        </div>
+    </div>
+    <span class="logo-title">dice-rs-ws</span>
+</div>
 
 <div class="layout">
 
@@ -558,16 +699,22 @@ label { font-size: 0.85rem; color: var(--text-dim); min-width: 80px; }
     </div>
 
     <!-- Scan & Devices -->
-    <div class="panel">
-        <h2>Device Discovery</h2>
-        <div class="row">
-            <label>Duration (s)</label>
-            <input type="number" id="scanDuration" value="5" min="1" max="30" style="max-width:80px; flex:none;">
-            <button id="scanBtn" onclick="sendScan()" disabled>Scan</button>
+    <div class="panel device-discovery" id="deviceDiscovery">
+        <div class="sidebar-toggle" onclick="toggleSidebar()">Device Discovery &#9654;</div>
+        <div class="sidebar-content">
+            <div class="panel-header">
+                <h2>Device Discovery</h2>
+                <span class="panel-collapse-arrow" onclick="toggleSidebar()">&#9664;</span>
+            </div>
+            <div class="row">
+                <label>Duration (s)</label>
+                <input type="number" id="scanDuration" value="5" min="1" max="30" style="max-width:80px; flex:none;">
+                <button id="scanBtn" onclick="sendScan()" disabled>Scan</button>
+            </div>
+            <ul class="device-list" id="deviceList">
+                <li class="empty-state">No devices scanned yet</li>
+            </ul>
         </div>
-        <ul class="device-list" id="deviceList">
-            <li class="empty-state">No devices scanned yet</li>
-        </ul>
     </div>
 
     <!-- Connected Dice -->
@@ -579,10 +726,15 @@ label { font-size: 0.85rem; color: var(--text-dim); min-width: 80px; }
     </div>
 
     <!-- Event Log -->
-    <div class="panel panel-full">
-        <h2>Event Log</h2>
-        <div class="event-log" id="eventLog">
-            <div class="entry"><span class="ts">--:--:--</span>Waiting for connection...</div>
+    <div class="panel panel-full panel-collapsible" id="eventLogPanel">
+        <div class="panel-header">
+            <h2>Event Log</h2>
+            <span class="panel-collapse-arrow" onclick="togglePanelCollapse('eventLogPanel')">&#9660;</span>
+        </div>
+        <div class="panel-content">
+            <div class="event-log" id="eventLog">
+                <div class="entry"><span class="ts">--:--:--</span>Waiting for connection...</div>
+            </div>
         </div>
     </div>
 
@@ -846,6 +998,19 @@ function createDiceCard(sid, colorName) {
 function toggleCardCollapse(sid) {
     const card = $('diceCard-' + sid);
     if (card) card.classList.toggle('collapsed');
+}
+
+function togglePanelCollapse(id) {
+    const panel = $(id);
+    if (panel) panel.classList.toggle('collapsed');
+}
+
+function toggleSidebar() {
+    const panel = $('deviceDiscovery');
+    const layout = document.querySelector('.layout');
+    if (!panel || !layout) return;
+    panel.classList.toggle('collapsed');
+    layout.classList.toggle('sidebar-collapsed');
 }
 
 function toggleControlGroup(sid, group) {
