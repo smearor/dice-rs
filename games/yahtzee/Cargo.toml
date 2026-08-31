@@ -1,0 +1,26 @@
+[package]
+name = "yahtzee"
+version = "0.1.0"
+edition.workspace = true
+rust-version = "1.88"
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Kniffel (Yahtzee) game for GoDice, built with GTK 4 and dice-rs"
+publish = false
+
+[lib]
+name = "yahtzee"
+path = "src/lib.rs"
+
+[[bin]]
+name = "yahtzee"
+path = "src/main.rs"
+
+[dependencies]
+dice-rs = { path = "../../dice-rs" }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
