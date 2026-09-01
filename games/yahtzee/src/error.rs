@@ -57,6 +57,27 @@ pub enum YahtzeeError {
     /// A probability value was outside the valid range [0.0, 1.0].
     #[error("invalid probability value: {0}")]
     InvalidProbability(f64),
+    /// A player count was outside the valid range [1, 6].
+    #[error("invalid player count: {0} (valid: 1-6)")]
+    InvalidPlayerCount(u8),
+    /// Too many players for a game (maximum: 6).
+    #[error("too many players: {0} (maximum: 6)")]
+    TooManyPlayers(usize),
+    /// Two players were assigned the same color.
+    #[error("duplicate player color: {0}")]
+    DuplicateColor(String),
+    /// Two players were assigned the same name.
+    #[error("duplicate player name: {0}")]
+    DuplicateName(String),
+    /// A settings file I/O operation failed.
+    #[error("settings I/O error: {0}")]
+    SettingsIoError(String),
+    /// A settings file could not be parsed.
+    #[error("settings parse error: {0}")]
+    SettingsParseError(String),
+    /// A dice reconnection attempt failed.
+    #[error("reconnection failed for device: {0}")]
+    ReconnectionFailed(String),
 }
 
 /// Convenience type alias used throughout the crate.

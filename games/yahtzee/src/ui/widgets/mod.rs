@@ -1,13 +1,21 @@
 pub mod bonus_tracker;
 pub mod dice_view;
+pub mod game_end_screen;
 pub mod hint_panel;
 pub mod player_bar;
+pub mod player_setup;
+pub mod reconnection_overlay;
 pub mod scorecard_view;
 pub mod turn_panel;
+pub mod turn_transition_overlay;
 
 pub use bonus_tracker::BonusTracker;
 pub use dice_view::DiceView;
+pub use game_end_screen::GameEndScreen;
 pub use hint_panel::HintPanel;
 pub use player_bar::PlayerBar;
+pub use player_setup::PlayerSetupWidget;
+pub use reconnection_overlay::ReconnectionOverlay;
 pub use scorecard_view::ScorecardView;
 pub use turn_panel::TurnPanel;
+pub use turn_transition_overlay::TurnTransitionOverlay;

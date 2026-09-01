@@ -2,6 +2,7 @@ use crate::error::Result;
 use crate::error::YahtzeeError;
 use crate::models::category::ScoreCategory;
 use crate::models::dice_set::DiceSet;
+use crate::models::game_mode::GameMode;
 use crate::models::game_state::GameState;
 use crate::models::game_status::GameStatus;
 use crate::models::hold_mask::HoldMask;
@@ -11,13 +12,18 @@ use crate::models::standing::StandingEntry;
 use crate::models::standing::compute_standings;
 use crate::models::turn_action::TurnAction;
 use crate::models::turn_phase::TurnPhase;
+use crate::models::turn_transition::TurnTransition;
 use crate::rules::cross_out::CrossOutAdvisor;
 use crate::rules::cross_out::CrossOutRecommendation;
 use crate::rules::scoring::calculate_score;
 use crate::rules::validation::is_valid;
 use crate::rules::validation::must_cross_out;
+use crate::services::celebration_detector::CelebrationDetector;
+use crate::services::led_color_assignment::LedColorAssignment;
+use crate::services::led_effect::LedEffect;
 use std::sync::Arc;
 use std::sync::Mutex;
+use tokio::sync::broadcast;
 use tracing::debug;
 
 /// Events emitted by the `GameController` for the UI to react to.
@@ -71,6 +77,16 @@ pub enum ControllerEvent {
         /// The recommended category to cross out.
         recommendation: CrossOutRecommendation,
     },
+    /// A turn transition occurred (pass-and-play in multi-player mode).
+    TurnTransition {
+        /// The transition data for the next player's turn.
+        transition: TurnTransition,
+    },
+    /// A celebration effect should be applied for a special roll.
+    Celebration {
+        /// The LED effect to apply.
+        effect: LedEffect,
+    },
 }
 
 /// The game controller orchestrates the game flow.
@@ -84,23 +100,48 @@ pub struct GameController {
     state: Arc<Mutex<GameState>>,
     /// The cross-out advisor.
     advisor: CrossOutAdvisor,
+    /// LED color assignment for players.
+    led_assignment: LedColorAssignment,
+    /// Broadcast channel for controller events.
+    event_sender: broadcast::Sender<ControllerEvent>,
 }
 
 impl GameController {
     /// Create a new game controller with the given players.
     pub fn new(players: Vec<Player>) -> Result<Self> {
+        let led_assignment = LedColorAssignment::new(&players);
         let state = GameState::new(players)?;
+        let (event_sender, _) = broadcast::channel(64);
         Ok(Self {
             state: Arc::new(Mutex::new(state)),
             advisor: CrossOutAdvisor::new(),
+            led_assignment,
+            event_sender,
+        })
+    }
+
+    /// Create a new game controller with the given players and game mode.
+    pub fn with_mode(players: Vec<Player>, game_mode: GameMode) -> Result<Self> {
+        let led_assignment = LedColorAssignment::new(&players);
+        let state = GameState::with_mode(players, game_mode)?;
+        let (event_sender, _) = broadcast::channel(64);
+        Ok(Self {
+            state: Arc::new(Mutex::new(state)),
+            advisor: CrossOutAdvisor::new(),
+            led_assignment,
+            event_sender,
         })
     }
 
     /// Create a controller wrapping an existing game state.
     pub fn from_state(state: GameState) -> Self {
+        let led_assignment = LedColorAssignment::new(state.players());
+        let (event_sender, _) = broadcast::channel(64);
         Self {
             state: Arc::new(Mutex::new(state)),
             advisor: CrossOutAdvisor::new(),
+            led_assignment,
+            event_sender,
         }
     }
 
@@ -114,6 +155,28 @@ impl GameController {
     pub fn status(&self) -> Result<GameStatus> {
         let state = self.state.lock().map_err(|_| YahtzeeError::LockPoisoned)?;
         Ok(state.status())
+    }
+
+    /// Get the current game mode.
+    pub fn game_mode(&self) -> Result<GameMode> {
+        let state = self.state.lock().map_err(|_| YahtzeeError::LockPoisoned)?;
+        Ok(state.game_mode())
+    }
+
+    /// Returns true if strategy hints should be shown.
+    pub fn hints_enabled(&self) -> Result<bool> {
+        let state = self.state.lock().map_err(|_| YahtzeeError::LockPoisoned)?;
+        Ok(state.hints_enabled())
+    }
+
+    /// Get the LED color assignment.
+    pub fn led_assignment(&self) -> &LedColorAssignment {
+        &self.led_assignment
+    }
+
+    /// Subscribe to controller events.
+    pub fn subscribe(&self) -> broadcast::Receiver<ControllerEvent> {
+        self.event_sender.subscribe()
     }
 
     /// Execute a turn action, validating it against the current game state.
@@ -133,6 +196,11 @@ impl GameController {
             TurnAction::Hold { holds } => self.execute_hold(&mut state, holds, &mut events)?,
             TurnAction::EnterScore { category, score } => self.execute_enter_score(&mut state, category, score, &mut events)?,
             TurnAction::CrossOut { category } => self.execute_cross_out(&mut state, category, &mut events)?,
+        }
+
+        // Broadcast events to subscribers
+        for event in &events {
+            let _ = self.event_sender.send(event.clone());
         }
 
         Ok(events)
@@ -182,10 +250,16 @@ impl GameController {
             let standings = compute_standings(state.players().to_vec());
             events.push(ControllerEvent::GameOver { standings });
         } else {
+            let player_index = state.current_player_index();
             events.push(ControllerEvent::TurnStarted {
-                player_index: state.current_player_index().get(),
+                player_index: player_index.get(),
             });
             events.push(ControllerEvent::PhaseChanged { phase: state.phase() });
+            // Emit turn transition for pass-and-play in multi-player mode
+            if state.requires_turn_transitions() {
+                let transition = TurnTransition::new(state.current_player(), player_index, state.round());
+                events.push(ControllerEvent::TurnTransition { transition });
+            }
         }
 
         Ok(())
@@ -208,10 +282,16 @@ impl GameController {
             let standings = compute_standings(state.players().to_vec());
             events.push(ControllerEvent::GameOver { standings });
         } else {
+            let player_index = state.current_player_index();
             events.push(ControllerEvent::TurnStarted {
-                player_index: state.current_player_index().get(),
+                player_index: player_index.get(),
             });
             events.push(ControllerEvent::PhaseChanged { phase: state.phase() });
+            // Emit turn transition for pass-and-play in multi-player mode
+            if state.requires_turn_transitions() {
+                let transition = TurnTransition::new(state.current_player(), player_index, state.round());
+                events.push(ControllerEvent::TurnTransition { transition });
+            }
         }
 
         Ok(())
@@ -254,6 +334,16 @@ impl GameController {
         events.push(ControllerEvent::RollCompleted {
             dice: state.dice_set().clone(),
         });
+
+        // Detect special rolls and emit celebration effect
+        if let Some(effect) = CelebrationDetector::detect(state.dice_set()) {
+            events.push(ControllerEvent::Celebration { effect });
+        }
+
+        // Broadcast events to subscribers
+        for event in &events {
+            let _ = self.event_sender.send(event.clone());
+        }
 
         Ok(events)
     }
@@ -428,5 +518,85 @@ mod tests {
         let standings = controller.standings().unwrap();
         assert_eq!(standings.len(), 2);
         assert_eq!(standings[0].rank().get(), 1);
+    }
+
+    #[test]
+    fn multi_player_emits_turn_transition() {
+        let controller = GameController::with_mode(make_players(2), GameMode::MultiPlayer).unwrap();
+        let events = controller
+            .execute(TurnAction::EnterScore {
+                category: ScoreCategory::Ones,
+                score: Score::new(3),
+            })
+            .unwrap();
+        assert!(events.iter().any(|e| matches!(e, ControllerEvent::TurnTransition { .. })));
+    }
+
+    #[test]
+    fn single_player_no_turn_transition() {
+        let controller = GameController::with_mode(make_players(1), GameMode::SinglePlayer).unwrap();
+        let events = controller
+            .execute(TurnAction::EnterScore {
+                category: ScoreCategory::Ones,
+                score: Score::new(3),
+            })
+            .unwrap();
+        assert!(!events.iter().any(|e| matches!(e, ControllerEvent::TurnTransition { .. })));
+    }
+
+    #[test]
+    fn multi_player_hints_disabled() {
+        let controller = GameController::with_mode(make_players(2), GameMode::MultiPlayer).unwrap();
+        assert!(!controller.hints_enabled().unwrap());
+    }
+
+    #[test]
+    fn single_player_hints_enabled() {
+        let controller = GameController::with_mode(make_players(1), GameMode::SinglePlayer).unwrap();
+        assert!(controller.hints_enabled().unwrap());
+    }
+
+    #[test]
+    fn game_mode_returns_correct_value() {
+        let single = GameController::with_mode(make_players(1), GameMode::SinglePlayer).unwrap();
+        assert_eq!(single.game_mode().unwrap(), GameMode::SinglePlayer);
+
+        let multi = GameController::with_mode(make_players(2), GameMode::MultiPlayer).unwrap();
+        assert_eq!(multi.game_mode().unwrap(), GameMode::MultiPlayer);
+    }
+
+    #[test]
+    fn multi_player_cross_out_emits_turn_transition() {
+        let controller = GameController::with_mode(make_players(2), GameMode::MultiPlayer).unwrap();
+        let events = controller
+            .execute(TurnAction::CrossOut {
+                category: ScoreCategory::Yahtzee,
+            })
+            .unwrap();
+        assert!(events.iter().any(|e| matches!(e, ControllerEvent::TurnTransition { .. })));
+    }
+
+    #[test]
+    fn led_assignment_has_correct_count() {
+        let controller = GameController::new(make_players(3)).unwrap();
+        assert_eq!(controller.led_assignment().player_count(), 3);
+    }
+
+    #[test]
+    fn dice_stable_yahtzee_emits_celebration() {
+        let controller = GameController::new(make_players(1)).unwrap();
+        controller.execute(TurnAction::Roll).unwrap();
+        let dice = DiceSet::from_values([5, 5, 5, 5, 5]).unwrap();
+        let events = controller.dice_stable(dice).unwrap();
+        assert!(events.iter().any(|e| matches!(e, ControllerEvent::Celebration { .. })));
+    }
+
+    #[test]
+    fn dice_stable_normal_no_celebration() {
+        let controller = GameController::new(make_players(1)).unwrap();
+        controller.execute(TurnAction::Roll).unwrap();
+        let dice = DiceSet::from_values([1, 2, 3, 5, 6]).unwrap();
+        let events = controller.dice_stable(dice).unwrap();
+        assert!(!events.iter().any(|e| matches!(e, ControllerEvent::Celebration { .. })));
     }
 }
