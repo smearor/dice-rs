@@ -1,0 +1,237 @@
+/* Yahtzee — GTK 4 CSS */
+
+/* Main window */
+.yahtzee-window {
+  background-color: @theme_bg_color;
+}
+
+/* Header */
+.header-title {
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+/* Status label */
+.status-label {
+  color: @theme_fg_color;
+  font-size: 0.95em;
+  padding: 6px 12px;
+}
+
+.status-label.dim {
+  color: alpha(@theme_fg_color, 0.6);
+}
+
+/* Player bar */
+.player-bar {
+  padding: 6px;
+  border-radius: 8px;
+  background-color: alpha(@theme_bg_color, 0.8);
+}
+
+.player-card {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background-color: alpha(@theme_base_color, 0.5);
+  transition: background-color 200ms ease;
+}
+
+.player-card.active {
+  background-color: alpha(@accent_color, 0.15);
+  border: 2px solid @accent_color;
+}
+
+.player-name {
+  font-weight: bold;
+  font-size: 1.05em;
+}
+
+.player-score {
+  font-size: 1.1em;
+  font-weight: bold;
+  color: @accent_color;
+}
+
+/* Dice view */
+.dice-view {
+  padding: 12px;
+  border-radius: 8px;
+  background-color: alpha(@theme_base_color, 0.3);
+}
+
+.die-button {
+  min-width: 64px;
+  min-height: 64px;
+  border-radius: 12px;
+  font-size: 2em;
+  font-weight: bold;
+  transition: all 200ms ease;
+}
+
+.die-button.held {
+  background-color: alpha(@success_color, 0.3);
+  border: 2px solid @success_color;
+}
+
+.die-button.rolling {
+  opacity: 0.5;
+  animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+.die-button.disconnected {
+  opacity: 0.3;
+  color: alpha(@theme_fg_color, 0.3);
+}
+
+@keyframes pulse {
+  from { transform: scale(1.0); }
+  to { transform: scale(1.1); }
+}
+
+/* Scorecard view */
+.scorecard-view {
+  padding: 12px;
+  border-radius: 8px;
+  background-color: alpha(@theme_base_color, 0.3);
+}
+
+.scorecard-grid {
+  border-spacing: 4px;
+}
+
+.scorecard-row {
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 150ms ease;
+}
+
+.scorecard-row:hover {
+  background-color: alpha(@accent_color, 0.1);
+}
+
+.scorecard-row.filled {
+  opacity: 0.6;
+}
+
+.scorecard-row.crossed-out {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.scorecard-category {
+  font-weight: 500;
+  padding-right: 12px;
+}
+
+.scorecard-score {
+  font-weight: bold;
+  color: @accent_color;
+  min-width: 40px;
+  text-align: right;
+}
+
+.scorecard-section-header {
+  font-weight: bold;
+  font-size: 1.05em;
+  padding: 8px 0 4px 0;
+  color: @theme_fg_color;
+  border-bottom: 1px solid alpha(@theme_fg_color, 0.2);
+}
+
+.scorecard-bonus-row {
+  font-style: italic;
+  padding: 4px 8px;
+}
+
+.scorecard-total-row {
+  font-weight: bold;
+  font-size: 1.05em;
+  padding: 8px;
+  border-top: 2px solid @theme_fg_color;
+  margin-top: 4px;
+}
+
+/* Turn panel */
+.turn-panel {
+  padding: 12px;
+  border-radius: 8px;
+  background-color: alpha(@theme_base_color, 0.5);
+}
+
+.turn-instruction {
+  font-size: 1.05em;
+  padding: 6px 0;
+}
+
+.roll-button {
+  min-width: 160px;
+  min-height: 44px;
+  font-size: 1.1em;
+  font-weight: bold;
+  border-radius: 8px;
+}
+
+.roll-counter {
+  font-size: 0.9em;
+  color: alpha(@theme_fg_color, 0.7);
+  padding: 4px 0;
+}
+
+/* Setup screen */
+.setup-screen {
+  padding: 24px;
+  spacing: 16px;
+}
+
+.setup-title {
+  font-size: 1.5em;
+  font-weight: bold;
+  padding: 12px 0;
+}
+
+.setup-instruction {
+  font-size: 1.05em;
+  color: alpha(@theme_fg_color, 0.8);
+  padding: 6px 0;
+}
+
+.scan-button {
+  min-width: 200px;
+  min-height: 44px;
+  font-size: 1.1em;
+  font-weight: bold;
+  border-radius: 8px;
+}
+
+/* Game over screen */
+.game-over-screen {
+  padding: 24px;
+  spacing: 16px;
+}
+
+.game-over-title {
+  font-size: 2em;
+  font-weight: bold;
+  padding: 12px 0;
+}
+
+.game-over-winner {
+  font-size: 1.3em;
+  font-weight: bold;
+  color: @success_color;
+  padding: 8px 0;
+}
+
+.game-over-scores {
+  font-size: 1.1em;
+  padding: 4px 0;
+}
+
+/* General */
+.dim-label {
+  color: alpha(@theme_fg_color, 0.6);
+}
+
+.spacer {
+  min-height: 12px;
+}
