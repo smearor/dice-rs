@@ -3409,9 +3409,11 @@ name = "yahtzee"
 version = "0.1.0"
 dependencies = [
  "dice-rs",
+ "dirs",
  "glib",
  "gtk4",
  "serde",
+ "serde_json",
  "thiserror 2.0.20",
  "tokio",
  "tracing",

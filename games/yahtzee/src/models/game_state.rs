@@ -1,6 +1,7 @@
 use crate::error::Result;
 use crate::error::YahtzeeError;
 use crate::models::dice_set::DiceSet;
+use crate::models::game_mode::GameMode;
 use crate::models::game_status::GameStatus;
 use crate::models::player::Player;
 use crate::models::player_index::PlayerIndex;
@@ -29,6 +30,8 @@ pub struct GameState {
     phase: TurnPhase,
     /// The overall game status.
     status: GameStatus,
+    /// The game mode (single-player or multi-player).
+    game_mode: GameMode,
     /// How many rolls the current player has used this turn.
     rolls_used: RollCount,
     /// The current dice set.
@@ -40,6 +43,13 @@ impl GameState {
     ///
     /// Returns an error if the player list is empty.
     pub fn new(players: Vec<Player>) -> Result<Self> {
+        Self::with_mode(players, GameMode::SinglePlayer)
+    }
+
+    /// Create a new game with the given players and game mode.
+    ///
+    /// Returns an error if the player list is empty.
+    pub fn with_mode(players: Vec<Player>, game_mode: GameMode) -> Result<Self> {
         if players.is_empty() {
             return Err(YahtzeeError::NotEnoughPlayers(0));
         }
@@ -49,6 +59,7 @@ impl GameState {
             round: RoundNumber::FIRST,
             phase: TurnPhase::AwaitingRoll,
             status: GameStatus::Playing,
+            game_mode,
             rolls_used: RollCount::FIRST,
             dice_set: DiceSet::new(),
         })
@@ -102,6 +113,26 @@ impl GameState {
     /// Set the game status.
     pub fn set_status(&mut self, status: GameStatus) {
         self.status = status;
+    }
+
+    /// Get the game mode.
+    pub fn game_mode(&self) -> GameMode {
+        self.game_mode
+    }
+
+    /// Set the game mode.
+    pub fn set_game_mode(&mut self, mode: GameMode) {
+        self.game_mode = mode;
+    }
+
+    /// Returns true if strategy hints should be shown.
+    pub fn hints_enabled(&self) -> bool {
+        self.game_mode.hints_enabled()
+    }
+
+    /// Returns true if turn transitions are required (multi-player mode).
+    pub fn requires_turn_transitions(&self) -> bool {
+        self.game_mode.requires_turn_transitions()
     }
 
     /// Returns true if the player must enter a score or cross out

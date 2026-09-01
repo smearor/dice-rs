@@ -1,18 +1,26 @@
+pub mod celebration_detector;
 pub mod dice_service;
 pub mod event_bridge;
 pub mod game_controller;
+pub mod led_color_assignment;
 pub mod led_effect;
 pub mod led_service;
+pub mod reconnection_manager;
 pub mod roll_detector;
+pub mod settings_store;
 pub mod slot_mapping;
 
+pub use celebration_detector::CelebrationDetector;
 pub use dice_service::DiceService;
 pub use event_bridge::EventBridge;
 pub use event_bridge::GameEvent;
 pub use game_controller::ControllerEvent;
 pub use game_controller::GameController;
+pub use led_color_assignment::LedColorAssignment;
 pub use led_effect::LedEffect;
 pub use led_service::LedService;
+pub use reconnection_manager::ReconnectionManager;
 pub use roll_detector::RollDetector;
 pub use roll_detector::RollState;
+pub use settings_store::SettingsStore;
 pub use slot_mapping::SlotMapping;
