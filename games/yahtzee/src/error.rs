@@ -54,6 +54,9 @@ pub enum YahtzeeError {
     /// An action was attempted after the game is over.
     #[error("game is already over")]
     GameAlreadyOver,
+    /// A probability value was outside the valid range [0.0, 1.0].
+    #[error("invalid probability value: {0}")]
+    InvalidProbability(f64),
 }
 
 /// Convenience type alias used throughout the crate.

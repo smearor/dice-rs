@@ -235,3 +235,78 @@
 .spacer {
   min-height: 12px;
 }
+
+/* Hint panel */
+.hint-panel {
+  padding: 12px;
+  border-radius: 8px;
+  background-color: alpha(@theme_base_color, 0.3);
+}
+
+.hint-title {
+  font-weight: bold;
+  font-size: 1.05em;
+  padding-bottom: 4px;
+  color: @accent_color;
+}
+
+.hint-category {
+  font-size: 1.0em;
+  font-weight: 500;
+}
+
+.hint-score {
+  font-size: 1.0em;
+  font-weight: bold;
+  color: @accent_color;
+}
+
+.hint-holds {
+  font-size: 0.9em;
+  color: alpha(@theme_fg_color, 0.8);
+  padding-top: 4px;
+}
+
+/* Bonus tracker */
+.bonus-tracker {
+  padding: 12px;
+  border-radius: 8px;
+  background-color: alpha(@theme_base_color, 0.3);
+}
+
+.bonus-tracker-title {
+  font-weight: bold;
+  font-size: 1.05em;
+  padding-bottom: 4px;
+  color: @accent_color;
+}
+
+.bonus-subtotal {
+  font-size: 0.95em;
+  padding-bottom: 4px;
+}
+
+.bonus-progress {
+  min-height: 8px;
+  border-radius: 4px;
+}
+
+.bonus-progress trough {
+  border-radius: 4px;
+}
+
+.bonus-progress progress {
+  border-radius: 4px;
+  background-color: @accent_color;
+}
+
+.bonus-status {
+  font-size: 0.9em;
+  padding-top: 4px;
+  color: alpha(@theme_fg_color, 0.8);
+}
+
+.bonus-status.bonus-achieved {
+  color: @success_color;
+  font-weight: bold;
+}

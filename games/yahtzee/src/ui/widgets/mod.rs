@@ -1,9 +1,13 @@
+pub mod bonus_tracker;
 pub mod dice_view;
+pub mod hint_panel;
 pub mod player_bar;
 pub mod scorecard_view;
 pub mod turn_panel;
 
+pub use bonus_tracker::BonusTracker;
 pub use dice_view::DiceView;
+pub use hint_panel::HintPanel;
 pub use player_bar::PlayerBar;
 pub use scorecard_view::ScorecardView;
 pub use turn_panel::TurnPanel;
