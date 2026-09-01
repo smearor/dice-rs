@@ -1,5 +1,6 @@
 pub mod dice_service;
 pub mod event_bridge;
+pub mod game_controller;
 pub mod led_effect;
 pub mod led_service;
 pub mod roll_detector;
@@ -8,6 +9,8 @@ pub mod slot_mapping;
 pub use dice_service::DiceService;
 pub use event_bridge::EventBridge;
 pub use event_bridge::GameEvent;
+pub use game_controller::ControllerEvent;
+pub use game_controller::GameController;
 pub use led_effect::LedEffect;
 pub use led_service::LedService;
 pub use roll_detector::RollDetector;
