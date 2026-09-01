@@ -8,6 +8,7 @@ pub mod error;
 pub mod models;
 pub mod rules;
 pub mod services;
+pub mod strategy;
 pub mod ui;
 
 pub use error::Result;
@@ -48,3 +49,9 @@ pub use services::LedService;
 pub use services::RollDetector;
 pub use services::RollState;
 pub use services::SlotMapping;
+pub use strategy::AiDecision;
+pub use strategy::CategoryChoice;
+pub use strategy::ComputerAi;
+pub use strategy::ExpectedValue;
+pub use strategy::HoldDecision;
+pub use strategy::Probability;
