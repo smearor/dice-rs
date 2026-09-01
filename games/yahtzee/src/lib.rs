@@ -7,6 +7,8 @@
 pub mod error;
 pub mod models;
 pub mod rules;
+pub mod services;
+pub mod ui;
 
 pub use error::Result;
 pub use error::YahtzeeError;
@@ -27,3 +29,11 @@ pub use models::score::Score;
 pub use models::score_entry::ScoreEntry;
 pub use models::scorecard::Scorecard;
 pub use models::turn_phase::TurnPhase;
+pub use services::DiceService;
+pub use services::EventBridge;
+pub use services::GameEvent;
+pub use services::LedEffect;
+pub use services::LedService;
+pub use services::RollDetector;
+pub use services::RollState;
+pub use services::SlotMapping;

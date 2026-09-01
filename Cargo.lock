@@ -3409,8 +3409,13 @@ name = "yahtzee"
 version = "0.1.0"
 dependencies = [
  "dice-rs",
+ "glib",
+ "gtk4",
  "serde",
  "thiserror 2.0.20",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

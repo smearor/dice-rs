@@ -30,6 +30,18 @@ pub enum YahtzeeError {
     /// A face value was invalid (0).
     #[error("invalid face value: {0}")]
     InvalidFaceValue(u8),
+    /// A BLE operation failed (scan, connect, reconnect, LED command).
+    #[error("BLE error: {0}")]
+    Ble(String),
+    /// A mutex lock was poisoned by a panicking thread.
+    #[error("lock poisoned")]
+    LockPoisoned,
+    /// A dice was not found in the slot mapping.
+    #[error("dice not found in slot {0}")]
+    DiceNotFound(u8),
+    /// Not all 5 dice slots are assigned.
+    #[error("not all dice assigned: {0}/5")]
+    NotAllDiceAssigned(usize),
 }
 
 /// Convenience type alias used throughout the crate.

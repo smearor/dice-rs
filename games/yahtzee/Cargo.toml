@@ -20,7 +20,12 @@ path = "src/main.rs"
 
 [dependencies]
 dice-rs = { path = "../../dice-rs" }
+glib = { workspace = true }
+gtk4 = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
