@@ -42,6 +42,18 @@ pub enum YahtzeeError {
     /// Not all 5 dice slots are assigned.
     #[error("not all dice assigned: {0}/5")]
     NotAllDiceAssigned(usize),
+    /// An action was attempted when it's not the player's turn.
+    #[error("not player {0}'s turn")]
+    NotYourTurn(usize),
+    /// An action was attempted in the wrong turn phase.
+    #[error("action not allowed in phase {0:?} (expected {1:?})")]
+    PhaseMismatch(String, String),
+    /// An action was attempted but dice are not connected.
+    #[error("dice not connected: {0}/5")]
+    DiceNotConnected(usize),
+    /// An action was attempted after the game is over.
+    #[error("game is already over")]
+    GameAlreadyOver,
 }
 
 /// Convenience type alias used throughout the crate.

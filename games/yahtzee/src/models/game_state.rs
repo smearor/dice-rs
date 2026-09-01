@@ -1,6 +1,7 @@
 use crate::error::Result;
 use crate::error::YahtzeeError;
 use crate::models::dice_set::DiceSet;
+use crate::models::game_status::GameStatus;
 use crate::models::player::Player;
 use crate::models::player_index::PlayerIndex;
 use crate::models::roll_count::RollCount;
@@ -26,6 +27,8 @@ pub struct GameState {
     round: RoundNumber,
     /// The current phase of the turn.
     phase: TurnPhase,
+    /// The overall game status.
+    status: GameStatus,
     /// How many rolls the current player has used this turn.
     rolls_used: RollCount,
     /// The current dice set.
@@ -45,6 +48,7 @@ impl GameState {
             current_player: PlayerIndex::new(0),
             round: RoundNumber::FIRST,
             phase: TurnPhase::AwaitingRoll,
+            status: GameStatus::Playing,
             rolls_used: RollCount::FIRST,
             dice_set: DiceSet::new(),
         })
@@ -88,6 +92,30 @@ impl GameState {
     /// Set the turn phase.
     pub fn set_phase(&mut self, phase: TurnPhase) {
         self.phase = phase;
+    }
+
+    /// Get the overall game status.
+    pub fn status(&self) -> GameStatus {
+        self.status
+    }
+
+    /// Set the game status.
+    pub fn set_status(&mut self, status: GameStatus) {
+        self.status = status;
+    }
+
+    /// Returns true if the player must enter a score or cross out
+    /// (after the 3rd roll or if they choose to score early).
+    pub fn is_forced_scoring(&self) -> bool {
+        self.rolls_used.is_exhausted() && self.phase == TurnPhase::Holding
+    }
+
+    /// Transition to scoring phase if rolls are exhausted.
+    /// Called after dice become stable.
+    pub fn check_forced_scoring(&mut self) {
+        if self.is_forced_scoring() {
+            self.phase = TurnPhase::Scoring;
+        }
     }
 
     /// Get the number of rolls used in the current turn.
@@ -159,12 +187,17 @@ impl GameState {
         {
             self.round = next_round;
         }
-        // If round.increment() fails, we're on the last round — game over.
+        // If round.increment() fails, we're on the last round — check game over.
 
         self.current_player = next_player;
         self.rolls_used = RollCount::FIRST;
         self.dice_set.reset();
         self.phase = TurnPhase::AwaitingRoll;
+
+        // Check if the game is over after this turn
+        if self.is_game_over() {
+            self.status = GameStatus::GameOver;
+        }
     }
 
     /// Advance to the next player's turn manually.
@@ -319,5 +352,46 @@ mod tests {
         assert_eq!(state.phase(), TurnPhase::Holding);
         state.enter_scoring();
         assert_eq!(state.phase(), TurnPhase::Scoring);
+    }
+
+    #[test]
+    fn new_game_has_playing_status() {
+        let state = GameState::new(make_players(2)).unwrap();
+        assert_eq!(state.status(), GameStatus::Playing);
+    }
+
+    #[test]
+    fn forced_scoring_after_three_rolls() {
+        let mut state = GameState::new(make_players(1)).unwrap();
+        state.start_roll();
+        state.dice_stable();
+        assert_eq!(state.phase(), TurnPhase::Holding);
+        assert!(!state.is_forced_scoring());
+        state.increment_rolls().unwrap();
+        state.start_roll();
+        state.dice_stable();
+        assert!(!state.is_forced_scoring());
+        state.increment_rolls().unwrap();
+        state.start_roll();
+        state.dice_stable();
+        assert!(state.is_forced_scoring());
+        state.check_forced_scoring();
+        assert_eq!(state.phase(), TurnPhase::Scoring);
+    }
+
+    #[test]
+    fn game_over_sets_status() {
+        let mut state = GameState::new(make_players(1)).unwrap();
+        for (i, cat) in ScoreCategory::ALL.iter().enumerate() {
+            state.enter_score(*cat, Score::new((i + 1) as u32)).unwrap();
+        }
+        assert_eq!(state.status(), GameStatus::GameOver);
+    }
+
+    #[test]
+    fn game_not_over_keeps_playing_status() {
+        let mut state = GameState::new(make_players(2)).unwrap();
+        state.enter_score(ScoreCategory::Ones, Score::new(3)).unwrap();
+        assert_eq!(state.status(), GameStatus::Playing);
     }
 }
