@@ -19,7 +19,7 @@ homepage = "https://github.com/smearor/dice-rs"
 assert_cmd = "2"
 async-trait = "0.1"
 bytemuck = { version = "1", features = ["derive"] }
-btleplug = "0.12"
+btleplug = "0.13"
 cairo-rs = "0.22"
 clap = { version = "4", features = ["derive"] }
 dirs = "6"
