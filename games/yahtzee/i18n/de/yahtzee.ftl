@@ -5,6 +5,11 @@ app-title = Kniffel
 game-mode-single-player = Einzelspieler
 game-mode-multi-player = Mehrspieler
 
+# Game status
+game-status-setup = Setup
+game-status-playing = Spiel läuft
+game-status-game-over = Spiel beendet
+
 # Setup screen
 window-setup-title = Kniffel — Setup
 setup-player-title = Spieler einrichten

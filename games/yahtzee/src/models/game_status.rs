@@ -1,3 +1,4 @@
+use crate::fl_write;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt;
@@ -22,9 +23,9 @@ pub enum GameStatus {
 impl Display for GameStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Setup => write!(f, "Setup"),
-            Self::Playing => write!(f, "Spiel läuft"),
-            Self::GameOver => write!(f, "Spiel beendet"),
+            Self::Setup => fl_write!(f, "game-status-setup"),
+            Self::Playing => fl_write!(f, "game-status-playing"),
+            Self::GameOver => fl_write!(f, "game-status-game-over"),
         }
     }
 }
