@@ -1,3 +1,4 @@
+use crate::i18n;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -21,14 +22,24 @@ impl CategorySection {
 
     /// The bonus points awarded when the upper section reaches the threshold.
     pub const UPPER_BONUS_POINTS: u32 = 35;
+
+    /// Returns the Fluent message key for this section.
+    pub fn fluent_key(self) -> &'static str {
+        match self {
+            Self::Upper => "scorecard-upper-section",
+            Self::Lower => "scorecard-lower-section",
+        }
+    }
+
+    /// Returns the localized display name for this section.
+    pub fn localized(self) -> String {
+        i18n::get(self.fluent_key())
+    }
 }
 
 impl std::fmt::Display for CategorySection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Upper => write!(f, "Obere Hälfte"),
-            Self::Lower => write!(f, "Untere Hälfte"),
-        }
+        write!(f, "{}", self.localized())
     }
 }
 
@@ -37,9 +48,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn display_german() {
-        assert_eq!(CategorySection::Upper.to_string(), "Obere Hälfte");
-        assert_eq!(CategorySection::Lower.to_string(), "Untere Hälfte");
+    fn display_not_empty() {
+        assert!(!CategorySection::Upper.to_string().is_empty());
+        assert!(!CategorySection::Lower.to_string().is_empty());
     }
 
     #[test]

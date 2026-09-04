@@ -24,14 +24,18 @@ btleplug = "0.13"
 cairo-rs = "0.22"
 clap = { version = "4", features = ["derive"] }
 dirs = "6"
+fluent-bundle = "0.16"
 futures = "0.3"
 gl_loader = "0.1"
 glam = "0.33"
 glib = "0.22"
 glow = "0.18"
 gtk4 = "0.11"
+i18n-embed = { version = "0.16", features = ["fluent-system", "desktop-requester"] }
+i18n-embed-fl = "0.10"
 miette = { version = "7", features = ["fancy"] }
 predicates = "3"
+rust-embed = "8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 smallvec = "1"
@@ -42,4 +46,5 @@ toml = "1.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 typed-builder = "0.23"
+unic-langid = "0.9"
 uuid = "1"

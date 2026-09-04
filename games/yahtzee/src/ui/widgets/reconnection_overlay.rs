@@ -1,3 +1,4 @@
+use crate::i18n;
 use crate::models::dice_slot::DiceSlot;
 use gtk4::prelude::*;
 
@@ -25,7 +26,7 @@ impl ReconnectionOverlay {
     /// Create a new reconnection overlay.
     pub fn new() -> Self {
         let message_label = gtk4::Label::builder()
-            .label("Würfel-Verbindung verloren!")
+            .label(&i18n::get("reconnection-message"))
             .css_classes(vec!["reconnection-message"])
             .halign(gtk4::Align::Center)
             .build();
@@ -36,13 +37,13 @@ impl ReconnectionOverlay {
             .build();
 
         let retry_button = gtk4::Button::builder()
-            .label("Erneut verbinden")
+            .label(&i18n::get("reconnection-retry"))
             .css_classes(vec!["reconnection-retry-button", "suggested-action"])
             .halign(gtk4::Align::Center)
             .build();
 
         let dismiss_button = gtk4::Button::builder()
-            .label("Ignorieren")
+            .label(&i18n::get("reconnection-dismiss"))
             .css_classes(vec!["reconnection-dismiss-button"])
             .halign(gtk4::Align::Center)
             .build();
@@ -73,7 +74,7 @@ impl ReconnectionOverlay {
 
     /// Update the overlay with the disconnected slot information.
     pub fn show_disconnected(&self, slot: DiceSlot) {
-        let slot_text = format!("Würfel {} ist getrennt", slot.get() + 1);
+        let slot_text = i18n::get_int("reconnection-slot-singular", "slot", (slot.get() + 1) as i64);
         self.slot_label.set_label(&slot_text);
     }
 
@@ -88,7 +89,7 @@ impl ReconnectionOverlay {
             return;
         }
         let slot_numbers: Vec<String> = slots.iter().map(|s| format!("{}", s.get() + 1)).collect();
-        let slot_text = format!("Würfel {} sind getrennt", slot_numbers.join(", "));
+        let slot_text = i18n::get_str("reconnection-slot-plural", "slots", &slot_numbers.join(", "));
         self.slot_label.set_label(&slot_text);
     }
 

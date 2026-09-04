@@ -1,3 +1,4 @@
+use crate::i18n;
 use crate::models::standing::StandingEntry;
 use gtk4::prelude::*;
 
@@ -21,7 +22,7 @@ impl GameEndScreen {
     /// Create a new game end screen.
     pub fn new() -> Self {
         let title = gtk4::Label::builder()
-            .label("Spiel beendet!")
+            .label(&i18n::get("game-end-title"))
             .css_classes(vec!["game-end-title"])
             .halign(gtk4::Align::Center)
             .build();
@@ -35,7 +36,7 @@ impl GameEndScreen {
             .build();
 
         let new_game_button = gtk4::Button::builder()
-            .label("Neues Spiel")
+            .label(&i18n::get("game-end-new-game"))
             .css_classes(vec!["game-end-new-game-button", "suggested-action"])
             .halign(gtk4::Align::Center)
             .build();
@@ -72,7 +73,7 @@ impl GameEndScreen {
 
         // Display winner
         if let Some(first) = standings.first() {
-            let winner_text = format!("{}: {}", first.rank(), first.player().name().as_str());
+            let winner_text = i18n::get_str_str("game-end-winner", "rank", &first.rank().to_string(), "name", first.player().name().as_str());
             self.winner_label.set_label(&winner_text);
         }
 
@@ -97,7 +98,7 @@ impl GameEndScreen {
                 .build();
 
             let score_label = gtk4::Label::builder()
-                .label(format!("{} Punkte", entry.final_score().get()))
+                .label(i18n::get_int("game-end-score", "score", entry.final_score().get() as i64))
                 .css_classes(vec!["standing-score"])
                 .build();
 

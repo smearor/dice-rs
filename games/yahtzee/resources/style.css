@@ -69,8 +69,37 @@
 }
 
 .die-button.held {
-  background-color: alpha(@success_color, 0.3);
-  border: 2px solid @success_color;
+  background-color: alpha(#ffffff, 0.15);
+}
+
+.die-button.held.dice-black {
+  border: 3px solid #ffffff;
+  background-color: alpha(#333333, 0.5);
+}
+
+.die-button.held.dice-red {
+  border: 3px solid #ffffff;
+  background-color: alpha(#e74c3c, 0.5);
+}
+
+.die-button.held.dice-green {
+  border: 3px solid #ffffff;
+  background-color: alpha(#2ecc71, 0.5);
+}
+
+.die-button.held.dice-blue {
+  border: 3px solid #ffffff;
+  background-color: alpha(#3498db, 0.5);
+}
+
+.die-button.held.dice-yellow {
+  border: 3px solid #ffffff;
+  background-color: alpha(#f1c40f, 0.5);
+}
+
+.die-button.held.dice-orange {
+  border: 3px solid #ffffff;
+  background-color: alpha(#e67e22, 0.5);
 }
 
 .die-button.rolling {
@@ -81,6 +110,31 @@
 .die-button.disconnected {
   opacity: 0.3;
   color: alpha(@theme_fg_color, 0.3);
+}
+
+/* Dice slot colors — match physical dice shell colors */
+.die-button.dice-black {
+  border: 3px solid #333333;
+}
+
+.die-button.dice-red {
+  border: 3px solid #e74c3c;
+}
+
+.die-button.dice-green {
+  border: 3px solid #2ecc71;
+}
+
+.die-button.dice-blue {
+  border: 3px solid #3498db;
+}
+
+.die-button.dice-yellow {
+  border: 3px solid #f1c40f;
+}
+
+.die-button.dice-orange {
+  border: 3px solid #e67e22;
 }
 
 @keyframes pulse {
@@ -105,8 +159,14 @@
   transition: background-color 150ms ease;
 }
 
-.scorecard-row:hover {
-  background-color: alpha(@accent_color, 0.1);
+.scorecard-row.clickable:hover {
+  background-color: alpha(@accent_color, 0.15);
+  cursor: pointer;
+}
+
+.scorecard-row.recently-entered {
+  background-color: alpha(@accent_color, 0.12);
+  border-radius: 4px;
 }
 
 .scorecard-row.filled {
@@ -118,6 +178,32 @@
   opacity: 0.5;
 }
 
+.scorecard-row.active {
+  background-color: alpha(@accent_color, 0.05);
+  border-radius: 4px;
+}
+
+.scorecard-player-name {
+  font-weight: 700;
+  padding: 4px 8px;
+}
+
+.scorecard-player-name.active {
+  color: @accent_color;
+}
+
+.scorecard-score.active {
+  font-weight: 700;
+  color: @accent_color;
+}
+
+.scorecard-grand-total {
+  font-weight: 700;
+  font-size: 1.1em;
+  padding-top: 8px;
+  border-top: 1px solid alpha(@theme_fg_color, 0.2);
+}
+
 .scorecard-category {
   font-weight: 500;
   padding-right: 12px;
@@ -127,7 +213,6 @@
   font-weight: bold;
   color: @accent_color;
   min-width: 40px;
-  text-align: right;
 }
 
 .scorecard-section-header {
@@ -180,7 +265,98 @@
 /* Setup screen */
 .setup-screen {
   padding: 24px;
-  spacing: 16px;
+}
+
+/* Dice status widget (setup screen) */
+.dice-status {
+  padding: 12px;
+}
+
+.dice-status-slot {
+  padding: 0;
+  border-radius: 12px;
+  background-color: alpha(@theme_fg_color, 0.05);
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.dice-status-slot.connected {
+  background-color: alpha(@accent_color, 0.1);
+}
+
+.dice-status-slot.discovered {
+  animation: dice-pulse 1.5s ease-in-out infinite;
+}
+
+.dice-status-slot.swapping {
+  border: 3px dashed alpha(@theme_fg_color, 0.4);
+  animation: dice-pulse 1s ease-in-out infinite;
+}
+
+@keyframes dice-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.dice-battery {
+  font-size: 0.75em;
+  color: alpha(@theme_fg_color, 0.6);
+  padding: 2px 0;
+}
+
+.dice-face-value {
+  font-size: 1.4em;
+  font-weight: bold;
+  color: @theme_fg_color;
+  padding: 2px 0;
+}
+
+.dice-battery.battery-low {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+.dice-status-slot.dice-red {
+  border: 3px solid #e74c3c;
+}
+
+.dice-status-slot.dice-green {
+  border: 3px solid #2ecc71;
+}
+
+.dice-status-slot.dice-blue {
+  border: 3px solid #3498db;
+}
+
+.dice-status-slot.dice-yellow {
+  border: 3px solid #f1c40f;
+}
+
+.dice-status-slot.dice-orange {
+  border: 3px solid #e67e22;
+}
+
+.dice-status-slot.dice-black {
+  border: 3px solid #555;
+}
+
+.dice-status-slot.discovered.dice-red {
+  border-color: alpha(#e74c3c, 0.5);
+}
+.dice-status-slot.discovered.dice-green {
+  border-color: alpha(#2ecc71, 0.5);
+}
+.dice-status-slot.discovered.dice-blue {
+  border-color: alpha(#3498db, 0.5);
+}
+.dice-status-slot.discovered.dice-yellow {
+  border-color: alpha(#f1c40f, 0.5);
+}
+.dice-status-slot.discovered.dice-orange {
+  border-color: alpha(#e67e22, 0.5);
+}
+.dice-status-slot.discovered.dice-black {
+  border-color: alpha(#555, 0.5);
 }
 
 .setup-title {
@@ -189,10 +365,14 @@
   padding: 12px 0;
 }
 
-.setup-instruction {
+.scan-status-label {
   font-size: 1.05em;
   color: alpha(@theme_fg_color, 0.8);
   padding: 6px 0;
+}
+
+.scan-progress {
+  margin: 4px 0;
 }
 
 .scan-button {
@@ -206,7 +386,6 @@
 /* Game over screen */
 .game-over-screen {
   padding: 24px;
-  spacing: 16px;
 }
 
 .game-over-title {
@@ -502,4 +681,60 @@
 .reconnection-dismiss-button {
   min-width: 100px;
   min-height: 36px;
+}
+
+/* Highscore dialog */
+.highscore-dialog-title {
+  font-size: 1.6em;
+  font-weight: bold;
+  color: @accent_color;
+  padding-bottom: 8px;
+}
+
+.highscore-empty {
+  font-size: 1.1em;
+  padding: 24px;
+}
+
+.highscore-list {
+  min-width: 300px;
+  padding: 8px;
+}
+
+.highscore-row {
+  padding: 8px 16px;
+  border-radius: 6px;
+  background-color: alpha(@theme_base_color, 0.5);
+}
+
+.highscore-rank {
+  font-weight: bold;
+  min-width: 40px;
+}
+
+.highscore-name {
+  min-width: 120px;
+}
+
+.highscore-score {
+  font-weight: bold;
+  min-width: 80px;
+  color: @accent_color;
+}
+
+.highscore-close-button {
+  min-width: 100px;
+  min-height: 36px;
+}
+
+/* Info dialog */
+.info-app-name {
+  font-size: 1.8em;
+  font-weight: bold;
+  color: @accent_color;
+}
+
+.info-license {
+  font-size: 0.9em;
+  padding-top: 8px;
 }

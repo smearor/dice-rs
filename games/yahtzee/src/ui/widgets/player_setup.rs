@@ -1,4 +1,7 @@
 use crate::error::Result;
+use crate::i18n;
+use crate::models::game_settings::GameSettings;
+use crate::models::game_settings::PlayerSettingsEntry;
 use crate::models::player_color::PlayerColor;
 use crate::models::player_config::PlayerConfig;
 use crate::models::player_config::PlayerSetup;
@@ -15,6 +18,8 @@ use gtk4::prelude::*;
 pub struct PlayerSetupWidget {
     /// The root container widget.
     container: gtk4::Box,
+    /// The box holding player rows.
+    rows_box: gtk4::Box,
     /// The list of player configuration rows.
     rows: Vec<PlayerRow>,
     /// The "add player" button.
@@ -41,19 +46,26 @@ impl PlayerRow {
     /// Create a new player row with default values.
     fn new(index: usize) -> Self {
         let name_entry = gtk4::Entry::builder()
-            .text(format!("Spieler {}", index + 1))
+            .text(i18n::get_int("player-default-name", "index", (index + 1) as i64))
             .css_classes(vec!["player-name-entry"])
             .hexpand(true)
             .build();
 
-        let color_model = gtk4::StringList::new(&["Rot", "Grün", "Blau", "Gelb", "Orange", "Lila"]);
+        let color_model = gtk4::StringList::new(&[
+            &i18n::get("player-color-red"),
+            &i18n::get("player-color-green"),
+            &i18n::get("player-color-blue"),
+            &i18n::get("player-color-yellow"),
+            &i18n::get("player-color-orange"),
+            &i18n::get("player-color-purple"),
+        ]);
         let color_dropdown = gtk4::DropDown::builder()
             .model(&color_model)
             .selected(index as u32 % 6)
             .css_classes(vec!["player-color-dropdown"])
             .build();
 
-        let type_model = gtk4::StringList::new(&["Mensch", "Computer"]);
+        let type_model = gtk4::StringList::new(&[&i18n::get("player-type-human"), &i18n::get("player-type-computer")]);
         let type_dropdown = gtk4::DropDown::builder()
             .model(&type_model)
             .selected(0)
@@ -63,7 +75,7 @@ impl PlayerRow {
         let remove_button = gtk4::Button::builder()
             .label("✕")
             .css_classes(vec!["player-remove-button"])
-            .tooltip_text("Spieler entfernen")
+            .tooltip_text(&i18n::get("player-remove-tooltip"))
             .build();
 
         let box_widget = gtk4::Box::builder()
@@ -123,7 +135,7 @@ impl PlayerSetupWidget {
     /// Create a new player setup widget with a default single player.
     pub fn new() -> Self {
         let title = gtk4::Label::builder()
-            .label("Spieler einrichten")
+            .label(&i18n::get("setup-player-title"))
             .css_classes(vec!["setup-title"])
             .halign(gtk4::Align::Start)
             .build();
@@ -136,13 +148,13 @@ impl PlayerSetupWidget {
             .build();
 
         let add_button = gtk4::Button::builder()
-            .label("+ Spieler hinzufügen")
+            .label(&i18n::get("player-add"))
             .css_classes(vec!["add-player-button"])
             .halign(gtk4::Align::Start)
             .build();
 
         let start_button = gtk4::Button::builder()
-            .label("Spiel starten")
+            .label(&i18n::get("player-start"))
             .css_classes(vec!["start-game-button", "suggested-action"])
             .halign(gtk4::Align::End)
             .hexpand(true)
@@ -168,6 +180,7 @@ impl PlayerSetupWidget {
 
         Self {
             container,
+            rows_box,
             rows,
             add_button,
             start_button,
@@ -184,6 +197,11 @@ impl PlayerSetupWidget {
         &self.start_button
     }
 
+    /// Enable or disable the "start game" button.
+    pub fn set_start_button_sensitive(&self, sensitive: bool) {
+        self.start_button.set_sensitive(sensitive);
+    }
+
     /// Add a new player row. Returns the index of the new row,
     /// or `None` if the maximum (6) has been reached.
     pub fn add_player(&mut self) -> Option<usize> {
@@ -192,12 +210,7 @@ impl PlayerSetupWidget {
             return None;
         }
         let row = PlayerRow::new(index);
-        #[allow(clippy::collapsible_if)]
-        if let Some(rows_box) = self.container.first_child() {
-            if let Some(rows_box) = rows_box.downcast_ref::<gtk4::Box>() {
-                rows_box.append(&row.box_widget);
-            }
-        }
+        self.rows_box.append(&row.box_widget);
         self.rows.push(row);
         Some(index)
     }
@@ -211,12 +224,7 @@ impl PlayerSetupWidget {
             return false;
         }
         let row = self.rows.remove(index);
-        #[allow(clippy::collapsible_if)]
-        if let Some(rows_box) = self.container.first_child() {
-            if let Some(rows_box) = rows_box.downcast_ref::<gtk4::Box>() {
-                rows_box.remove(&row.box_widget);
-            }
-        }
+        self.rows_box.remove(&row.box_widget);
         true
     }
 
@@ -232,6 +240,59 @@ impl PlayerSetupWidget {
     pub fn build_setup(&self) -> Result<PlayerSetup> {
         let configs: Vec<PlayerConfig> = self.rows.iter().map(|r| r.to_config()).collect::<Result<Vec<_>>>()?;
         PlayerSetup::new(configs)
+    }
+
+    /// Load player settings into the widget, replacing all current rows.
+    ///
+    /// Removes all existing rows and creates new ones matching the
+    /// provided settings. If settings have no players, a single default
+    /// row is kept.
+    pub fn load_settings(&mut self, settings: &GameSettings) {
+        // Remove all existing rows
+        while let Some(row) = self.rows.pop() {
+            self.rows_box.remove(&row.box_widget);
+        }
+
+        let players = settings.players();
+        if players.is_empty() {
+            let row = PlayerRow::new(0);
+            self.rows_box.append(&row.box_widget);
+            self.rows.push(row);
+            return;
+        }
+
+        for (index, entry) in players.iter().enumerate() {
+            let row = PlayerRow::new(index);
+            row.name_entry.set_text(entry.name().as_str());
+            let color_index = PlayerColor::DEFAULTS
+                .iter()
+                .position(|c| *c == entry.color())
+                .unwrap_or(index % PlayerColor::DEFAULTS.len());
+            row.color_dropdown.set_selected(color_index as u32);
+            let type_index = if entry.player_type() == PlayerType::Human { 0 } else { 1 };
+            row.type_dropdown.set_selected(type_index);
+            self.rows_box.append(&row.box_widget);
+            self.rows.push(row);
+        }
+    }
+
+    /// Collect the current configuration as `GameSettings`.
+    ///
+    /// Returns the current player rows as a `GameSettings` object
+    /// suitable for persisting to disk. Uses `MultiPlayer` mode if
+    /// there are 2+ players, `SinglePlayer` otherwise.
+    pub fn collect_settings(&self) -> Result<GameSettings> {
+        let entries: Vec<PlayerSettingsEntry> = self
+            .rows
+            .iter()
+            .map(|r| Ok(PlayerSettingsEntry::new(r.player_name()?, r.player_color(), r.player_type())))
+            .collect::<Result<Vec<_>>>()?;
+        let mode = if entries.len() > 1 {
+            crate::models::game_mode::GameMode::MultiPlayer
+        } else {
+            crate::models::game_mode::GameMode::SinglePlayer
+        };
+        Ok(GameSettings::new(mode, entries))
     }
 
     /// Get the root widget.

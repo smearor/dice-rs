@@ -175,9 +175,10 @@ impl GameState {
         self.rolls_used.is_exhausted()
     }
 
-    /// Start a new roll: reset dice holds and set phase to Rolling.
+    /// Start a new roll: set phase to Rolling.
+    /// Holds are preserved so that apply_roll knows which dice to update.
+    /// Holds are cleared when a new turn starts.
     pub fn start_roll(&mut self) {
-        self.dice_set.clear_holds();
         self.phase = TurnPhase::Rolling;
     }
 
@@ -366,12 +367,13 @@ mod tests {
     }
 
     #[test]
-    fn start_roll_clears_holds_and_sets_phase() {
+    fn start_roll_sets_phase_and_preserves_holds() {
         let mut state = GameState::new(make_players(1)).unwrap();
         state.dice_set_mut().set_holds(crate::models::hold_mask::HoldMask::all());
         state.start_roll();
         assert_eq!(state.phase(), TurnPhase::Rolling);
-        assert_eq!(state.dice_set().holds().held_count(), 0);
+        // Holds are preserved so apply_roll knows which dice to update
+        assert_eq!(state.dice_set().holds().held_count(), 5);
     }
 
     #[test]

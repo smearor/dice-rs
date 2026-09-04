@@ -1,3 +1,4 @@
+use crate::i18n;
 use crate::models::dice_set::DiceSet;
 use crate::models::dice_slot::DiceSlot;
 use crate::models::hold_mask::HoldMask;
@@ -29,7 +30,7 @@ impl HintPanel {
     /// Create a new hint panel.
     pub fn new() -> Self {
         let title = gtk4::Label::builder()
-            .label("Strategie-Hinweis")
+            .label(&i18n::get("hint-title"))
             .css_classes(vec!["hint-title"])
             .halign(gtk4::Align::Start)
             .build();
@@ -84,19 +85,19 @@ impl HintPanel {
                 Err(_) => self.hold_label.set_label("—"),
             }
         } else {
-            self.hold_label.set_label("Kein weiterer Wurf möglich");
+            self.hold_label.set_label(&i18n::get("hint-no-more-rolls"));
         }
     }
 
     /// Show the category recommendation.
     fn show_category_hint(&self, choice: &CategoryChoice) {
-        let text = format!("→ {}", choice.category());
+        let text = i18n::get_str("hint-category", "category", &choice.category().to_string());
         self.category_label.set_label(&text);
 
         let score_text = if choice.score().get() > 0 {
-            format!("{} Punkte", choice.score().get())
+            i18n::get_int("hint-score", "score", choice.score().get() as i64)
         } else {
-            "0 Punkte (streichen)".to_string()
+            i18n::get("hint-score-zero")
         };
         self.score_label.set_label(&score_text);
     }
@@ -104,12 +105,12 @@ impl HintPanel {
     /// Show the hold recommendation.
     fn show_hold_hint(&self, dice: &DiceSet, holds: HoldMask) {
         if holds.held_count() == 5 {
-            self.hold_label.set_label("Alle Würfel behalten");
+            self.hold_label.set_label(&i18n::get("hint-hold-all"));
             return;
         }
 
         if holds.held_count() == 0 {
-            self.hold_label.set_label("Alle Würfel neu würfeln");
+            self.hold_label.set_label(&i18n::get("hint-hold-none"));
             return;
         }
 
@@ -118,7 +119,7 @@ impl HintPanel {
             .map(|slot| dice.values()[slot.get() as usize].to_string())
             .collect();
 
-        let text = format!("Behalten: {}", held_values.join(", "));
+        let text = i18n::get_str("hint-hold-some", "values", &held_values.join(", "));
         self.hold_label.set_label(&text);
     }
 
