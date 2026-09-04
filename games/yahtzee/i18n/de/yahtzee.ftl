@@ -1,6 +1,10 @@
 # App
 app-title = Kniffel
 
+# Game mode
+game-mode-single-player = Einzelspieler
+game-mode-multi-player = Mehrspieler
+
 # Setup screen
 window-setup-title = Kniffel — Setup
 setup-player-title = Spieler einrichten

@@ -1,6 +1,10 @@
 # App
 app-title = Yahtzee
 
+# Game mode
+game-mode-single-player = Single Player
+game-mode-multi-player = Multiplayer
+
 # Setup screen
 window-setup-title = Yahtzee — Setup
 setup-player-title = Set up players
