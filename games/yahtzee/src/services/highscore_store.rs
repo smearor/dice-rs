@@ -77,7 +77,7 @@ impl HighscoreStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::highscore::HighscoreEntry;
+    use crate::models::highscore_entry::HighscoreEntry;
     use crate::models::score::Score;
 
     #[tokio::test]
