@@ -1,3 +1,4 @@
+use crate::i18n;
 use crate::models::category_section::CategorySection;
 use crate::models::scorecard::Scorecard;
 use gtk4::prelude::*;
@@ -21,7 +22,7 @@ impl BonusTracker {
     /// Create a new bonus tracker.
     pub fn new() -> Self {
         let title = gtk4::Label::builder()
-            .label("Bonus-Fortschritt")
+            .label(&i18n::get("bonus-title"))
             .css_classes(vec!["bonus-tracker-title"])
             .halign(gtk4::Align::Start)
             .build();
@@ -71,7 +72,7 @@ impl BonusTracker {
         let remaining = scorecard.upper_bonus_remaining();
         let bonus = scorecard.upper_bonus();
 
-        let subtotal_text = format!("Obere Hälfte: {}/{}", subtotal.get(), CategorySection::UPPER_BONUS_THRESHOLD);
+        let subtotal_text = i18n::get_int_int("bonus-subtotal", "current", subtotal.get() as i64, "threshold", CategorySection::UPPER_BONUS_THRESHOLD as i64);
         self.subtotal_label.set_label(&subtotal_text);
 
         let fraction = if subtotal.get() >= CategorySection::UPPER_BONUS_THRESHOLD {
@@ -82,11 +83,11 @@ impl BonusTracker {
         self.progress_bar.set_fraction(fraction);
 
         let bonus_text = if bonus.get() > 0 {
-            format!("✓ Bonus erreicht: +{} Punkte", bonus.get())
+            i18n::get_int("bonus-achieved", "points", bonus.get() as i64)
         } else if remaining.get() == 0 {
-            "Bonus erreicht!".to_string()
+            i18n::get("bonus-reached")
         } else {
-            format!("Noch {} Punkte bis zum Bonus", remaining.get())
+            i18n::get_int("bonus-remaining", "remaining", remaining.get() as i64)
         };
         self.bonus_label.set_label(&bonus_text);
 

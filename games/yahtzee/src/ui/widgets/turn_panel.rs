@@ -1,3 +1,4 @@
+use crate::i18n;
 use crate::models::roll_count::RollCount;
 use crate::ui::models::roll_button_label::RollButtonLabel;
 use crate::ui::models::ui_message::UiMessage;
@@ -39,7 +40,7 @@ impl TurnPanel {
 
         let roll_button = gtk4::Button::builder()
             .css_classes(vec!["roll-button", "suggested-action"])
-            .label(RollButtonLabel::Wuerfeln.text())
+            .label(&RollButtonLabel::Wuerfeln.text())
             .halign(gtk4::Align::Center)
             .build();
 
@@ -91,13 +92,13 @@ impl TurnPanel {
 
     /// Update the roll button label and sensitivity.
     pub fn set_roll_button_label(&self, label: RollButtonLabel) {
-        self.roll_button.set_label(label.text());
+        self.roll_button.set_label(&label.text());
         self.roll_button.set_sensitive(label.is_sensitive());
     }
 
     /// Update the roll count display.
     pub fn set_roll_count(&self, count: RollCount) {
-        let text = format!("Wurf {}/3", count.get());
+        let text = i18n::get_int("roll-count", "current", count.get() as i64);
         self.roll_count_label.set_label(&text);
     }
 
@@ -111,7 +112,7 @@ impl TurnPanel {
         let label = RollButtonLabel::from_roll_count(count.get());
         self.set_roll_button_label(label);
         let remaining = 3 - count.get();
-        let text = format!("Wurf {}/3 — {remaining} Würfe übrig", count.get());
+        let text = i18n::get_int_int("roll-count-remaining", "current", count.get() as i64, "remaining", remaining as i64);
         self.roll_count_label.set_label(&text);
     }
 
@@ -124,7 +125,7 @@ impl TurnPanel {
     /// Reset the panel to the initial state.
     pub fn reset(&self) {
         self.set_roll_button_label(RollButtonLabel::Wuerfeln);
-        self.roll_count_label.set_label("Wurf 0/3");
+        self.roll_count_label.set_label(&i18n::get("roll-count-zero"));
         self.instruction_label.set_label("");
     }
 

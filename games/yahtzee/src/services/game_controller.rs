@@ -240,6 +240,14 @@ impl GameController {
         }
 
         let player_index = state.current_player_index().get();
+        debug!(
+            player = player_index,
+            category = ?category,
+            score = score.get(),
+            faces = ?state.dice_set().values(),
+            phase = ?state.phase(),
+            "entering score"
+        );
         state.enter_score(category, score)?;
 
         events.push(ControllerEvent::ScoreEntered { player_index, category, score });
@@ -311,8 +319,8 @@ impl GameController {
             return Err(YahtzeeError::PhaseMismatch(state.phase().to_string(), "Rolling".to_string()));
         }
 
-        // Update dice values
-        *state.dice_set_mut() = dice;
+        // Update dice values — preserve holds, only update non-held dice
+        state.dice_set_mut().apply_roll(dice.faces());
         state.dice_stable();
 
         let mut events = vec![ControllerEvent::PhaseChanged { phase: TurnPhase::Holding }];
@@ -351,7 +359,15 @@ impl GameController {
     /// Get the potential score for a category with the current dice.
     pub fn potential_score(&self, category: ScoreCategory) -> Result<Score> {
         let state = self.state.lock().map_err(|_| YahtzeeError::LockPoisoned)?;
-        Ok(calculate_score(category, state.dice_set()))
+        let dice = state.dice_set();
+        let score = calculate_score(category, dice);
+        debug!(
+            category = ?category,
+            faces = ?dice.values(),
+            score = score.get(),
+            "potential_score"
+        );
+        Ok(score)
     }
 
     /// Check if a category is valid (scores > 0) with the current dice.

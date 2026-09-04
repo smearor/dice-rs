@@ -6,6 +6,7 @@ pub mod game_mode;
 pub mod game_settings;
 pub mod game_state;
 pub mod game_status;
+pub mod highscore;
 pub mod hold_mask;
 pub mod player;
 pub mod player_color;

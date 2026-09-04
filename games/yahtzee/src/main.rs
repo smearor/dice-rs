@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use dice_rs::DiceManager;
 use tracing_subscriber::EnvFilter;
+use yahtzee::i18n;
 use yahtzee::ui::Application;
 
 #[tokio::main]
@@ -11,6 +12,8 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,bluez_async=warn")))
         .init();
+
+    i18n::init();
 
     let manager = match DiceManager::new().await {
         Ok(manager) => Arc::new(manager),

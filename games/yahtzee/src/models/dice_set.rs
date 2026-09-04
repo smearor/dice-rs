@@ -106,13 +106,14 @@ impl DiceSet {
         self.values().iter().map(|&v| v as u32).sum()
     }
 
-    /// Update face values from a new roll. Only non-held dice are updated.
-    /// Held dice retain their current face values.
+    /// Update face values from a new roll. All dice are updated —
+    /// held dice get their current face from `mark_held_stable`, so
+    /// updating them is a no-op in the normal case. If a held die
+    /// reported a new face (e.g. MoveStable from being jostled),
+    /// we use the new value.
     pub fn apply_roll(&mut self, new_faces: [FaceValue; DiceSlot::COUNT]) {
         for slot in DiceSlot::all() {
-            if !self.holds.is_held(slot) {
-                self.faces[slot.get() as usize] = new_faces[slot.get() as usize];
-            }
+            self.faces[slot.get() as usize] = new_faces[slot.get() as usize];
         }
     }
 
@@ -200,7 +201,7 @@ mod tests {
     }
 
     #[test]
-    fn apply_roll_respects_holds() {
+    fn apply_roll_updates_all_faces() {
         let mut ds = DiceSet::from_values([1, 2, 3, 4, 5]).unwrap();
         ds.set_holds(HoldMask::from_array([true, false, true, false, true]));
         let new_faces = [
@@ -211,8 +212,9 @@ mod tests {
             FaceValue::new(6).unwrap(),
         ];
         ds.apply_roll(new_faces);
-        // Held dice (0, 2, 4) keep old values
-        assert_eq!(ds.values(), [1, 6, 3, 6, 5]);
+        // All dice updated — held dice get their current face from
+        // mark_held_stable, so this is a no-op for them in normal flow.
+        assert_eq!(ds.values(), [6, 6, 6, 6, 6]);
     }
 
     #[test]

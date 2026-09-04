@@ -1,3 +1,4 @@
+use crate::i18n;
 use crate::models::turn_transition::TurnTransition;
 use gtk4::prelude::*;
 
@@ -37,7 +38,7 @@ impl TurnTransitionOverlay {
             .build();
 
         let ready_button = gtk4::Button::builder()
-            .label("Bereit!")
+            .label(&i18n::get("transition-ready"))
             .css_classes(vec!["transition-ready-button", "suggested-action"])
             .halign(gtk4::Align::Center)
             .build();
@@ -68,10 +69,10 @@ impl TurnTransitionOverlay {
 
     /// Update the overlay with turn transition data.
     pub fn update(&self, transition: &TurnTransition) {
-        let round_text = format!("Runde {}", transition.round());
+        let round_text = i18n::get_int("transition-round", "round", transition.round().get() as i64);
         self.round_label.set_label(&round_text);
 
-        let name_text = format!("{} ist dran!", transition.player_name());
+        let name_text = i18n::get_str("transition-player", "name", transition.player_name());
         self.name_label.set_label(&name_text);
 
         // Apply color via CSS class based on the player's color

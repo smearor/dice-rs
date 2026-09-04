@@ -1,3 +1,4 @@
+use crate::i18n;
 use crate::models::category_section::CategorySection;
 use serde::Deserialize;
 use serde::Serialize;
@@ -66,6 +67,30 @@ impl ScoreCategory {
         }
     }
 
+    /// Returns the Fluent message key for this category.
+    pub fn fluent_key(self) -> &'static str {
+        match self {
+            Self::Ones => "category-ones",
+            Self::Twos => "category-twos",
+            Self::Threes => "category-threes",
+            Self::Fours => "category-fours",
+            Self::Fives => "category-fives",
+            Self::Sixes => "category-sixes",
+            Self::ThreeOfAKind => "category-three-of-a-kind",
+            Self::FourOfAKind => "category-four-of-a-kind",
+            Self::FullHouse => "category-full-house",
+            Self::SmallStraight => "category-small-straight",
+            Self::LargeStraight => "category-large-straight",
+            Self::Yahtzee => "category-yahtzee",
+            Self::Chance => "category-chance",
+        }
+    }
+
+    /// Returns the localized display name for this category.
+    pub fn localized(self) -> String {
+        i18n::get(self.fluent_key())
+    }
+
     /// Returns the index of this category within the full scorecard (0-12).
     pub fn index(&self) -> usize {
         Self::ALL.iter().position(|c| c == self).unwrap()
@@ -74,21 +99,7 @@ impl ScoreCategory {
 
 impl std::fmt::Display for ScoreCategory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Ones => write!(f, "Einser"),
-            Self::Twos => write!(f, "Zweier"),
-            Self::Threes => write!(f, "Dreier"),
-            Self::Fours => write!(f, "Vierer"),
-            Self::Fives => write!(f, "Fünfer"),
-            Self::Sixes => write!(f, "Sechser"),
-            Self::ThreeOfAKind => write!(f, "Dreierpasch"),
-            Self::FourOfAKind => write!(f, "Viererpasch"),
-            Self::FullHouse => write!(f, "Full House"),
-            Self::SmallStraight => write!(f, "Kleine Straße"),
-            Self::LargeStraight => write!(f, "Große Straße"),
-            Self::Yahtzee => write!(f, "Kniffel"),
-            Self::Chance => write!(f, "Chance"),
-        }
+        write!(f, "{}", self.localized())
     }
 }
 
@@ -121,9 +132,9 @@ mod tests {
     }
 
     #[test]
-    fn display_german() {
-        assert_eq!(ScoreCategory::Ones.to_string(), "Einser");
-        assert_eq!(ScoreCategory::Yahtzee.to_string(), "Kniffel");
-        assert_eq!(ScoreCategory::FullHouse.to_string(), "Full House");
+    fn display_not_empty() {
+        assert!(!ScoreCategory::Ones.to_string().is_empty());
+        assert!(!ScoreCategory::Yahtzee.to_string().is_empty());
+        assert!(!ScoreCategory::FullHouse.to_string().is_empty());
     }
 }

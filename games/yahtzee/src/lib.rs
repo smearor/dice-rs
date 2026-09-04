@@ -5,6 +5,7 @@
 //! project for the `dice-rs` library with physical GoDice integration.
 
 pub mod error;
+pub mod i18n;
 pub mod models;
 pub mod rules;
 pub mod services;
@@ -22,6 +23,8 @@ pub use models::game_settings::GameSettings;
 pub use models::game_settings::PlayerSettingsEntry;
 pub use models::game_state::GameState;
 pub use models::game_status::GameStatus;
+pub use models::highscore::HighscoreEntry;
+pub use models::highscore::HighscoreList;
 pub use models::hold_mask::HoldMask;
 pub use models::player::Player;
 pub use models::player_color::PlayerColor;
@@ -54,6 +57,7 @@ pub use services::DiceService;
 pub use services::EventBridge;
 pub use services::GameController;
 pub use services::GameEvent;
+pub use services::HighscoreStore;
 pub use services::LedColorAssignment;
 pub use services::LedEffect;
 pub use services::LedService;

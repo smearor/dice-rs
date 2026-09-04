@@ -1,7 +1,10 @@
 pub mod bonus_tracker;
+pub mod dice_status_widget;
 pub mod dice_view;
 pub mod game_end_screen;
+pub mod highscore_dialog;
 pub mod hint_panel;
+pub mod info_dialog;
 pub mod player_bar;
 pub mod player_setup;
 pub mod reconnection_overlay;
@@ -10,9 +13,12 @@ pub mod turn_panel;
 pub mod turn_transition_overlay;
 
 pub use bonus_tracker::BonusTracker;
+pub use dice_status_widget::DiceStatusWidget;
 pub use dice_view::DiceView;
 pub use game_end_screen::GameEndScreen;
+pub use highscore_dialog::HighscoreDialog;
 pub use hint_panel::HintPanel;
+pub use info_dialog::InfoDialog;
 pub use player_bar::PlayerBar;
 pub use player_setup::PlayerSetupWidget;
 pub use reconnection_overlay::ReconnectionOverlay;

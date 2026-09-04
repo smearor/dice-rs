@@ -345,9 +345,11 @@ impl Dice {
         }
     }
 
-    /// Internal reconnect: re-subscribe and re-spawn tasks.
+    /// Internal reconnect: reconnect BLE, re-subscribe, and re-spawn tasks.
     pub(crate) async fn reconnect_internal(&self) -> Result<()> {
         self.abort_tasks();
+        // Try to re-establish the BLE connection first
+        self.inner.peripheral.connect().await?;
         self.inner.peripheral.subscribe(&self.inner.notify_char).await?;
         self.spawn_notification_task().await?;
         self.spawn_led_debounce_task();

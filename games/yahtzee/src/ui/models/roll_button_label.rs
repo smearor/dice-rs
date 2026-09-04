@@ -2,6 +2,8 @@ use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
+use crate::fl;
+
 /// The text displayed on the roll button.
 ///
 /// Encodes the button label as an enum to avoid stringly-typed APIs
@@ -23,15 +25,15 @@ pub enum RollButtonLabel {
 }
 
 impl RollButtonLabel {
-    /// Get the label text for the button.
-    pub fn text(self) -> &'static str {
+    /// Get the localized label text for the button.
+    pub fn text(self) -> String {
         match self {
-            Self::Wuerfeln => "Würfeln",
-            Self::NochmalWuerfeln => "Nochmal würfeln",
-            Self::LetzterWurf => "Letzter Wurf",
-            Self::KeineWuerfeUbrig => "Keine Würfe übrig",
-            Self::WurfLauft => "Wurf läuft...",
-            Self::SpielBeendet => "Spiel beendet",
+            Self::Wuerfeln => fl!("roll-button-roll"),
+            Self::NochmalWuerfeln => fl!("roll-button-reroll"),
+            Self::LetzterWurf => fl!("roll-button-last"),
+            Self::KeineWuerfeUbrig => fl!("roll-button-none"),
+            Self::WurfLauft => fl!("roll-button-rolling"),
+            Self::SpielBeendet => fl!("roll-button-game-over"),
         }
     }
 
@@ -66,17 +68,17 @@ mod tests {
 
     #[test]
     fn text_wuerfeln() {
-        assert_eq!(RollButtonLabel::Wuerfeln.text(), "Würfeln");
+        assert!(!RollButtonLabel::Wuerfeln.text().is_empty());
     }
 
     #[test]
     fn text_nochmal() {
-        assert_eq!(RollButtonLabel::NochmalWuerfeln.text(), "Nochmal würfeln");
+        assert!(!RollButtonLabel::NochmalWuerfeln.text().is_empty());
     }
 
     #[test]
     fn text_letzter() {
-        assert_eq!(RollButtonLabel::LetzterWurf.text(), "Letzter Wurf");
+        assert!(!RollButtonLabel::LetzterWurf.text().is_empty());
     }
 
     #[test]
@@ -115,6 +117,6 @@ mod tests {
 
     #[test]
     fn display() {
-        assert_eq!(RollButtonLabel::Wuerfeln.to_string(), "Würfeln");
+        assert!(!RollButtonLabel::Wuerfeln.to_string().is_empty());
     }
 }
