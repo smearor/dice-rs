@@ -92,6 +92,44 @@ pub fn get(message_id: &str) -> String {
     loader().get(message_id)
 }
 
+/// Trait for types that map to a Fluent translation key.
+///
+/// Implementors provide `fluent_key()` and get `localized()` for free.
+/// This ensures a consistent pattern across all localizable enum types.
+pub trait Localized {
+    /// Returns the Fluent message key for this value.
+    fn fluent_key(&self) -> &'static str;
+
+    /// Returns the localized display name by looking up the Fluent key.
+    fn localized(&self) -> String {
+        get(self.fluent_key())
+    }
+}
+
+/// Implements `std::fmt::Display` for a type implementing `Localized`.
+///
+/// Usage:
+/// ```
+/// use yahtzee::i18n::Localized;
+/// use yahtzee::impl_display_localized;
+///
+/// struct MyType;
+/// impl Localized for MyType {
+///     fn fluent_key(&self) -> &'static str { "my-type" }
+/// }
+/// impl_display_localized!(MyType);
+/// ```
+#[macro_export]
+macro_rules! impl_display_localized {
+    ($type_name:ty) => {
+        impl std::fmt::Display for $type_name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", $crate::i18n::Localized::localized(self))
+            }
+        }
+    };
+}
+
 /// Get a translated message with a single integer argument.
 pub fn get_int(message_id: &str, arg_name: &str, value: i64) -> String {
     let mut args = fluent_bundle::FluentArgs::with_capacity(1);

@@ -1,4 +1,5 @@
-use crate::i18n;
+use crate::i18n::Localized;
+use crate::impl_display_localized;
 use crate::models::category_section::CategorySection;
 use serde::Deserialize;
 use serde::Serialize;
@@ -67,8 +68,14 @@ impl ScoreCategory {
         }
     }
 
-    /// Returns the Fluent message key for this category.
-    pub fn fluent_key(self) -> &'static str {
+    /// Returns the index of this category within the full scorecard (0-12).
+    pub fn index(&self) -> usize {
+        Self::ALL.iter().position(|c| c == self).unwrap()
+    }
+}
+
+impl Localized for ScoreCategory {
+    fn fluent_key(&self) -> &'static str {
         match self {
             Self::Ones => "category-ones",
             Self::Twos => "category-twos",
@@ -85,23 +92,9 @@ impl ScoreCategory {
             Self::Chance => "category-chance",
         }
     }
-
-    /// Returns the localized display name for this category.
-    pub fn localized(self) -> String {
-        i18n::get(self.fluent_key())
-    }
-
-    /// Returns the index of this category within the full scorecard (0-12).
-    pub fn index(&self) -> usize {
-        Self::ALL.iter().position(|c| c == self).unwrap()
-    }
 }
 
-impl std::fmt::Display for ScoreCategory {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.localized())
-    }
-}
+impl_display_localized!(ScoreCategory);
 
 #[cfg(test)]
 mod tests {

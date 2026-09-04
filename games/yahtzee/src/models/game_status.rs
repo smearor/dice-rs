@@ -1,9 +1,7 @@
-use crate::fl_write;
+use crate::i18n::Localized;
+use crate::impl_display_localized;
 use serde::Deserialize;
 use serde::Serialize;
-use std::fmt;
-use std::fmt::Display;
-use std::fmt::Formatter;
 
 /// The overall status of a Yahtzee game.
 ///
@@ -20,15 +18,17 @@ pub enum GameStatus {
     GameOver,
 }
 
-impl Display for GameStatus {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+impl Localized for GameStatus {
+    fn fluent_key(&self) -> &'static str {
         match self {
-            Self::Setup => fl_write!(f, "game-status-setup"),
-            Self::Playing => fl_write!(f, "game-status-playing"),
-            Self::GameOver => fl_write!(f, "game-status-game-over"),
+            Self::Setup => "game-status-setup",
+            Self::Playing => "game-status-playing",
+            Self::GameOver => "game-status-game-over",
         }
     }
 }
+
+impl_display_localized!(GameStatus);
 
 #[cfg(test)]
 mod tests {
@@ -36,17 +36,17 @@ mod tests {
 
     #[test]
     fn display_setup() {
-        assert_eq!(GameStatus::Setup.to_string(), "Setup");
+        assert_eq!(GameStatus::Setup.to_string(), GameStatus::Setup.localized());
     }
 
     #[test]
     fn display_playing() {
-        assert_eq!(GameStatus::Playing.to_string(), "Spiel läuft");
+        assert_eq!(GameStatus::Playing.to_string(), GameStatus::Playing.localized());
     }
 
     #[test]
     fn display_game_over() {
-        assert_eq!(GameStatus::GameOver.to_string(), "Spiel beendet");
+        assert_eq!(GameStatus::GameOver.to_string(), GameStatus::GameOver.localized());
     }
 
     #[test]

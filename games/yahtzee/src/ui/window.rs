@@ -599,7 +599,7 @@ impl MainWindow {
                         }
                     }
                     if !reconnected.is_empty() {
-                        status_label.set_label(&format!("{} Würfel erneut verbunden.", reconnected.len()));
+                        status_label.set_label(&i18n::get_int("reconnection-reconnected", "count", reconnected.len() as i64));
                     }
                     if !reconnection_manager.has_pending() {
                         reconnection_overlay.clear();
@@ -811,7 +811,7 @@ impl MainWindow {
                                             }
                                         }
                                         crate::models::turn_phase::TurnPhase::Scoring => {
-                                            turn_panel.set_roll_button_label(RollButtonLabel::KeineWuerfeUbrig);
+                                            turn_panel.set_roll_button_label(RollButtonLabel::NoRollsLeft);
                                         }
                                         crate::models::turn_phase::TurnPhase::AwaitingRoll => {
                                             turn_panel.reset();
@@ -1491,7 +1491,7 @@ impl MainWindow {
                             }
                         }
                         crate::models::turn_phase::TurnPhase::Scoring => {
-                            turn_panel.set_roll_button_label(RollButtonLabel::KeineWuerfeUbrig);
+                            turn_panel.set_roll_button_label(RollButtonLabel::NoRollsLeft);
                         }
                         crate::models::turn_phase::TurnPhase::AwaitingRoll => {
                             turn_panel.reset();

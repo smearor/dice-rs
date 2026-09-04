@@ -1,3 +1,5 @@
+use crate::i18n::Localized;
+use crate::impl_display_localized;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -10,22 +12,24 @@ pub enum PlayerType {
     Computer,
 }
 
-impl std::fmt::Display for PlayerType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Localized for PlayerType {
+    fn fluent_key(&self) -> &'static str {
         match self {
-            Self::Human => write!(f, "Mensch"),
-            Self::Computer => write!(f, "Computer"),
+            Self::Human => "player-type-human",
+            Self::Computer => "player-type-computer",
         }
     }
 }
+
+impl_display_localized!(PlayerType);
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn display_german() {
-        assert_eq!(PlayerType::Human.to_string(), "Mensch");
-        assert_eq!(PlayerType::Computer.to_string(), "Computer");
+    fn display_matches_localized() {
+        assert_eq!(PlayerType::Human.to_string(), PlayerType::Human.localized());
+        assert_eq!(PlayerType::Computer.to_string(), PlayerType::Computer.localized());
     }
 }

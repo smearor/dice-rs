@@ -1,8 +1,7 @@
+use crate::i18n::Localized;
+use crate::impl_display_localized;
 use serde::Deserialize;
 use serde::Serialize;
-use std::fmt;
-use std::fmt::Display;
-use std::fmt::Formatter;
 
 /// The classification of a dice roll for celebration purposes.
 ///
@@ -48,19 +47,21 @@ impl RollResult {
     }
 }
 
-impl Display for RollResult {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+impl Localized for RollResult {
+    fn fluent_key(&self) -> &'static str {
         match self {
-            Self::Yahtzee => write!(f, "Yahtzee!"),
-            Self::FullHouse => write!(f, "Full House!"),
-            Self::LargeStraight => write!(f, "Große Straße!"),
-            Self::SmallStraight => write!(f, "Kleine Straße!"),
-            Self::FourOfAKind => write!(f, "Vierlinge!"),
-            Self::ThreeOfAKind => write!(f, "Drillinge"),
-            Self::Normal => write!(f, "Normal"),
+            Self::Yahtzee => "roll-result-yahtzee",
+            Self::FullHouse => "roll-result-full-house",
+            Self::LargeStraight => "roll-result-large-straight",
+            Self::SmallStraight => "roll-result-small-straight",
+            Self::FourOfAKind => "roll-result-four-of-a-kind",
+            Self::ThreeOfAKind => "roll-result-three-of-a-kind",
+            Self::Normal => "roll-result-normal",
         }
     }
 }
+
+impl_display_localized!(RollResult);
 
 #[cfg(test)]
 mod tests {
@@ -113,21 +114,21 @@ mod tests {
 
     #[test]
     fn display_yahtzee() {
-        assert_eq!(RollResult::Yahtzee.to_string(), "Yahtzee!");
+        assert_eq!(RollResult::Yahtzee.to_string(), RollResult::Yahtzee.localized());
     }
 
     #[test]
     fn display_full_house() {
-        assert_eq!(RollResult::FullHouse.to_string(), "Full House!");
+        assert_eq!(RollResult::FullHouse.to_string(), RollResult::FullHouse.localized());
     }
 
     #[test]
     fn display_large_straight() {
-        assert_eq!(RollResult::LargeStraight.to_string(), "Große Straße!");
+        assert_eq!(RollResult::LargeStraight.to_string(), RollResult::LargeStraight.localized());
     }
 
     #[test]
     fn display_normal() {
-        assert_eq!(RollResult::Normal.to_string(), "Normal");
+        assert_eq!(RollResult::Normal.to_string(), RollResult::Normal.localized());
     }
 }

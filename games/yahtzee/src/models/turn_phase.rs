@@ -1,3 +1,5 @@
+use crate::i18n::Localized;
+use crate::impl_display_localized;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -23,28 +25,30 @@ pub enum TurnPhase {
     TurnEnd,
 }
 
-impl std::fmt::Display for TurnPhase {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Localized for TurnPhase {
+    fn fluent_key(&self) -> &'static str {
         match self {
-            Self::AwaitingRoll => write!(f, "Warte auf Wurf"),
-            Self::Rolling => write!(f, "Würfeln..."),
-            Self::Holding => write!(f, "Würfel halten"),
-            Self::Scoring => write!(f, "Punkte eintragen"),
-            Self::TurnEnd => write!(f, "Zug beendet"),
+            Self::AwaitingRoll => "turn-phase-awaiting-roll",
+            Self::Rolling => "turn-phase-rolling",
+            Self::Holding => "turn-phase-holding",
+            Self::Scoring => "turn-phase-scoring",
+            Self::TurnEnd => "turn-phase-turn-end",
         }
     }
 }
+
+impl_display_localized!(TurnPhase);
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn display_german() {
-        assert_eq!(TurnPhase::AwaitingRoll.to_string(), "Warte auf Wurf");
-        assert_eq!(TurnPhase::Rolling.to_string(), "Würfeln...");
-        assert_eq!(TurnPhase::Holding.to_string(), "Würfel halten");
-        assert_eq!(TurnPhase::Scoring.to_string(), "Punkte eintragen");
-        assert_eq!(TurnPhase::TurnEnd.to_string(), "Zug beendet");
+    fn display_matches_localized() {
+        assert_eq!(TurnPhase::AwaitingRoll.to_string(), TurnPhase::AwaitingRoll.localized());
+        assert_eq!(TurnPhase::Rolling.to_string(), TurnPhase::Rolling.localized());
+        assert_eq!(TurnPhase::Holding.to_string(), TurnPhase::Holding.localized());
+        assert_eq!(TurnPhase::Scoring.to_string(), TurnPhase::Scoring.localized());
+        assert_eq!(TurnPhase::TurnEnd.to_string(), TurnPhase::TurnEnd.localized());
     }
 }

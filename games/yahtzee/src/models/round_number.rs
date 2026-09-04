@@ -1,3 +1,4 @@
+use crate::i18n;
 use crate::error::Result;
 use crate::error::YahtzeeError;
 use serde::Deserialize;
@@ -50,7 +51,7 @@ impl RoundNumber {
 
 impl std::fmt::Display for RoundNumber {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Runde {}/{}", self.0, Self::TOTAL)
+        write!(f, "{}", i18n::get_int_int("round-number", "current", self.0 as i64, "total", Self::TOTAL as i64))
     }
 }
 
@@ -95,7 +96,7 @@ mod tests {
 
     #[test]
     fn display() {
-        assert_eq!(RoundNumber::FIRST.to_string(), "Runde 1/13");
-        assert_eq!(RoundNumber::LAST.to_string(), "Runde 13/13");
+        assert_eq!(RoundNumber::FIRST.to_string(), i18n::get_int_int("round-number", "current", 1, "total", 13));
+        assert_eq!(RoundNumber::LAST.to_string(), i18n::get_int_int("round-number", "current", 13, "total", 13));
     }
 }
