@@ -1,41 +1,10 @@
+use crate::models::highscore_entry::HighscoreEntry;
 use crate::models::score::Score;
 use serde::Deserialize;
 use serde::Serialize;
 
 /// Maximum number of highscore entries kept on disk.
 const MAX_ENTRIES: usize = 20;
-
-/// A single highscore entry recording a player's name and final score.
-///
-/// Stored as part of `HighscoreList` when a game ends. Entries are
-/// sorted by score in descending order and capped at `MAX_ENTRIES`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct HighscoreEntry {
-    /// The player's display name.
-    player_name: String,
-    /// The player's final grand total score.
-    score: Score,
-}
-
-impl HighscoreEntry {
-    /// Create a new highscore entry.
-    pub fn new(player_name: impl Into<String>, score: Score) -> Self {
-        Self {
-            player_name: player_name.into(),
-            score,
-        }
-    }
-
-    /// Get the player's name.
-    pub fn player_name(&self) -> &str {
-        &self.player_name
-    }
-
-    /// Get the score.
-    pub fn score(&self) -> Score {
-        self.score
-    }
-}
 
 /// A persisted list of highscore entries.
 ///
@@ -63,7 +32,7 @@ impl HighscoreList {
     /// The entry is inserted in the correct position to maintain
     /// descending score order. The list is then trimmed to `MAX_ENTRIES`.
     pub fn add(&mut self, entry: HighscoreEntry) {
-        let pos = self.entries.iter().position(|e| e.score < entry.score).unwrap_or(self.entries.len());
+        let pos = self.entries.iter().position(|e| e.score() < entry.score()).unwrap_or(self.entries.len());
         self.entries.insert(pos, entry);
         if self.entries.len() > MAX_ENTRIES {
             self.entries.truncate(MAX_ENTRIES);
@@ -72,7 +41,7 @@ impl HighscoreList {
 
     /// Returns the highest score in the list, or `None` if empty.
     pub fn top_score(&self) -> Option<Score> {
-        self.entries.first().map(|e| e.score)
+        self.entries.first().map(|e| e.score())
     }
 
     /// Returns the number of entries in the list.
@@ -95,13 +64,6 @@ impl Default for HighscoreList {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn new_entry_accessors() {
-        let entry = HighscoreEntry::new("Alice", Score::new(250));
-        assert_eq!(entry.player_name(), "Alice");
-        assert_eq!(entry.score(), Score::new(250));
-    }
 
     #[test]
     fn new_list_is_empty() {
