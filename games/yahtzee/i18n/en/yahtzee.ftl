@@ -5,6 +5,11 @@ app-title = Yahtzee
 game-mode-single-player = Single Player
 game-mode-multi-player = Multiplayer
 
+# Game status
+game-status-setup = Setup
+game-status-playing = Game in progress
+game-status-game-over = Game over
+
 # Setup screen
 window-setup-title = Yahtzee — Setup
 setup-player-title = Set up players
