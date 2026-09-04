@@ -1,9 +1,7 @@
-use crate::fl_write;
+use crate::i18n::Localized;
+use crate::impl_display_localized;
 use serde::Deserialize;
 use serde::Serialize;
-use std::fmt;
-use std::fmt::Display;
-use std::fmt::Formatter;
 
 /// The game mode determining player interaction style.
 ///
@@ -36,14 +34,16 @@ impl GameMode {
     }
 }
 
-impl Display for GameMode {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+impl Localized for GameMode {
+    fn fluent_key(&self) -> &'static str {
         match self {
-            Self::SinglePlayer => fl_write!(f, "game-mode-single-player"),
-            Self::MultiPlayer => fl_write!(f, "game-mode-multi-player"),
+            Self::SinglePlayer => "game-mode-single-player",
+            Self::MultiPlayer => "game-mode-multi-player",
         }
     }
 }
+
+impl_display_localized!(GameMode);
 
 #[cfg(test)]
 mod tests {
@@ -67,12 +67,12 @@ mod tests {
 
     #[test]
     fn display_single_player() {
-        assert_eq!(GameMode::SinglePlayer.to_string(), "Einzelspieler");
+        assert_eq!(GameMode::SinglePlayer.to_string(), GameMode::SinglePlayer.localized());
     }
 
     #[test]
     fn display_multi_player() {
-        assert_eq!(GameMode::MultiPlayer.to_string(), "Mehrspieler");
+        assert_eq!(GameMode::MultiPlayer.to_string(), GameMode::MultiPlayer.localized());
     }
 
     #[test]

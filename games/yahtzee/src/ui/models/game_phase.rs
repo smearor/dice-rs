@@ -1,6 +1,5 @@
-use std::fmt;
-use std::fmt::Display;
-use std::fmt::Formatter;
+use crate::i18n::Localized;
+use crate::impl_display_localized;
 
 /// Top-level UI phase, controlling which screen is shown.
 ///
@@ -17,15 +16,17 @@ pub enum GamePhase {
     GameOver,
 }
 
-impl Display for GamePhase {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+impl Localized for GamePhase {
+    fn fluent_key(&self) -> &'static str {
         match self {
-            Self::Setup => write!(f, "Setup"),
-            Self::Playing => write!(f, "Playing"),
-            Self::GameOver => write!(f, "Game Over"),
+            Self::Setup => "game-phase-setup",
+            Self::Playing => "game-phase-playing",
+            Self::GameOver => "game-phase-game-over",
         }
     }
 }
+
+impl_display_localized!(GamePhase);
 
 #[cfg(test)]
 mod tests {
@@ -33,17 +34,17 @@ mod tests {
 
     #[test]
     fn display_setup() {
-        assert_eq!(GamePhase::Setup.to_string(), "Setup");
+        assert_eq!(GamePhase::Setup.to_string(), GamePhase::Setup.localized());
     }
 
     #[test]
     fn display_playing() {
-        assert_eq!(GamePhase::Playing.to_string(), "Playing");
+        assert_eq!(GamePhase::Playing.to_string(), GamePhase::Playing.localized());
     }
 
     #[test]
     fn display_game_over() {
-        assert_eq!(GamePhase::GameOver.to_string(), "Game Over");
+        assert_eq!(GamePhase::GameOver.to_string(), GamePhase::GameOver.localized());
     }
 
     #[test]

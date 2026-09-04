@@ -1,4 +1,5 @@
-use crate::i18n;
+use crate::i18n::Localized;
+use crate::impl_display_localized;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -22,26 +23,18 @@ impl CategorySection {
 
     /// The bonus points awarded when the upper section reaches the threshold.
     pub const UPPER_BONUS_POINTS: u32 = 35;
+}
 
-    /// Returns the Fluent message key for this section.
-    pub fn fluent_key(self) -> &'static str {
+impl Localized for CategorySection {
+    fn fluent_key(&self) -> &'static str {
         match self {
             Self::Upper => "scorecard-upper-section",
             Self::Lower => "scorecard-lower-section",
         }
     }
-
-    /// Returns the localized display name for this section.
-    pub fn localized(self) -> String {
-        i18n::get(self.fluent_key())
-    }
 }
 
-impl std::fmt::Display for CategorySection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.localized())
-    }
-}
+impl_display_localized!(CategorySection);
 
 #[cfg(test)]
 mod tests {

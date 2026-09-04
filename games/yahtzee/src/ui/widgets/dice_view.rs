@@ -1,3 +1,4 @@
+use crate::i18n;
 use crate::models::dice_slot::DiceSlot;
 use crate::models::hold_mask::HoldMask;
 use dice_rs::DiceColor;
@@ -49,7 +50,7 @@ impl DiceView {
             let button = gtk4::Button::builder()
                 .css_classes(vec!["die-button"])
                 .child(&label)
-                .tooltip_text(format!("Würfel {} — Klicken zum Halten", slot.get() + 1))
+                .tooltip_text(i18n::get_int("dice-tooltip-hold", "slot", (slot.get() + 1) as i64))
                 .build();
 
             // Click handler for hold toggle

@@ -10,6 +10,39 @@ game-status-setup = Setup
 game-status-playing = Game in progress
 game-status-game-over = Game over
 
+# Roll result
+roll-result-yahtzee = Yahtzee!
+roll-result-full-house = Full House!
+roll-result-large-straight = Large Straight!
+roll-result-small-straight = Small Straight!
+roll-result-four-of-a-kind = Four of a Kind!
+roll-result-three-of-a-kind = Three of a Kind
+roll-result-normal = Normal
+
+# Winner rank
+winner-rank = { $rank }. Place
+
+# Turn phase
+turn-phase-awaiting-roll = Waiting for roll
+turn-phase-rolling = Rolling...
+turn-phase-holding = Holding dice
+turn-phase-scoring = Entering score
+turn-phase-turn-end = Turn ended
+
+# Round number
+round-number = Round { $current }/{ $total }
+
+# Game phase
+game-phase-setup = Setup
+game-phase-playing = Playing
+game-phase-game-over = Game Over
+
+# Dice view
+dice-tooltip-hold = Die { $slot } — Click to hold
+
+# Reconnection
+reconnection-reconnected = { $count } dice reconnected.
+
 # Setup screen
 window-setup-title = Yahtzee — Setup
 setup-player-title = Set up players

@@ -1,4 +1,5 @@
 use crate::i18n;
+use crate::i18n::Localized;
 use crate::models::roll_count::RollCount;
 use crate::ui::models::roll_button_label::RollButtonLabel;
 use crate::ui::models::ui_message::UiMessage;
@@ -40,7 +41,7 @@ impl TurnPanel {
 
         let roll_button = gtk4::Button::builder()
             .css_classes(vec!["roll-button", "suggested-action"])
-            .label(&RollButtonLabel::Wuerfeln.text())
+            .label(&RollButtonLabel::Roll.localized())
             .halign(gtk4::Align::Center)
             .build();
 
@@ -92,7 +93,7 @@ impl TurnPanel {
 
     /// Update the roll button label and sensitivity.
     pub fn set_roll_button_label(&self, label: RollButtonLabel) {
-        self.roll_button.set_label(&label.text());
+        self.roll_button.set_label(&label.localized());
         self.roll_button.set_sensitive(label.is_sensitive());
     }
 
@@ -104,7 +105,7 @@ impl TurnPanel {
 
     /// Set the panel to the rolling state.
     pub fn set_rolling(&self) {
-        self.set_roll_button_label(RollButtonLabel::WurfLauft);
+        self.set_roll_button_label(RollButtonLabel::Rolling);
     }
 
     /// Set the panel to the waiting state after a roll.
@@ -118,13 +119,13 @@ impl TurnPanel {
 
     /// Set the panel to the game-over state.
     pub fn set_game_over(&self) {
-        self.set_roll_button_label(RollButtonLabel::SpielBeendet);
+        self.set_roll_button_label(RollButtonLabel::GameOver);
         self.roll_count_label.set_label("");
     }
 
     /// Reset the panel to the initial state.
     pub fn reset(&self) {
-        self.set_roll_button_label(RollButtonLabel::Wuerfeln);
+        self.set_roll_button_label(RollButtonLabel::Roll);
         self.roll_count_label.set_label(&i18n::get("roll-count-zero"));
         self.instruction_label.set_label("");
     }

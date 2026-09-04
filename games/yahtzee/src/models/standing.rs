@@ -1,3 +1,4 @@
+use crate::i18n;
 use crate::models::player::Player;
 use crate::models::score::Score;
 use std::fmt;
@@ -29,12 +30,7 @@ impl WinnerRank {
 
 impl Display for WinnerRank {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self.0 {
-            1 => write!(f, "1. Platz"),
-            2 => write!(f, "2. Platz"),
-            3 => write!(f, "3. Platz"),
-            n => write!(f, "{n}. Platz"),
-        }
+        write!(f, "{}", i18n::get_int("winner-rank", "rank", self.0 as i64))
     }
 }
 
@@ -152,9 +148,9 @@ mod tests {
 
     #[test]
     fn winner_rank_display() {
-        assert_eq!(WinnerRank::new(1).unwrap().to_string(), "1. Platz");
-        assert_eq!(WinnerRank::new(2).unwrap().to_string(), "2. Platz");
-        assert_eq!(WinnerRank::new(5).unwrap().to_string(), "5. Platz");
+        assert_eq!(WinnerRank::new(1).unwrap().to_string(), i18n::get_int("winner-rank", "rank", 1));
+        assert_eq!(WinnerRank::new(2).unwrap().to_string(), i18n::get_int("winner-rank", "rank", 2));
+        assert_eq!(WinnerRank::new(5).unwrap().to_string(), i18n::get_int("winner-rank", "rank", 5));
     }
 
     #[test]

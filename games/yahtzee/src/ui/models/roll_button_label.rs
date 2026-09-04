@@ -1,122 +1,116 @@
-use std::fmt;
-use std::fmt::Display;
-use std::fmt::Formatter;
-
-use crate::fl;
+use crate::i18n::Localized;
+use crate::impl_display_localized;
 
 /// The text displayed on the roll button.
 ///
 /// Encodes the button label as an enum to avoid stringly-typed APIs
-/// and allow German localization in one place.
+/// and allow localization in one place.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RollButtonLabel {
     /// Initial state — start the first roll.
-    Wuerfeln,
+    Roll,
     /// Second roll — roll again.
-    NochmalWuerfeln,
+    Reroll,
     /// Third and final roll — last chance.
-    LetzterWurf,
+    LastRoll,
     /// No rolls remaining — must enter a score.
-    KeineWuerfeUbrig,
+    NoRollsLeft,
     /// Waiting for dice to become stable.
-    WurfLauft,
+    Rolling,
     /// Game is over.
-    SpielBeendet,
+    GameOver,
 }
 
 impl RollButtonLabel {
-    /// Get the localized label text for the button.
-    pub fn text(self) -> String {
-        match self {
-            Self::Wuerfeln => fl!("roll-button-roll"),
-            Self::NochmalWuerfeln => fl!("roll-button-reroll"),
-            Self::LetzterWurf => fl!("roll-button-last"),
-            Self::KeineWuerfeUbrig => fl!("roll-button-none"),
-            Self::WurfLauft => fl!("roll-button-rolling"),
-            Self::SpielBeendet => fl!("roll-button-game-over"),
-        }
-    }
-
     /// Whether the button should be sensitive (clickable).
     pub fn is_sensitive(self) -> bool {
         match self {
-            Self::Wuerfeln | Self::NochmalWuerfeln | Self::LetzterWurf => true,
-            Self::KeineWuerfeUbrig | Self::WurfLauft | Self::SpielBeendet => false,
+            Self::Roll | Self::Reroll | Self::LastRoll => true,
+            Self::NoRollsLeft | Self::Rolling | Self::GameOver => false,
         }
     }
 
     /// Derive the label from the current roll count (1-based).
     pub fn from_roll_count(roll: u8) -> Self {
         match roll {
-            0 => Self::Wuerfeln,
-            1 => Self::NochmalWuerfeln,
-            2 => Self::LetzterWurf,
-            _ => Self::KeineWuerfeUbrig,
+            0 => Self::Roll,
+            1 => Self::Reroll,
+            2 => Self::LastRoll,
+            _ => Self::NoRollsLeft,
         }
     }
 }
 
-impl Display for RollButtonLabel {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.text())
+impl Localized for RollButtonLabel {
+    fn fluent_key(&self) -> &'static str {
+        match self {
+            Self::Roll => "roll-button-roll",
+            Self::Reroll => "roll-button-reroll",
+            Self::LastRoll => "roll-button-last",
+            Self::NoRollsLeft => "roll-button-none",
+            Self::Rolling => "roll-button-rolling",
+            Self::GameOver => "roll-button-game-over",
+        }
     }
 }
+
+impl_display_localized!(RollButtonLabel);
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn text_wuerfeln() {
-        assert!(!RollButtonLabel::Wuerfeln.text().is_empty());
+    fn text_roll() {
+        assert!(!RollButtonLabel::Roll.localized().is_empty());
     }
 
     #[test]
-    fn text_nochmal() {
-        assert!(!RollButtonLabel::NochmalWuerfeln.text().is_empty());
+    fn text_reroll() {
+        assert!(!RollButtonLabel::Reroll.localized().is_empty());
     }
 
     #[test]
-    fn text_letzter() {
-        assert!(!RollButtonLabel::LetzterWurf.text().is_empty());
+    fn text_last_roll() {
+        assert!(!RollButtonLabel::LastRoll.localized().is_empty());
     }
 
     #[test]
     fn sensitive_for_active_rolls() {
-        assert!(RollButtonLabel::Wuerfeln.is_sensitive());
-        assert!(RollButtonLabel::NochmalWuerfeln.is_sensitive());
-        assert!(RollButtonLabel::LetzterWurf.is_sensitive());
+        assert!(RollButtonLabel::Roll.is_sensitive());
+        assert!(RollButtonLabel::Reroll.is_sensitive());
+        assert!(RollButtonLabel::LastRoll.is_sensitive());
     }
 
     #[test]
     fn insensitive_for_inactive_states() {
-        assert!(!RollButtonLabel::KeineWuerfeUbrig.is_sensitive());
-        assert!(!RollButtonLabel::WurfLauft.is_sensitive());
-        assert!(!RollButtonLabel::SpielBeendet.is_sensitive());
+        assert!(!RollButtonLabel::NoRollsLeft.is_sensitive());
+        assert!(!RollButtonLabel::Rolling.is_sensitive());
+        assert!(!RollButtonLabel::GameOver.is_sensitive());
     }
 
     #[test]
     fn from_roll_count_zero() {
-        assert_eq!(RollButtonLabel::from_roll_count(0), RollButtonLabel::Wuerfeln);
+        assert_eq!(RollButtonLabel::from_roll_count(0), RollButtonLabel::Roll);
     }
 
     #[test]
     fn from_roll_count_one() {
-        assert_eq!(RollButtonLabel::from_roll_count(1), RollButtonLabel::NochmalWuerfeln);
+        assert_eq!(RollButtonLabel::from_roll_count(1), RollButtonLabel::Reroll);
     }
 
     #[test]
     fn from_roll_count_two() {
-        assert_eq!(RollButtonLabel::from_roll_count(2), RollButtonLabel::LetzterWurf);
+        assert_eq!(RollButtonLabel::from_roll_count(2), RollButtonLabel::LastRoll);
     }
 
     #[test]
     fn from_roll_count_three() {
-        assert_eq!(RollButtonLabel::from_roll_count(3), RollButtonLabel::KeineWuerfeUbrig);
+        assert_eq!(RollButtonLabel::from_roll_count(3), RollButtonLabel::NoRollsLeft);
     }
 
     #[test]
     fn display() {
-        assert!(!RollButtonLabel::Wuerfeln.to_string().is_empty());
+        assert!(!RollButtonLabel::Roll.to_string().is_empty());
     }
 }

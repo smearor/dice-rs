@@ -10,6 +10,39 @@ game-status-setup = Setup
 game-status-playing = Spiel läuft
 game-status-game-over = Spiel beendet
 
+# Roll result
+roll-result-yahtzee = Yahtzee!
+roll-result-full-house = Full House!
+roll-result-large-straight = Große Straße!
+roll-result-small-straight = Kleine Straße!
+roll-result-four-of-a-kind = Vierlinge!
+roll-result-three-of-a-kind = Drillinge
+roll-result-normal = Normal
+
+# Winner rank
+winner-rank = { $rank }. Platz
+
+# Turn phase
+turn-phase-awaiting-roll = Warte auf Wurf
+turn-phase-rolling = Würfeln...
+turn-phase-holding = Würfel halten
+turn-phase-scoring = Punkte eintragen
+turn-phase-turn-end = Zug beendet
+
+# Round number
+round-number = Runde { $current }/{ $total }
+
+# Game phase
+game-phase-setup = Setup
+game-phase-playing = Spiel läuft
+game-phase-game-over = Spiel beendet
+
+# Dice view
+dice-tooltip-hold = Würfel { $slot } — Klicken zum Halten
+
+# Reconnection
+reconnection-reconnected = { $count } Würfel erneut verbunden.
+
 # Setup screen
 window-setup-title = Kniffel — Setup
 setup-player-title = Spieler einrichten
