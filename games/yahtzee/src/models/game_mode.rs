@@ -1,3 +1,4 @@
+use crate::fl_write;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt;
@@ -38,8 +39,8 @@ impl GameMode {
 impl Display for GameMode {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::SinglePlayer => write!(f, "Einzelspieler"),
-            Self::MultiPlayer => write!(f, "Mehrspieler"),
+            Self::SinglePlayer => fl_write!(f, "game-mode-single-player"),
+            Self::MultiPlayer => fl_write!(f, "game-mode-multi-player"),
         }
     }
 }

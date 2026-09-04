@@ -56,6 +56,34 @@ macro_rules! fl {
     }};
 }
 
+/// Convenience macro for writing a translated message to a formatter.
+///
+/// Wraps `write!(f, "{}", fl!("key"))` into `fl_write!(f, "key")`.
+/// Supports optional fluent arguments: `fl_write!(f, "key", arg = value)`.
+///
+/// Usage:
+/// ```
+/// use std::fmt::Display;
+/// use yahtzee::fl_write;
+///
+/// struct MyType;
+/// impl Display for MyType {
+///     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+///         fl_write!(f, "roll-button-roll")
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! fl_write {
+    ($f:expr, $message_id:literal) => {
+        write!($f, "{}", $crate::fl!($message_id))
+    };
+
+    ($f:expr, $message_id:literal, $($args:expr),*) => {
+        write!($f, "{}", $crate::fl!($message_id, $($args), *))
+    };
+}
+
 /// Get a translated message by ID without compile-time checks.
 ///
 /// Use this for dynamic message IDs (e.g. category names looked up by key).
