@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["game_phase","roll_button_label","ui_message"]};

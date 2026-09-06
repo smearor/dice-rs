@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["best_category_choice","best_hold_decision","enumerate_improvement","enumerate_reroll_ev","expected_value_for_category","improvement_probability"],"struct":["CategoryChoice","ExpectedValue","HoldDecision"]};

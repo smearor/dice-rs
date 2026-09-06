@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["ai_action","celebration_detector","controller_event","dice_service","event_bridge","game_controller","game_event","highscore_store","led_color_assignment","led_effect","led_service","reconnection_manager","roll_detector","settings_store","slot_mapping"]};

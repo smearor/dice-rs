@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["is_valid","must_cross_out","potential_score","valid_categories"]};

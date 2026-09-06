@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DIE_SIDES"],"fn":["enumerate_recursive","enumerate_reroll_outcomes","enumerate_rolls","probability_of_category_score","probability_of_face","probability_of_full_house","probability_of_n_of_a_kind","probability_of_straight","probability_of_yatzy","total_outcomes"],"struct":["Probability"]};

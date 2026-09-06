@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["FULL_HOUSE_SCORE","LARGE_STRAIGHT_SCORE","SMALL_STRAIGHT_SCORE","YATZY_SCORE"],"fn":["calculate_score","has_n_of_a_kind","has_straight","is_full_house"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["ROLL_COMPLETION_TIMEOUT","ROLL_GRACE_PERIOD"],"enum":["RollDetectorEvent","RollState"],"struct":["RollDetector"]};

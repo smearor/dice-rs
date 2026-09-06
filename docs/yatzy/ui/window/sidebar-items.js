@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["current_faces","dice_color_name","dice_color_to_led","faces_to_dice_set","simulate_dice_roll"],"struct":["MainWindow"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["bonus_tracker","dice_status_widget","dice_view","game_end_screen","highscore_dialog","hint_panel","info_dialog","player_bar","player_setup","reconnection_overlay","scorecard_view","turn_panel","turn_transition_overlay"]};
