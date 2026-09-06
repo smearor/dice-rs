@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>CLI Tool - dice-rs Documentation</title>
+        <title>Yatzy (Kniffel) - dice-rs Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -177,86 +177,290 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="cli-tool"><a class="header" href="#cli-tool">CLI Tool</a></h1>
-<p>The <code>dice-rs-cli</code> crate provides a command-line tool (<code>dice-rs</code>) for
-interacting with GoDice devices without writing code.</p>
-<h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
-<pre><code class="language-sh">cargo install dice-rs-cli
-</code></pre>
-<h2 id="commands"><a class="header" href="#commands">Commands</a></h2>
-<h3 id="scan"><a class="header" href="#scan">Scan</a></h3>
-<p>Scan for nearby GoDice devices:</p>
-<pre><code class="language-sh">dice-rs scan 5
-</code></pre>
-<p>The argument is the scan duration in seconds.</p>
-<h3 id="listen"><a class="header" href="#listen">Listen</a></h3>
-<p>Connect to a dice and print events:</p>
-<pre><code class="language-sh">dice-rs listen AA:BB:CC:DD:EE:FF d6
-</code></pre>
-<p>The first argument is the MAC address (or a partial prefix). The second is
-the dice type (<code>d6</code>, <code>d20</code>, <code>d10</code>, <code>d10x</code>, <code>d4</code>, <code>d8</code>, <code>d12</code>).</p>
-<h3 id="battery"><a class="header" href="#battery">Battery</a></h3>
-<p>Query battery level:</p>
-<pre><code class="language-sh">dice-rs battery AA:BB:CC:DD:EE:FF
-</code></pre>
-<h3 id="led-control"><a class="header" href="#led-control">LED Control</a></h3>
-<p>Set LED colors:</p>
-<pre><code class="language-sh"># Set both LEDs to red
-dice-rs led AA:BB:CC:DD:EE:FF set red
+                        <h1 id="yatzy-kniffel"><a class="header" href="#yatzy-kniffel">Yatzy (Kniffel)</a></h1>
+<p>The <code>yatzy</code> crate is a full Kniffel (Yatzy) game for GoDice, built with
+GTK 4 and the <code>dice-rs</code> library. It demonstrates a complete game loop with
+physical dice integration: scan, connect, roll, score, and celebrate.</p>
+<h2 id="features"><a class="header" href="#features">Features</a></h2>
+<ul>
+<li><strong>Full Kniffel scorecard</strong> with all 13 categories in upper and lower sections</li>
+<li><strong>Game state machine</strong> with turn phases: AwaitingRoll, Rolling, Holding,
+Scoring, TurnEnd</li>
+<li><strong>Single-player mode</strong> with a computer AI opponent using expected-value
+calculations for optimal decisions</li>
+<li><strong>Multi-player pass-and-play</strong> mode with turn transitions and hints
+disabled for fairness</li>
+<li><strong>Strategy hints</strong> showing the best category and best hold decision via
+expected value analysis (single-player mode only)</li>
+<li><strong>Cross-out advisor</strong> recommending the least-damaging category when no
+valid score is possible</li>
+<li><strong>LED celebration effects</strong> for special rolls: Yatzy, Full House, Large
+Straight, Small Straight, Four-of-a-Kind</li>
+<li><strong>LED color assignment</strong> per player for visual identification on the
+physical dice</li>
+<li><strong>Dice slot mapping</strong> and roll detection for GoDice integration</li>
+<li><strong>Reconnection manager</strong> for handling dropped dice connections during gameplay</li>
+<li><strong>Persistent highscore list</strong> stored as JSON (top 20 entries)</li>
+<li><strong>Persistent game settings</strong> (player names, colors, types, game mode)</li>
+<li><strong>Internationalization</strong> with Fluent, German and English translations</li>
+</ul>
+<h2 id="building"><a class="header" href="#building">Building</a></h2>
+<p>The game requires GTK 4 development libraries, same as the controller:</p>
+<pre><code class="language-sh"># Ubuntu/Debian
+sudo apt install libgtk-4-dev
 
-# Set each LED independently
-dice-rs led AA:BB:CC:DD:EE:FF set-dual red blue
+# Build
+cargo build -p yatzy
+</code></pre>
+<h2 id="running"><a class="header" href="#running">Running</a></h2>
+<pre><code class="language-sh">cargo run -p yatzy
+</code></pre>
+<p>The application starts with a setup screen for configuring players (names,
+colors, human/computer type) and selecting the game mode. After setup, scan
+for GoDice devices and connect. Each player rolls the physical dice, holds
+dice between rolls, and enters scores in the scorecard.</p>
+<h2 id="game-flow"><a class="header" href="#game-flow">Game Flow</a></h2>
+<pre class="mermaid">flowchart TD
+    setup["Setup Screen
+    (player config, game mode)"]
+    scan["Dice Scanning
+    &amp; Connection"]
+    awaiting["AwaitingRoll
+    (player starts rolling)"]
+    rolling["Rolling
+    (dice in motion)"]
+    holding["Holding
+    (dice stable, decide holds)"]
+    scoring["Scoring
+    (must enter or cross out)"]
+    turnend["TurnEnd
+    (advance to next player)"]
+    gameover["GameOver
+    (final standings)"]
 
-# Pulse animation
-dice-rs led AA:BB:CC:DD:EE:FF pulse green
+    setup --&gt; scan
+    scan --&gt; awaiting
+    awaiting --&gt; rolling
+    rolling --&gt; holding
+    holding --&gt;|roll again| rolling
+    holding --&gt;|score early| scoring
+    holding --&gt;|3 rolls used| scoring
+    scoring --&gt; turnend
+    turnend --&gt;|rounds remaining| awaiting
+    turnend --&gt;|all rounds done| gameover
+</pre>
 
-# Turn off
-dice-rs led AA:BB:CC:DD:EE:FF off
-</code></pre>
-<h3 id="tap-interrupts"><a class="header" href="#tap-interrupts">Tap Interrupts</a></h3>
-<p>Enable or disable tap notifications:</p>
-<pre><code class="language-sh">dice-rs tap AA:BB:CC:DD:EE:FF true
-dice-rs double-tap AA:BB:CC:DD:EE:FF true
-</code></pre>
-<h3 id="calibration"><a class="header" href="#calibration">Calibration</a></h3>
-<pre><code class="language-sh">dice-rs calibrate AA:BB:CC:DD:EE:FF
-</code></pre>
-<h3 id="status"><a class="header" href="#status">Status</a></h3>
-<p>Get comprehensive status:</p>
-<pre><code class="language-sh">dice-rs status AA:BB:CC:DD:EE:FF
-</code></pre>
-<h3 id="color"><a class="header" href="#color">Color</a></h3>
-<p>Query the dice shell color:</p>
-<pre><code class="language-sh">dice-rs color AA:BB:CC:DD:EE:FF
-</code></pre>
-<h3 id="charging"><a class="header" href="#charging">Charging</a></h3>
-<p>Query charging state:</p>
-<pre><code class="language-sh">dice-rs charging AA:BB:CC:DD:EE:FF
-</code></pre>
-<h3 id="disconnect"><a class="header" href="#disconnect">Disconnect</a></h3>
-<pre><code class="language-sh"># Disconnect a specific dice
-dice-rs disconnect AA:BB:CC:DD:EE:FF
+<h3 id="turn-phases"><a class="header" href="#turn-phases">Turn Phases</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Phase</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>AwaitingRoll</code></td><td>Waiting for the player to start rolling</td></tr>
+<tr><td><code>Rolling</code></td><td>Dice are physically rolling (RollStart received, no Stable yet)</td></tr>
+<tr><td><code>Holding</code></td><td>Dice are stable; player can hold dice and roll again, or proceed to scoring</td></tr>
+<tr><td><code>Scoring</code></td><td>Player must select a category to enter or cross out</td></tr>
+<tr><td><code>TurnEnd</code></td><td>Score has been entered, transitioning to the next player</td></tr>
+</tbody>
+</table>
+</div>
+<p>Each player has up to 3 rolls per turn. After the 3rd roll, the player must
+enter a score or cross out a category.</p>
+<h2 id="scorecard-categories"><a class="header" href="#scorecard-categories">Scorecard Categories</a></h2>
+<p>The 13 categories are divided into an upper and lower section:</p>
+<h3 id="upper-section"><a class="header" href="#upper-section">Upper Section</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Category</th><th>Rule</th><th>Score</th></tr>
+</thead>
+<tbody>
+<tr><td>Ones</td><td>Sum of all 1s</td><td>Count × 1</td></tr>
+<tr><td>Twos</td><td>Sum of all 2s</td><td>Count × 2</td></tr>
+<tr><td>Threes</td><td>Sum of all 3s</td><td>Count × 3</td></tr>
+<tr><td>Fours</td><td>Sum of all 4s</td><td>Count × 4</td></tr>
+<tr><td>Fives</td><td>Sum of all 5s</td><td>Count × 5</td></tr>
+<tr><td>Sixes</td><td>Sum of all 6s</td><td>Count × 6</td></tr>
+</tbody>
+</table>
+</div>
+<p>If the upper section total reaches 63 or more, a bonus of 35 points is awarded.</p>
+<h3 id="lower-section"><a class="header" href="#lower-section">Lower Section</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Category</th><th>Rule</th><th>Score</th></tr>
+</thead>
+<tbody>
+<tr><td>Three-of-a-Kind</td><td>At least 3 dice with same value</td><td>Sum of all dice</td></tr>
+<tr><td>Four-of-a-Kind</td><td>At least 4 dice with same value</td><td>Sum of all dice</td></tr>
+<tr><td>Full House</td><td>3 of one value + 2 of another</td><td>25</td></tr>
+<tr><td>Small Straight</td><td>4 consecutive values</td><td>30</td></tr>
+<tr><td>Large Straight</td><td>5 consecutive values</td><td>40</td></tr>
+<tr><td>Yatzy</td><td>All 5 dice same value</td><td>50</td></tr>
+<tr><td>Chance</td><td>Any combination</td><td>Sum of all dice</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="computer-ai"><a class="header" href="#computer-ai">Computer AI</a></h2>
+<p>The <code>ComputerAi</code> decision engine uses expected value (EV) calculations to
+make optimal decisions:</p>
+<ol>
+<li><strong>Roll or score</strong>: Compares the current best category score against the
+EV of re-rolling. If the current score meets or exceeds the EV, the AI
+enters the score; otherwise, it re-rolls.</li>
+<li><strong>Hold decision</strong>: Enumerates all 32 possible hold masks (2^5) and
+selects the one with the highest EV across all empty categories.</li>
+<li><strong>Category selection</strong>: When scoring, picks the empty category with the
+highest score.</li>
+<li><strong>Cross-out</strong>: When no positive score is possible, the <code>CrossOutAdvisor</code>
+recommends the category with the lowest potential score to minimize
+lost points.</li>
+</ol>
+<p>The EV calculation enumerates all possible re-roll outcomes (6^n where n is
+the number of re-rolled dice) and accumulates the expected score for each
+empty category.</p>
+<h2 id="strategy-hints"><a class="header" href="#strategy-hints">Strategy Hints</a></h2>
+<p>In single-player mode, strategy hints are shown to help the player learn
+optimal play:</p>
+<ul>
+<li><strong>Best category hint</strong>: Shows which category would yield the highest score
+with the current dice.</li>
+<li><strong>Best hold hint</strong>: Shows which dice to hold for the highest EV on re-roll.</li>
+</ul>
+<p>Hints are disabled in multi-player mode to ensure fair play between human
+players.</p>
+<h2 id="led-effects"><a class="header" href="#led-effects">LED Effects</a></h2>
+<p>The game uses the physical dice LEDs for feedback:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Event</th><th>Effect</th></tr>
+</thead>
+<tbody>
+<tr><td>Active player’s turn</td><td>All dice glow in the player’s color</td></tr>
+<tr><td>Held dice</td><td>Held dice glow green, others off</td></tr>
+<tr><td>Yatzy (5 of a kind)</td><td>5 green pulses on all dice</td></tr>
+<tr><td>Full House</td><td>3 yellow pulses on all dice</td></tr>
+<tr><td>Large Straight</td><td>3 cyan pulses on all dice</td></tr>
+<tr><td>Small Straight</td><td>2 cyan pulses on all dice</td></tr>
+<tr><td>Four-of-a-Kind</td><td>2 orange pulses on all dice</td></tr>
+<tr><td>Turn end / scoring</td><td>LEDs turned off</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="architecture"><a class="header" href="#architecture">Architecture</a></h2>
+<pre class="mermaid">flowchart TB
+    subgraph UI["UI Layer (GTK 4)"]
+        app["Application"]
+        window["MainWindow
+        (setup, game, game-over screens)"]
+        widgets["Widgets
+        (scorecard, dice, hints, etc.)"]
+    end
 
-# Disconnect all connected dice
-dice-rs disconnect-all
+    subgraph Services["Service Layer"]
+        controller["GameController
+        (game flow, validation)"]
+        dice_service["DiceService
+        (BLE dice management)"]
+        event_bridge["EventBridge
+        (async → GTK bridge)"]
+        roll_detector["RollDetector
+        (roll/stable tracking)"]
+        led_service["LedService
+        (LED effect → BLE)"]
+        reconn["ReconnectionManager"]
+    end
+
+    subgraph Domain["Domain Layer"]
+        state["GameState
+        (players, rounds, phases)"]
+        scorecard["Scorecard
+        (13 categories)"]
+        scoring["Scoring Rules"]
+        validation["Validation"]
+        cross_out["CrossOutAdvisor"]
+    end
+
+    subgraph Strategy["Strategy Layer"]
+        ai["ComputerAi
+        (EV-based decisions)"]
+        ev["ExpectedValue
+        (hold/category analysis)"]
+        prob["Probability"]
+    end
+
+    subgraph DiceRS["dice-rs"]
+        manager["DiceManager"]
+        dice["Dice Handle"]
+    end
+
+    app --&gt; window
+    window --&gt; widgets
+    widgets --&gt; controller
+    controller --&gt; state
+    state --&gt; scorecard
+    controller --&gt; scoring
+    controller --&gt; validation
+    controller --&gt; cross_out
+    controller --&gt; ai
+    ai --&gt; ev
+    ev --&gt; prob
+    controller --&gt; led_service
+    led_service --&gt; dice_service
+    dice_service --&gt; manager
+    manager --&gt; dice
+    event_bridge --&gt; controller
+    event_bridge --&gt; dice_service
+    roll_detector --&gt; event_bridge
+    reconn --&gt; dice_service
+</pre>
+
+<h3 id="gamecontroller"><a class="header" href="#gamecontroller">GameController</a></h3>
+<p>The <code>GameController</code> orchestrates the game flow. It wraps <code>GameState</code> and
+validates all <code>TurnAction</code>s against the current state before executing them.
+Actions that are invalid for the current phase or game status return an
+error. The controller emits <code>ControllerEvent</code>s via a broadcast channel that
+the UI layer subscribes to.</p>
+<h3 id="eventbridge"><a class="header" href="#eventbridge">EventBridge</a></h3>
+<p>The <code>EventBridge</code> bridges async dice events from <code>dice-rs</code> into the GTK main
+loop. It runs a background tokio task that receives <code>DiceEvent</code>s, feeds them
+to the <code>RollDetector</code> for roll/stable tracking, and sends UI updates through
+a channel to the GTK main thread.</p>
+<h3 id="rolldetector"><a class="header" href="#rolldetector">RollDetector</a></h3>
+<p>The <code>RollDetector</code> tracks the state of each physical die across roll events.
+It maps <code>RollStart</code> and <code>Stable</code> events from individual dice to a unified
+roll state, accounting for dice that may report at slightly different times.
+Once all dice in a slot are stable, it produces a <code>DiceSet</code> for the game
+controller.</p>
+<h3 id="module-structure"><a class="header" href="#module-structure">Module Structure</a></h3>
+<pre><code>games/yatzy/src/
+├── models/          # Domain types (GameState, Scorecard, Player, etc.)
+├── rules/           # Scoring rules, validation, cross-out advisor
+├── services/        # GameController, DiceService, EventBridge, LED, etc.
+├── strategy/        # ComputerAi, ExpectedValue, Probability
+├── ui/              # GTK 4 application, window, widgets
+├── i18n.rs          # Fluent internationalization
+├── error.rs         # YatzyError types
+└── lib.rs           # Re-exports
 </code></pre>
-<h3 id="interactive-mode"><a class="header" href="#interactive-mode">Interactive Mode</a></h3>
-<p>Start a REPL for interactive exploration:</p>
-<pre><code class="language-sh">dice-rs interactive
-</code></pre>
-<p>Available commands in interactive mode: <code>scan</code>, <code>connect &lt;address&gt;</code>,
-<code>disconnect</code>, <code>battery</code>, <code>color</code>, <code>charging</code>, <code>led &lt;color&gt;</code>, <code>status</code>,
-<code>calibrate</code>, <code>quit</code>.</p>
+<h2 id="internationalization"><a class="header" href="#internationalization">Internationalization</a></h2>
+<p>The game uses the <a href="https://projectfluent.org/">Fluent</a> localization system
+via <code>i18n-embed</code>. The fallback language is German (<code>de</code>), with English
+translations provided as well. Translation files are located in
+<code>games/yatzy/i18n/{lang}/yatzy.ftl</code>.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="calibration.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="websocket.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="controller.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="platform-notes.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -266,11 +470,11 @@ dice-rs disconnect-all
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="calibration.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="websocket.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="controller.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="platform-notes.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6f2c41ae.js";
+            window.path_to_searchindex_js = "searchindex-4d6c4871.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-65f3e578.js"></script>
+        <script src="toc-8ba13626.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -189,13 +189,15 @@ The official APIs from Particula are in JavaScript and Python. <code>dice-rs</co
 brings native Rust support with an idiomatic async API, type-safe domain
 model, and a trait-based transport layer for testability.</p>
 <h2 id="scope"><a class="header" href="#scope">Scope</a></h2>
-<p>The workspace provides four crates:</p>
+<p>The workspace provides five crates:</p>
 <ul>
 <li><strong><code>dice-rs</code></strong> - core library with domain types, BLE transport, and a
 high-level service API</li>
 <li><strong><code>dice-rs-cli</code></strong> - command-line tool for quick interactions</li>
 <li><strong><code>dice-rs-controller</code></strong> - GTK 4 desktop application with 3D dice rendering</li>
 <li><strong><code>dice-rs-ws</code></strong> - WebSocket server for network-accessible dice events</li>
+<li><strong><code>yatzy</code></strong> - Kniffel (Yatzy) game with GTK 4 UI, AI opponent, and
+GoDice integration (see <a href="#yatzy-kniffel">Yatzy</a>)</li>
 </ul>
 <h2 id="where-to-get-help"><a class="header" href="#where-to-get-help">Where to Get Help</a></h2>
 <ul>
@@ -270,7 +272,18 @@ share the same underlying connection state.</p>
 │   │   └── lib.rs        # Re-exports
 ├── dice-rs-cli/          # CLI tool
 ├── dice-rs-controller/   # GTK 4 desktop app
-└── dice-rs-ws/           # WebSocket server
+├── dice-rs-ws/           # WebSocket server
+└── games/
+    └── yatzy/          # Kniffel (Yatzy) game
+        ├── src/
+        │   ├── models/   # Domain types (GameState, Scorecard, Player, etc.)
+        │   ├── rules/    # Scoring rules, validation, cross-out advisor
+        │   ├── services/ # GameController, DiceService, EventBridge, LED, etc.
+        │   ├── strategy/ # ComputerAi, ExpectedValue, Probability
+        │   ├── ui/       # GTK 4 application, window, widgets
+        │   ├── i18n.rs   # Fluent internationalization
+        │   ├── error.rs  # Error types
+        │   └── lib.rs    # Re-exports
 </code></pre>
 <h2 id="module-layout"><a class="header" href="#module-layout">Module Layout</a></h2>
 <h3 id="ble---protocol-layer"><a class="header" href="#ble---protocol-layer"><code>ble</code> - Protocol Layer</a></h3>
@@ -1437,6 +1450,281 @@ Content-Type: application/json
 <h2 id="deployment"><a class="header" href="#deployment">Deployment</a></h2>
 <p>The server uses <code>axum</code> with tokio. For production deployment, consider
 running behind a reverse proxy (e.g. nginx) with TLS termination.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="yatzy-kniffel"><a class="header" href="#yatzy-kniffel">Yatzy (Kniffel)</a></h1>
+<p>The <code>yatzy</code> crate is a full Kniffel (Yatzy) game for GoDice, built with
+GTK 4 and the <code>dice-rs</code> library. It demonstrates a complete game loop with
+physical dice integration: scan, connect, roll, score, and celebrate.</p>
+<h2 id="features-1"><a class="header" href="#features-1">Features</a></h2>
+<ul>
+<li><strong>Full Kniffel scorecard</strong> with all 13 categories in upper and lower sections</li>
+<li><strong>Game state machine</strong> with turn phases: AwaitingRoll, Rolling, Holding,
+Scoring, TurnEnd</li>
+<li><strong>Single-player mode</strong> with a computer AI opponent using expected-value
+calculations for optimal decisions</li>
+<li><strong>Multi-player pass-and-play</strong> mode with turn transitions and hints
+disabled for fairness</li>
+<li><strong>Strategy hints</strong> showing the best category and best hold decision via
+expected value analysis (single-player mode only)</li>
+<li><strong>Cross-out advisor</strong> recommending the least-damaging category when no
+valid score is possible</li>
+<li><strong>LED celebration effects</strong> for special rolls: Yatzy, Full House, Large
+Straight, Small Straight, Four-of-a-Kind</li>
+<li><strong>LED color assignment</strong> per player for visual identification on the
+physical dice</li>
+<li><strong>Dice slot mapping</strong> and roll detection for GoDice integration</li>
+<li><strong>Reconnection manager</strong> for handling dropped dice connections during gameplay</li>
+<li><strong>Persistent highscore list</strong> stored as JSON (top 20 entries)</li>
+<li><strong>Persistent game settings</strong> (player names, colors, types, game mode)</li>
+<li><strong>Internationalization</strong> with Fluent, German and English translations</li>
+</ul>
+<h2 id="building-1"><a class="header" href="#building-1">Building</a></h2>
+<p>The game requires GTK 4 development libraries, same as the controller:</p>
+<pre><code class="language-sh"># Ubuntu/Debian
+sudo apt install libgtk-4-dev
+
+# Build
+cargo build -p yatzy
+</code></pre>
+<h2 id="running-2"><a class="header" href="#running-2">Running</a></h2>
+<pre><code class="language-sh">cargo run -p yatzy
+</code></pre>
+<p>The application starts with a setup screen for configuring players (names,
+colors, human/computer type) and selecting the game mode. After setup, scan
+for GoDice devices and connect. Each player rolls the physical dice, holds
+dice between rolls, and enters scores in the scorecard.</p>
+<h2 id="game-flow"><a class="header" href="#game-flow">Game Flow</a></h2>
+<pre class="mermaid">flowchart TD
+    setup["Setup Screen
+    (player config, game mode)"]
+    scan["Dice Scanning
+    &amp; Connection"]
+    awaiting["AwaitingRoll
+    (player starts rolling)"]
+    rolling["Rolling
+    (dice in motion)"]
+    holding["Holding
+    (dice stable, decide holds)"]
+    scoring["Scoring
+    (must enter or cross out)"]
+    turnend["TurnEnd
+    (advance to next player)"]
+    gameover["GameOver
+    (final standings)"]
+
+    setup --&gt; scan
+    scan --&gt; awaiting
+    awaiting --&gt; rolling
+    rolling --&gt; holding
+    holding --&gt;|roll again| rolling
+    holding --&gt;|score early| scoring
+    holding --&gt;|3 rolls used| scoring
+    scoring --&gt; turnend
+    turnend --&gt;|rounds remaining| awaiting
+    turnend --&gt;|all rounds done| gameover
+</pre>
+
+<h3 id="turn-phases"><a class="header" href="#turn-phases">Turn Phases</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Phase</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>AwaitingRoll</code></td><td>Waiting for the player to start rolling</td></tr>
+<tr><td><code>Rolling</code></td><td>Dice are physically rolling (RollStart received, no Stable yet)</td></tr>
+<tr><td><code>Holding</code></td><td>Dice are stable; player can hold dice and roll again, or proceed to scoring</td></tr>
+<tr><td><code>Scoring</code></td><td>Player must select a category to enter or cross out</td></tr>
+<tr><td><code>TurnEnd</code></td><td>Score has been entered, transitioning to the next player</td></tr>
+</tbody>
+</table>
+</div>
+<p>Each player has up to 3 rolls per turn. After the 3rd roll, the player must
+enter a score or cross out a category.</p>
+<h2 id="scorecard-categories"><a class="header" href="#scorecard-categories">Scorecard Categories</a></h2>
+<p>The 13 categories are divided into an upper and lower section:</p>
+<h3 id="upper-section"><a class="header" href="#upper-section">Upper Section</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Category</th><th>Rule</th><th>Score</th></tr>
+</thead>
+<tbody>
+<tr><td>Ones</td><td>Sum of all 1s</td><td>Count × 1</td></tr>
+<tr><td>Twos</td><td>Sum of all 2s</td><td>Count × 2</td></tr>
+<tr><td>Threes</td><td>Sum of all 3s</td><td>Count × 3</td></tr>
+<tr><td>Fours</td><td>Sum of all 4s</td><td>Count × 4</td></tr>
+<tr><td>Fives</td><td>Sum of all 5s</td><td>Count × 5</td></tr>
+<tr><td>Sixes</td><td>Sum of all 6s</td><td>Count × 6</td></tr>
+</tbody>
+</table>
+</div>
+<p>If the upper section total reaches 63 or more, a bonus of 35 points is awarded.</p>
+<h3 id="lower-section"><a class="header" href="#lower-section">Lower Section</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Category</th><th>Rule</th><th>Score</th></tr>
+</thead>
+<tbody>
+<tr><td>Three-of-a-Kind</td><td>At least 3 dice with same value</td><td>Sum of all dice</td></tr>
+<tr><td>Four-of-a-Kind</td><td>At least 4 dice with same value</td><td>Sum of all dice</td></tr>
+<tr><td>Full House</td><td>3 of one value + 2 of another</td><td>25</td></tr>
+<tr><td>Small Straight</td><td>4 consecutive values</td><td>30</td></tr>
+<tr><td>Large Straight</td><td>5 consecutive values</td><td>40</td></tr>
+<tr><td>Yatzy</td><td>All 5 dice same value</td><td>50</td></tr>
+<tr><td>Chance</td><td>Any combination</td><td>Sum of all dice</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="computer-ai"><a class="header" href="#computer-ai">Computer AI</a></h2>
+<p>The <code>ComputerAi</code> decision engine uses expected value (EV) calculations to
+make optimal decisions:</p>
+<ol>
+<li><strong>Roll or score</strong>: Compares the current best category score against the
+EV of re-rolling. If the current score meets or exceeds the EV, the AI
+enters the score; otherwise, it re-rolls.</li>
+<li><strong>Hold decision</strong>: Enumerates all 32 possible hold masks (2^5) and
+selects the one with the highest EV across all empty categories.</li>
+<li><strong>Category selection</strong>: When scoring, picks the empty category with the
+highest score.</li>
+<li><strong>Cross-out</strong>: When no positive score is possible, the <code>CrossOutAdvisor</code>
+recommends the category with the lowest potential score to minimize
+lost points.</li>
+</ol>
+<p>The EV calculation enumerates all possible re-roll outcomes (6^n where n is
+the number of re-rolled dice) and accumulates the expected score for each
+empty category.</p>
+<h2 id="strategy-hints"><a class="header" href="#strategy-hints">Strategy Hints</a></h2>
+<p>In single-player mode, strategy hints are shown to help the player learn
+optimal play:</p>
+<ul>
+<li><strong>Best category hint</strong>: Shows which category would yield the highest score
+with the current dice.</li>
+<li><strong>Best hold hint</strong>: Shows which dice to hold for the highest EV on re-roll.</li>
+</ul>
+<p>Hints are disabled in multi-player mode to ensure fair play between human
+players.</p>
+<h2 id="led-effects"><a class="header" href="#led-effects">LED Effects</a></h2>
+<p>The game uses the physical dice LEDs for feedback:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Event</th><th>Effect</th></tr>
+</thead>
+<tbody>
+<tr><td>Active player’s turn</td><td>All dice glow in the player’s color</td></tr>
+<tr><td>Held dice</td><td>Held dice glow green, others off</td></tr>
+<tr><td>Yatzy (5 of a kind)</td><td>5 green pulses on all dice</td></tr>
+<tr><td>Full House</td><td>3 yellow pulses on all dice</td></tr>
+<tr><td>Large Straight</td><td>3 cyan pulses on all dice</td></tr>
+<tr><td>Small Straight</td><td>2 cyan pulses on all dice</td></tr>
+<tr><td>Four-of-a-Kind</td><td>2 orange pulses on all dice</td></tr>
+<tr><td>Turn end / scoring</td><td>LEDs turned off</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="architecture-2"><a class="header" href="#architecture-2">Architecture</a></h2>
+<pre class="mermaid">flowchart TB
+    subgraph UI["UI Layer (GTK 4)"]
+        app["Application"]
+        window["MainWindow
+        (setup, game, game-over screens)"]
+        widgets["Widgets
+        (scorecard, dice, hints, etc.)"]
+    end
+
+    subgraph Services["Service Layer"]
+        controller["GameController
+        (game flow, validation)"]
+        dice_service["DiceService
+        (BLE dice management)"]
+        event_bridge["EventBridge
+        (async → GTK bridge)"]
+        roll_detector["RollDetector
+        (roll/stable tracking)"]
+        led_service["LedService
+        (LED effect → BLE)"]
+        reconn["ReconnectionManager"]
+    end
+
+    subgraph Domain["Domain Layer"]
+        state["GameState
+        (players, rounds, phases)"]
+        scorecard["Scorecard
+        (13 categories)"]
+        scoring["Scoring Rules"]
+        validation["Validation"]
+        cross_out["CrossOutAdvisor"]
+    end
+
+    subgraph Strategy["Strategy Layer"]
+        ai["ComputerAi
+        (EV-based decisions)"]
+        ev["ExpectedValue
+        (hold/category analysis)"]
+        prob["Probability"]
+    end
+
+    subgraph DiceRS["dice-rs"]
+        manager["DiceManager"]
+        dice["Dice Handle"]
+    end
+
+    app --&gt; window
+    window --&gt; widgets
+    widgets --&gt; controller
+    controller --&gt; state
+    state --&gt; scorecard
+    controller --&gt; scoring
+    controller --&gt; validation
+    controller --&gt; cross_out
+    controller --&gt; ai
+    ai --&gt; ev
+    ev --&gt; prob
+    controller --&gt; led_service
+    led_service --&gt; dice_service
+    dice_service --&gt; manager
+    manager --&gt; dice
+    event_bridge --&gt; controller
+    event_bridge --&gt; dice_service
+    roll_detector --&gt; event_bridge
+    reconn --&gt; dice_service
+</pre>
+
+<h3 id="gamecontroller"><a class="header" href="#gamecontroller">GameController</a></h3>
+<p>The <code>GameController</code> orchestrates the game flow. It wraps <code>GameState</code> and
+validates all <code>TurnAction</code>s against the current state before executing them.
+Actions that are invalid for the current phase or game status return an
+error. The controller emits <code>ControllerEvent</code>s via a broadcast channel that
+the UI layer subscribes to.</p>
+<h3 id="eventbridge"><a class="header" href="#eventbridge">EventBridge</a></h3>
+<p>The <code>EventBridge</code> bridges async dice events from <code>dice-rs</code> into the GTK main
+loop. It runs a background tokio task that receives <code>DiceEvent</code>s, feeds them
+to the <code>RollDetector</code> for roll/stable tracking, and sends UI updates through
+a channel to the GTK main thread.</p>
+<h3 id="rolldetector"><a class="header" href="#rolldetector">RollDetector</a></h3>
+<p>The <code>RollDetector</code> tracks the state of each physical die across roll events.
+It maps <code>RollStart</code> and <code>Stable</code> events from individual dice to a unified
+roll state, accounting for dice that may report at slightly different times.
+Once all dice in a slot are stable, it produces a <code>DiceSet</code> for the game
+controller.</p>
+<h3 id="module-structure"><a class="header" href="#module-structure">Module Structure</a></h3>
+<pre><code>games/yatzy/src/
+├── models/          # Domain types (GameState, Scorecard, Player, etc.)
+├── rules/           # Scoring rules, validation, cross-out advisor
+├── services/        # GameController, DiceService, EventBridge, LED, etc.
+├── strategy/        # ComputerAi, ExpectedValue, Probability
+├── ui/              # GTK 4 application, window, widgets
+├── i18n.rs          # Fluent internationalization
+├── error.rs         # YatzyError types
+└── lib.rs           # Re-exports
+</code></pre>
+<h2 id="internationalization"><a class="header" href="#internationalization">Internationalization</a></h2>
+<p>The game uses the <a href="https://projectfluent.org/">Fluent</a> localization system
+via <code>i18n-embed</code>. The fallback language is German (<code>de</code>), with English
+translations provided as well. Translation files are located in
+<code>games/yatzy/i18n/{lang}/yatzy.ftl</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="platform-notes"><a class="header" href="#platform-notes">Platform Notes</a></h1>
 <h2 id="linux-bluez"><a class="header" href="#linux-bluez">Linux (BlueZ)</a></h2>

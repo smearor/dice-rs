@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6f2c41ae.js";
+            window.path_to_searchindex_js = "searchindex-4d6c4871.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-65f3e578.js"></script>
+        <script src="toc-8ba13626.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -189,7 +189,18 @@
 │   │   └── lib.rs        # Re-exports
 ├── dice-rs-cli/          # CLI tool
 ├── dice-rs-controller/   # GTK 4 desktop app
-└── dice-rs-ws/           # WebSocket server
+├── dice-rs-ws/           # WebSocket server
+└── games/
+    └── yatzy/          # Kniffel (Yatzy) game
+        ├── src/
+        │   ├── models/   # Domain types (GameState, Scorecard, Player, etc.)
+        │   ├── rules/    # Scoring rules, validation, cross-out advisor
+        │   ├── services/ # GameController, DiceService, EventBridge, LED, etc.
+        │   ├── strategy/ # ComputerAi, ExpectedValue, Probability
+        │   ├── ui/       # GTK 4 application, window, widgets
+        │   ├── i18n.rs   # Fluent internationalization
+        │   ├── error.rs  # Error types
+        │   └── lib.rs    # Re-exports
 </code></pre>
 <h2 id="module-layout"><a class="header" href="#module-layout">Module Layout</a></h2>
 <h3 id="ble---protocol-layer"><a class="header" href="#ble---protocol-layer"><code>ble</code> - Protocol Layer</a></h3>
