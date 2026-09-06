@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `yahtzee` crate: Kniffel (Yahtzee) game for GoDice with GTK 4 UI, built on `dice-rs`
+  - Full Kniffel scorecard with all 13 categories (upper section: Ones–Sixes, lower section: Three-of-a-Kind through Chance)
+  - Game state machine with turn phases: AwaitingRoll → Rolling → Holding → Scoring → TurnEnd
+  - Single-player mode with computer AI opponent (expected-value-based decision engine)
+  - Multi-player pass-and-play mode with turn transitions and hints disabled for fairness
+  - Strategy hints: best category and best hold recommendations via expected value calculation
+  - Cross-out advisor recommending the least-damaging category when no valid score is possible
+  - LED celebration effects for special rolls (Yahtzee, Full House, Large Straight, etc.)
+  - LED color assignment per player for visual identification
+  - Dice slot mapping and roll detection for physical GoDice integration
+  - Reconnection manager for handling dropped dice connections during gameplay
+  - Persistent highscore list (JSON, top 20 entries)
+  - Persistent game settings (player names, colors, types, game mode)
+  - Internationalization (i18n) with Fluent, German and English translations
 - Web frontends using web socket
 
 ### Changed

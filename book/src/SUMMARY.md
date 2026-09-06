@@ -12,4 +12,5 @@
 - [CLI Tool](./cli.md)
 - [Controller](./controller.md)
 - [WebSocket Server](./websocket.md)
+- [Yahtzee (Kniffel)](./yahtzee.md)
 - [Platform Notes](./platform-notes.md)

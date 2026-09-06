@@ -26,6 +26,8 @@ battery level, and calibrate the accelerometer.
 - **Multi-dice types** - D6, D20, D10, D10X, D4, D8, D12 with vector tables
 - **Cross-platform architecture** - `BleTransport` trait enables mock testing
   and future backends; initial release targets Linux/BlueZ
+- **Yahtzee (Kniffel) game** - full Kniffel game with GTK 4 UI, computer AI
+  opponent, strategy hints, LED celebration effects, and persistent highscores
 
 ## Quick Start
 
@@ -59,12 +61,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Workspace Layout
 
-| Crate | Description |
-|-------|-------------|
-| [`dice-rs`](./dice-rs/) | Core library: model types, BLE transport, service API |
-| [`dice-rs-cli`](./dice-rs-cli/) | Command-line tool for scanning, listening, and controlling dice |
-| [`dice-rs-controller`](./dice-rs-controller/) | GTK 4 desktop application with 3D dice rendering |
-| [`dice-rs-ws`](./dice-rs-ws/) | WebSocket server exposing dice events over a network API |
+| Crate                                         | Description                                                               |
+|-----------------------------------------------|---------------------------------------------------------------------------|
+| [`dice-rs`](./dice-rs/)                       | Core library: model types, BLE transport, service API                     |
+| [`dice-rs-cli`](./dice-rs-cli/)               | Command-line tool for scanning, listening, and controlling dice           |
+| [`dice-rs-controller`](./dice-rs-controller/) | GTK 4 desktop application with 3D dice rendering                          |
+| [`dice-rs-ws`](./dice-rs-ws/)                 | WebSocket server exposing dice events over a network API                  |
+| [`yahtzee`](./games/yahtzee/)                 | Kniffel (Yahtzee) game with GTK 4 UI, AI opponent, and GoDice integration |
 
 ## Documentation
 
@@ -84,6 +87,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Controller (`dice-rs-controller`)
 
 - **Linux** only - requires GTK4 and OpenGL, not portable to Windows/macOS
+
+### Yahtzee (`yahtzee`)
+
+- **Linux** only - requires GTK4, same platform constraints as the controller
 
 ### Linux Setup
 
