@@ -21,8 +21,8 @@ The workspace provides five crates:
 - **`dice-rs-cli`** - command-line tool for quick interactions
 - **`dice-rs-controller`** - GTK 4 desktop application with 3D dice rendering
 - **`dice-rs-ws`** - WebSocket server for network-accessible dice events
-- **`yahtzee`** - Kniffel (Yahtzee) game with GTK 4 UI, AI opponent, and
-  GoDice integration (see [Yahtzee](./yahtzee.md))
+- **`yatzy`** - Kniffel (Yatzy) game with GTK 4 UI, AI opponent, and
+  GoDice integration (see [Yatzy](./yatzy.md))
 
 ## Where to Get Help
 
