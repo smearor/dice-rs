@@ -13,7 +13,18 @@ dice-rs/
 │   │   └── lib.rs        # Re-exports
 ├── dice-rs-cli/          # CLI tool
 ├── dice-rs-controller/   # GTK 4 desktop app
-└── dice-rs-ws/           # WebSocket server
+├── dice-rs-ws/           # WebSocket server
+└── games/
+    └── yahtzee/          # Kniffel (Yahtzee) game
+        ├── src/
+        │   ├── models/   # Domain types (GameState, Scorecard, Player, etc.)
+        │   ├── rules/    # Scoring rules, validation, cross-out advisor
+        │   ├── services/ # GameController, DiceService, EventBridge, LED, etc.
+        │   ├── strategy/ # ComputerAi, ExpectedValue, Probability
+        │   ├── ui/       # GTK 4 application, window, widgets
+        │   ├── i18n.rs   # Fluent internationalization
+        │   ├── error.rs  # Error types
+        │   └── lib.rs    # Re-exports
 ```
 
 ## Module Layout
