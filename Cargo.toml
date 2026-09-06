@@ -4,7 +4,7 @@ members = [
     "dice-rs-cli",
     "dice-rs-controller",
     "dice-rs-ws",
-    "games/yahtzee",
+    "games/yatzy",
 ]
 resolver = "2"
 

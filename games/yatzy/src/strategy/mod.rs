@@ -1,0 +1,19 @@
+pub mod computer_ai;
+pub mod expected_value;
+pub mod probability;
+
+pub use computer_ai::AiDecision;
+pub use computer_ai::ComputerAi;
+pub use expected_value::CategoryChoice;
+pub use expected_value::ExpectedValue;
+pub use expected_value::HoldDecision;
+pub use expected_value::best_category_choice;
+pub use expected_value::best_hold_decision;
+pub use expected_value::expected_value_for_category;
+pub use expected_value::improvement_probability;
+pub use probability::Probability;
+pub use probability::probability_of_face;
+pub use probability::probability_of_full_house;
+pub use probability::probability_of_n_of_a_kind;
+pub use probability::probability_of_straight;
+pub use probability::probability_of_yatzy;
