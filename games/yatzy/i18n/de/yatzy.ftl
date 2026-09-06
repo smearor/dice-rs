@@ -54,12 +54,7 @@ player-add = + Spieler hinzufügen
 player-start = Spiel starten
 player-remove-tooltip = Spieler entfernen
 player-default-name = Spieler { $index }
-player-color-red = Rot
-player-color-green = Grün
-player-color-blue = Blau
-player-color-yellow = Gelb
-player-color-orange = Orange
-player-color-purple = Lila
+player-color-tooltip = Spielerfarbe wählen
 player-type-human = Mensch
 player-type-computer = Computer
 player-added = Spieler hinzugefügt.
@@ -75,7 +70,7 @@ roll-button-game-over = Spiel beendet
 
 # Roll count display
 roll-count = Wurf { $current }/3
-roll-count-remaining = Wurf { $current }/3 — { $remaining } Würfe übrig
+roll-count-remaining = Wurf { $current }/3
 roll-count-zero = Wurf 0/3
 
 # UI status messages
@@ -209,3 +204,10 @@ info-docs = docs.rs Dokumentation
 info-particula = Particula Tech - GoDice
 info-license = Lizenziert unter der MIT-Lizenz
 info-close = Schließen
+
+# Computer AI
+ai-thinking = Computer denkt nach...
+ai-rolling = Computer würfelt.
+ai-holding = Computer hält { $count } Würfel.
+ai-scored = Computer trägt { $category } ein ({ $score } Punkte).
+ai-crossed-out = Computer streicht { $category }.

@@ -20,10 +20,16 @@ pub struct TurnPanel {
     container: gtk4::Box,
     /// The instruction label.
     instruction_label: gtk4::Label,
-    /// The roll count label.
+    /// The player name label (inside the button).
+    player_name_label: gtk4::Label,
+    /// The roll count label (inside the button).
     roll_count_label: gtk4::Label,
+    /// The roll button label (inside the button).
+    roll_label: gtk4::Label,
     /// The roll button.
     roll_button: gtk4::Button,
+    /// The current player's name.
+    player_name: RefCell<String>,
     /// Callback invoked when the roll button is clicked.
     on_roll: Rc<RefCell<Option<RollCallback>>>,
 }
@@ -39,22 +45,43 @@ impl TurnPanel {
 
         let roll_count_label = gtk4::Label::builder().css_classes(vec!["roll-counter"]).halign(gtk4::Align::Center).build();
 
-        let roll_button = gtk4::Button::builder()
-            .css_classes(vec!["roll-button", "suggested-action"])
-            .label(&RollButtonLabel::Roll.localized())
+        let button_content = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Vertical)
+            .spacing(2)
+            .halign(gtk4::Align::Center)
+            .valign(gtk4::Align::Center)
+            .build();
+
+        let player_name_label = gtk4::Label::builder()
+            .css_classes(vec!["roll-button-player"])
             .halign(gtk4::Align::Center)
             .build();
+
+        let roll_label = gtk4::Label::builder()
+            .css_classes(vec!["roll-button-label"])
+            .halign(gtk4::Align::Center)
+            .label(&RollButtonLabel::Roll.localized())
+            .build();
+
+        button_content.append(&player_name_label);
+        button_content.append(&roll_label);
+        button_content.append(&roll_count_label);
+
+        let roll_button = gtk4::Button::builder()
+            .css_classes(vec!["roll-button", "suggested-action"])
+            .halign(gtk4::Align::Center)
+            .build();
+        roll_button.set_child(Some(&button_content));
 
         let container = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
             .css_classes(vec!["turn-panel"])
-            .spacing(8)
+            .spacing(4)
             .halign(gtk4::Align::Fill)
             .hexpand(true)
             .build();
 
         container.append(&instruction_label);
-        container.append(&roll_count_label);
         container.append(&roll_button);
 
         let on_roll = Rc::new(RefCell::new(None::<RollCallback>));
@@ -72,8 +99,11 @@ impl TurnPanel {
         Self {
             container,
             instruction_label,
+            player_name_label,
             roll_count_label,
+            roll_label,
             roll_button,
+            player_name: RefCell::new(String::new()),
             on_roll,
         }
     }
@@ -86,14 +116,22 @@ impl TurnPanel {
         *self.on_roll.borrow_mut() = Some(Rc::new(callback));
     }
 
+    /// Set the current player's name for display in the button.
+    pub fn set_player_name(&self, name: &str) {
+        *self.player_name.borrow_mut() = name.to_string();
+        self.player_name_label.set_label(&format!("{name},"));
+        self.player_name_label.set_visible(!name.is_empty());
+    }
+
     /// Update the instruction message.
     pub fn set_message(&self, message: &UiMessage) {
         self.instruction_label.set_label(message.as_str());
+        self.instruction_label.set_visible(!message.as_str().is_empty());
     }
 
     /// Update the roll button label and sensitivity.
     pub fn set_roll_button_label(&self, label: RollButtonLabel) {
-        self.roll_button.set_label(&label.localized());
+        self.roll_label.set_label(&label.localized());
         self.roll_button.set_sensitive(label.is_sensitive());
     }
 
@@ -112,8 +150,8 @@ impl TurnPanel {
     pub fn set_roll_complete(&self, count: RollCount) {
         let label = RollButtonLabel::from_roll_count(count.get());
         self.set_roll_button_label(label);
-        let remaining = 3 - count.get();
-        let text = i18n::get_int_int("roll-count-remaining", "current", count.get() as i64, "remaining", remaining as i64);
+        let next_roll = count.get() + 1;
+        let text = i18n::get_int("roll-count", "current", next_roll as i64);
         self.roll_count_label.set_label(&text);
     }
 
@@ -126,8 +164,9 @@ impl TurnPanel {
     /// Reset the panel to the initial state.
     pub fn reset(&self) {
         self.set_roll_button_label(RollButtonLabel::Roll);
-        self.roll_count_label.set_label(&i18n::get("roll-count-zero"));
+        self.roll_count_label.set_label(&i18n::get_int("roll-count", "current", 1));
         self.instruction_label.set_label("");
+        self.instruction_label.set_visible(false);
     }
 
     /// Get the root widget.

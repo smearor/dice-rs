@@ -9,7 +9,7 @@ use std::cell::RefCell;
 /// card shows the player's name, color indicator, and total score.
 pub struct PlayerBar {
     /// The root container widget.
-    container: gtk4::Box,
+    container: gtk4::Grid,
     /// Player card widgets, indexed by player index.
     player_cards: RefCell<Vec<gtk4::Box>>,
     /// Player name labels.
@@ -21,11 +21,11 @@ pub struct PlayerBar {
 impl PlayerBar {
     /// Create a new empty player bar.
     pub fn new() -> Self {
-        let container = gtk4::Box::builder()
-            .orientation(gtk4::Orientation::Horizontal)
+        let container = gtk4::Grid::builder()
             .css_classes(vec!["player-bar"])
-            .spacing(8)
-            .halign(gtk4::Align::Center)
+            .column_spacing(8)
+            .halign(gtk4::Align::Fill)
+            .hexpand(true)
             .build();
 
         Self {
@@ -45,11 +45,17 @@ impl PlayerBar {
         self.name_labels.borrow_mut().clear();
         self.score_labels.borrow_mut().clear();
 
-        for player in players {
+        // Column 0: spacer to align with scorecard category labels
+        let spacer = gtk4::Label::builder().build();
+        self.container.attach(&spacer, 0, 0, 1, 1);
+
+        for (i, player) in players.iter().enumerate() {
             let card = gtk4::Box::builder()
                 .orientation(gtk4::Orientation::Vertical)
-                .css_classes(vec!["player-card"])
+                .css_classes(vec!["player-card", &format!("player-color-{i}")])
                 .spacing(4)
+                .halign(gtk4::Align::Center)
+                .hexpand(true)
                 .build();
 
             let name_label = gtk4::Label::builder()
@@ -66,7 +72,7 @@ impl PlayerBar {
 
             card.append(&name_label);
             card.append(&score_label);
-            self.container.append(&card);
+            self.container.attach(&card, (i + 1) as i32, 0, 1, 1);
 
             self.player_cards.borrow_mut().push(card);
             self.name_labels.borrow_mut().push(name_label);

@@ -6,6 +6,7 @@ use std::time::Duration;
 use dice_rs::DiceManager;
 use gtk4::glib;
 use gtk4::prelude::*;
+use rand::Rng;
 use tracing::debug;
 use tracing::warn;
 
@@ -21,12 +22,13 @@ use crate::models::player_color::PlayerColor;
 use crate::models::player_index::PlayerIndex;
 use crate::models::reconnection_request::ReconnectionRequest;
 use crate::models::turn_action::TurnAction;
+use crate::services::ai_action::AiAction;
+use crate::services::controller_event::ControllerEvent;
 use crate::services::dice_service::DiceService;
 use crate::services::dice_service::DiceServiceEvent;
 use crate::services::event_bridge::EventBridge;
-use crate::services::event_bridge::GameEvent;
-use crate::services::game_controller::ControllerEvent;
 use crate::services::game_controller::GameController;
+use crate::services::game_event::GameEvent;
 use crate::services::highscore_store::HighscoreStore;
 use crate::services::led_effect::LedEffect;
 use crate::services::led_service::LedService;
@@ -105,6 +107,10 @@ pub struct MainWindow {
     pickup_timer: Rc<RefCell<Option<glib::SourceId>>>,
     /// Timer ID for the periodic reconnection attempt.
     reconnection_timer: Rc<RefCell<Option<glib::SourceId>>>,
+    /// Timer ID for the delayed AI action (computer player auto-play).
+    ai_timer: Rc<RefCell<Option<glib::SourceId>>>,
+    /// Timer ID for the periodic AI action check.
+    ai_poll_timer: Rc<RefCell<Option<glib::SourceId>>>,
     /// Auto-swap timers per slot: if no Stable event arrives within the
     /// timeout, the dice is automatically swapped for another.
     auto_swap_timers: Rc<RefCell<[Option<glib::SourceId>; 5]>>,
@@ -203,7 +209,6 @@ impl MainWindow {
             .margin_bottom(12)
             .build();
 
-        playing_box.append(player_bar.widget());
         playing_box.append(dice_view.widget());
         playing_box.append(turn_panel.widget());
         playing_box.append(scorecard_view.widget());
@@ -289,6 +294,8 @@ impl MainWindow {
             picked_up_dice: Rc::new(RefCell::new(Vec::new())),
             pickup_timer: Rc::new(RefCell::new(None)),
             reconnection_timer: Rc::new(RefCell::new(None)),
+            ai_timer: Rc::new(RefCell::new(None)),
+            ai_poll_timer: Rc::new(RefCell::new(None)),
             auto_swap_timers: Rc::new(RefCell::new([None, None, None, None, None])),
             slot_verified: Rc::new(RefCell::new([false; 5])),
             status_label,
@@ -330,6 +337,7 @@ impl MainWindow {
 
         win.connect_signals();
         win.start_event_polling();
+        win.start_ai_polling();
         win.load_settings();
         // Auto-start scanning for GoDice devices
         win.dice_service.scan_and_connect();
@@ -638,6 +646,7 @@ impl MainWindow {
         let reconnection_timer = self.reconnection_timer.clone();
         let auto_swap_timers = self.auto_swap_timers.clone();
         let slot_verified = self.slot_verified.clone();
+        let ai_timer = self.ai_timer.clone();
 
         // Poll dice service events
         let mut dice_receiver = self.dice_service.subscribe();
@@ -668,11 +677,16 @@ impl MainWindow {
                         // Show initial scorecard for all players
                         if let Ok(state) = game_controller.borrow().as_ref().unwrap().state() {
                             scorecard_view.update_players(state.players(), state.current_player_index().get());
+                            let name = state.current_player().name().as_str().to_string();
+                            turn_panel.set_player_name(&name);
                         }
                         reconnection_manager.clear();
                         reconnection_overlay.clear();
                         reconnection_revealer.set_reveal_child(false);
                         if let Some(id) = reconnection_timer.borrow_mut().take() {
+                            id.remove();
+                        }
+                        if let Some(id) = ai_timer.borrow_mut().take() {
                             id.remove();
                         }
                         *holds.borrow_mut() = HoldMask::none();
@@ -696,6 +710,7 @@ impl MainWindow {
                         let game_controller = game_controller.clone();
                         let holds = holds.clone();
                         let highscore_store = highscore_store.clone();
+                        let ai_timer = ai_timer.clone();
                         let mut controller_receiver = controller_receiver;
                         #[allow(clippy::collapsible_if)]
                         glib::timeout_add_local(Duration::from_millis(50), move || {
@@ -708,36 +723,52 @@ impl MainWindow {
                                         });
                                     }
                                     ControllerEvent::GameOver { standings } => {
-                                        game_end_screen.update(&standings);
-                                        *phase.borrow_mut() = GamePhase::GameOver;
-                                        content_stack.set_visible_child_name("game-over");
-                                        status_label.set_label(&i18n::get("status-game-over"));
-                                        turn_panel.set_game_over();
-                                        // Save highscores
-                                        let store = highscore_store.clone();
-                                        glib::spawn_future_local(async move {
-                                            match store.load().await {
-                                                Ok(Some(mut list)) => {
-                                                    for entry in &standings {
-                                                        list.add(HighscoreEntry::new(entry.player().name().as_str(), entry.player().grand_total()));
-                                                    }
-                                                    if let Err(error) = store.save(&list).await {
-                                                        warn!(error = %error, "failed to save highscores");
-                                                    }
-                                                }
-                                                Ok(None) => {
-                                                    let mut list = HighscoreList::new();
-                                                    for entry in &standings {
-                                                        list.add(HighscoreEntry::new(entry.player().name().as_str(), entry.player().grand_total()));
-                                                    }
-                                                    if let Err(error) = store.save(&list).await {
-                                                        warn!(error = %error, "failed to save highscores");
-                                                    }
-                                                }
-                                                Err(error) => {
-                                                    warn!(error = %error, "failed to load highscores for saving");
-                                                }
+                                        // Delay switching to game-over screen so the final scorecard is visible
+                                        let game_end_screen = game_end_screen.clone();
+                                        let content_stack = content_stack.clone();
+                                        let phase = phase.clone();
+                                        let status_label = status_label.clone();
+                                        let turn_panel = turn_panel.clone();
+                                        let ai_timer = ai_timer.clone();
+                                        let highscore_store = highscore_store.clone();
+                                        let standings_clone = standings.clone();
+                                        glib::timeout_add_local(Duration::from_millis(3000), move || {
+                                            game_end_screen.update(&standings_clone);
+                                            *phase.borrow_mut() = GamePhase::GameOver;
+                                            content_stack.set_visible_child_name("game-over");
+                                            status_label.set_label(&i18n::get("status-game-over"));
+                                            turn_panel.set_game_over();
+                                            if let Some(id) = ai_timer.borrow_mut().take() {
+                                                id.remove();
                                             }
+                                            // Save highscores
+                                            let store = highscore_store.clone();
+                                            let standings_inner = standings_clone.clone();
+                                            glib::spawn_future_local(async move {
+                                                match store.load().await {
+                                                    Ok(Some(mut list)) => {
+                                                        for entry in &standings_inner {
+                                                            list.add(HighscoreEntry::new(entry.player().name().as_str(), entry.player().grand_total()));
+                                                        }
+                                                        if let Err(error) = store.save(&list).await {
+                                                            warn!(error = %error, "failed to save highscores");
+                                                        }
+                                                    }
+                                                    Ok(None) => {
+                                                        let mut list = HighscoreList::new();
+                                                        for entry in &standings_inner {
+                                                            list.add(HighscoreEntry::new(entry.player().name().as_str(), entry.player().grand_total()));
+                                                        }
+                                                        if let Err(error) = store.save(&list).await {
+                                                            warn!(error = %error, "failed to save highscores");
+                                                        }
+                                                    }
+                                                    Err(error) => {
+                                                        warn!(error = %error, "failed to load highscores for saving");
+                                                    }
+                                                }
+                                            });
+                                            glib::ControlFlow::Break
                                         });
                                     }
                                     ControllerEvent::RollCompleted { dice: _ } => {
@@ -745,7 +776,9 @@ impl MainWindow {
                                         // Only update the turn panel here.
                                         if let Some(ref controller) = *game_controller.borrow() {
                                             if let Ok(state) = controller.state() {
-                                                turn_panel.set_roll_complete(state.rolls_used());
+                                                if state.phase() == crate::models::turn_phase::TurnPhase::Holding {
+                                                    turn_panel.set_roll_complete(state.rolls_used());
+                                                }
                                             }
                                         }
                                     }
@@ -796,7 +829,10 @@ impl MainWindow {
                                             && let Ok(state) = controller.state()
                                         {
                                             scorecard_view.update_players(state.players(), state.current_player_index().get());
+                                            let name = state.current_player().name().as_str().to_string();
+                                            turn_panel.set_player_name(&name);
                                         }
+                                        turn_panel.reset();
                                         status_label.set_label(&i18n::get_int("player-turn", "player", (player_index + 1) as i64));
                                     }
                                     ControllerEvent::PhaseChanged { phase: new_phase } => match new_phase {
@@ -1054,7 +1090,9 @@ impl MainWindow {
                             }
                             // Update turn panel immediately — don't wait for controller event
                             if let Ok(state) = controller.state() {
-                                turn_panel.set_roll_complete(state.rolls_used());
+                                if state.phase() == crate::models::turn_phase::TurnPhase::Holding {
+                                    turn_panel.set_roll_complete(state.rolls_used());
+                                }
                             }
                         }
                     }
@@ -1088,7 +1126,9 @@ impl MainWindow {
                             }
                             // Update turn panel immediately
                             if let Ok(state) = controller.state() {
-                                turn_panel.set_roll_complete(state.rolls_used());
+                                if state.phase() == crate::models::turn_phase::TurnPhase::Holding {
+                                    turn_panel.set_roll_complete(state.rolls_used());
+                                }
                             }
                         }
                     }
@@ -1300,6 +1340,10 @@ impl MainWindow {
             self.turn_panel.reset();
             self.dice_view.reset();
             self.scorecard_view.clear();
+            if let Ok(state) = self.game_controller.borrow().as_ref().unwrap().state() {
+                let name = state.current_player().name().as_str().to_string();
+                self.turn_panel.set_player_name(&name);
+            }
             self.reconnection_manager.clear();
             self.reconnection_overlay.clear();
             self.reconnection_revealer.set_reveal_child(false);
@@ -1310,6 +1354,11 @@ impl MainWindow {
             *self.phase.borrow_mut() = GamePhase::Playing;
             self.content_stack.set_visible_child_name("playing");
             self.start_controller_event_polling();
+
+            // Clear any pending AI action from a previous game
+            if let Some(id) = self.ai_timer.borrow_mut().take() {
+                id.remove();
+            }
 
             // Persist settings
             let settings = crate::models::game_settings::GameSettings::default_single_player();
@@ -1362,6 +1411,109 @@ impl MainWindow {
         });
     }
 
+    /// Start polling for AI actions when the current player is a computer.
+    ///
+    /// A periodic timer checks if the AI needs to act. When an action is
+    /// available, it is scheduled with a short delay for visual "thinking"
+    /// time. Dice rolls are simulated with random values since the computer
+    /// player has no physical dice.
+    fn start_ai_polling(&self) {
+        // Clear any existing AI timers
+        if let Some(id) = self.ai_timer.borrow_mut().take() {
+            id.remove();
+        }
+        if let Some(id) = self.ai_poll_timer.borrow_mut().take() {
+            id.remove();
+        }
+
+        let game_controller = self.game_controller.clone();
+        let dice_view = self.dice_view.clone();
+        let turn_panel = self.turn_panel.clone();
+        let status_label = self.status_label.clone();
+        let holds = self.holds.clone();
+        let ai_timer = self.ai_timer.clone();
+
+        let id = glib::timeout_add_local(Duration::from_millis(200), move || {
+            // Skip if an AI action is already scheduled
+            if ai_timer.borrow().is_some() {
+                return glib::ControlFlow::Continue;
+            }
+
+            let controller_binding = game_controller.borrow();
+            let controller = match controller_binding.as_ref() {
+                Some(c) => c,
+                None => return glib::ControlFlow::Continue,
+            };
+
+            let action = match controller.ai_action() {
+                Ok(Some(action)) => action,
+                _ => return glib::ControlFlow::Continue,
+            };
+            drop(controller_binding);
+
+            let game_controller = game_controller.clone();
+            let dice_view = dice_view.clone();
+            let turn_panel = turn_panel.clone();
+            let status_label = status_label.clone();
+            let holds = holds.clone();
+            let ai_timer_inner = ai_timer.clone();
+
+            let id = glib::timeout_add_local(Duration::from_millis(1200), move || {
+                *ai_timer_inner.borrow_mut() = None;
+
+                let controller_binding = game_controller.borrow();
+                let controller = match controller_binding.as_ref() {
+                    Some(c) => c,
+                    None => return glib::ControlFlow::Break,
+                };
+
+                match action {
+                    AiAction::Roll => {
+                        status_label.set_label(&i18n::get("ai-rolling"));
+                        let _ = controller.execute(TurnAction::Roll);
+                        dice_view.set_rolling();
+                        simulate_dice_roll(&game_controller, &dice_view, &turn_panel, &status_label, HoldMask::none());
+                    }
+                    AiAction::RollWithHolds { holds: ai_holds } => {
+                        status_label.set_label(&i18n::get_int("ai-holding", "count", ai_holds.held_count() as i64));
+                        let _ = controller.execute(TurnAction::Hold { holds: ai_holds });
+                        *holds.borrow_mut() = ai_holds;
+                        dice_view.update_holds(ai_holds);
+
+                        // Small delay before rolling to show the holds
+                        let game_controller2 = game_controller.clone();
+                        let dice_view2 = dice_view.clone();
+                        let status_label2 = status_label.clone();
+                        let turn_panel2 = turn_panel.clone();
+                        glib::timeout_add_local(Duration::from_millis(600), move || {
+                            status_label2.set_label(&i18n::get("ai-rolling"));
+                            if let Some(controller) = game_controller2.borrow().as_ref() {
+                                let _ = controller.execute(TurnAction::Roll);
+                            }
+                            dice_view2.set_rolling_with_holds(ai_holds, current_faces(&game_controller2));
+                            simulate_dice_roll(&game_controller2, &dice_view2, &turn_panel2, &status_label2, ai_holds);
+                            glib::ControlFlow::Break
+                        });
+                    }
+                    AiAction::EnterScore { category, score } => {
+                        status_label.set_label(&i18n::get_str_int("ai-scored", "category", &category.to_string(), "score", score.get() as i64));
+                        let _ = controller.execute(TurnAction::EnterScore { category, score });
+                    }
+                    AiAction::CrossOut { category } => {
+                        status_label.set_label(&i18n::get_str("ai-crossed-out", "category", &category.to_string()));
+                        let _ = controller.execute(TurnAction::CrossOut { category });
+                    }
+                }
+
+                glib::ControlFlow::Break
+            });
+
+            *ai_timer.borrow_mut() = Some(id);
+            glib::ControlFlow::Continue
+        });
+        *self.ai_poll_timer.borrow_mut() = Some(id);
+    }
+
     /// Start polling for controller events from the game controller.
     fn start_controller_event_polling(&self) {
         let controller = self.game_controller.borrow();
@@ -1382,6 +1534,7 @@ impl MainWindow {
         let game_controller = self.game_controller.clone();
         let holds = self.holds.clone();
         let highscore_store = self.highscore_store.clone();
+        let ai_timer = self.ai_timer.clone();
 
         #[allow(clippy::collapsible_if)]
         glib::timeout_add_local(Duration::from_millis(50), move || {
@@ -1394,36 +1547,50 @@ impl MainWindow {
                         });
                     }
                     ControllerEvent::GameOver { standings } => {
-                        game_end_screen.update(&standings);
-                        *phase.borrow_mut() = GamePhase::GameOver;
-                        content_stack.set_visible_child_name("game-over");
-                        status_label.set_label(&i18n::get("status-game-over"));
-                        turn_panel.set_game_over();
-                        // Save highscores
-                        let store = highscore_store.clone();
-                        glib::spawn_future_local(async move {
-                            match store.load().await {
-                                Ok(Some(mut list)) => {
-                                    for entry in &standings {
-                                        list.add(HighscoreEntry::new(entry.player().name().as_str(), entry.player().grand_total()));
-                                    }
-                                    if let Err(error) = store.save(&list).await {
-                                        warn!(error = %error, "failed to save highscores");
-                                    }
-                                }
-                                Ok(None) => {
-                                    let mut list = HighscoreList::new();
-                                    for entry in &standings {
-                                        list.add(HighscoreEntry::new(entry.player().name().as_str(), entry.player().grand_total()));
-                                    }
-                                    if let Err(error) = store.save(&list).await {
-                                        warn!(error = %error, "failed to save highscores");
-                                    }
-                                }
-                                Err(error) => {
-                                    warn!(error = %error, "failed to load highscores for saving");
-                                }
+                        let game_end_screen = game_end_screen.clone();
+                        let content_stack = content_stack.clone();
+                        let phase = phase.clone();
+                        let status_label = status_label.clone();
+                        let turn_panel = turn_panel.clone();
+                        let ai_timer = ai_timer.clone();
+                        let highscore_store = highscore_store.clone();
+                        let standings_clone = standings.clone();
+                        glib::timeout_add_local(Duration::from_millis(3000), move || {
+                            game_end_screen.update(&standings_clone);
+                            *phase.borrow_mut() = GamePhase::GameOver;
+                            content_stack.set_visible_child_name("game-over");
+                            status_label.set_label(&i18n::get("status-game-over"));
+                            turn_panel.set_game_over();
+                            if let Some(id) = ai_timer.borrow_mut().take() {
+                                id.remove();
                             }
+                            let store = highscore_store.clone();
+                            let standings_inner = standings_clone.clone();
+                            glib::spawn_future_local(async move {
+                                match store.load().await {
+                                    Ok(Some(mut list)) => {
+                                        for entry in &standings_inner {
+                                            list.add(HighscoreEntry::new(entry.player().name().as_str(), entry.player().grand_total()));
+                                        }
+                                        if let Err(error) = store.save(&list).await {
+                                            warn!(error = %error, "failed to save highscores");
+                                        }
+                                    }
+                                    Ok(None) => {
+                                        let mut list = HighscoreList::new();
+                                        for entry in &standings_inner {
+                                            list.add(HighscoreEntry::new(entry.player().name().as_str(), entry.player().grand_total()));
+                                        }
+                                        if let Err(error) = store.save(&list).await {
+                                            warn!(error = %error, "failed to save highscores");
+                                        }
+                                    }
+                                    Err(error) => {
+                                        warn!(error = %error, "failed to load highscores for saving");
+                                    }
+                                }
+                            });
+                            glib::ControlFlow::Break
                         });
                     }
                     ControllerEvent::RollCompleted { dice: _ } => {
@@ -1431,7 +1598,9 @@ impl MainWindow {
                         // Only update the turn panel here.
                         if let Some(ref controller) = *game_controller.borrow() {
                             if let Ok(state) = controller.state() {
-                                turn_panel.set_roll_complete(state.rolls_used());
+                                if state.phase() == crate::models::turn_phase::TurnPhase::Holding {
+                                    turn_panel.set_roll_complete(state.rolls_used());
+                                }
                             }
                         }
                     }
@@ -1477,6 +1646,13 @@ impl MainWindow {
                         player_bar.set_active_player(PlayerIndex::new(player_index));
                         *holds.borrow_mut() = HoldMask::none();
                         dice_view.update_holds(HoldMask::none());
+                        if let Some(ref controller) = *game_controller.borrow()
+                            && let Ok(state) = controller.state()
+                        {
+                            let name = state.current_player().name().as_str().to_string();
+                            turn_panel.set_player_name(&name);
+                        }
+                        turn_panel.reset();
                         status_label.set_label(&format!("Spieler {} ist an der Reihe.", player_index + 1));
                     }
                     ControllerEvent::PhaseChanged { phase: new_phase } => match new_phase {
@@ -1506,6 +1682,87 @@ impl MainWindow {
             glib::ControlFlow::Continue
         });
     }
+}
+
+/// Get the current dice faces from the game controller as an optional array.
+fn current_faces(game_controller: &Rc<RefCell<Option<GameController>>>) -> [Option<dice_rs::FaceValue>; 5] {
+    game_controller
+        .borrow()
+        .as_ref()
+        .and_then(|c| c.state().ok())
+        .map(|s| {
+            let f = s.dice_set().faces();
+            [Some(f[0]), Some(f[1]), Some(f[2]), Some(f[3]), Some(f[4])]
+        })
+        .unwrap_or([None; 5])
+}
+
+/// Simulate a dice roll for the computer player.
+///
+/// After a delay (to show the rolling animation), generates random face
+/// values for non-held dice, updates the dice view, and calls
+/// `dice_stable()` on the controller to transition the game state.
+fn simulate_dice_roll(
+    game_controller: &Rc<RefCell<Option<GameController>>>,
+    dice_view: &Rc<DiceView>,
+    turn_panel: &Rc<TurnPanel>,
+    status_label: &gtk4::Label,
+    ai_holds: HoldMask,
+) {
+    let game_controller = game_controller.clone();
+    let dice_view = dice_view.clone();
+    let turn_panel = turn_panel.clone();
+    let status_label = status_label.clone();
+
+    glib::timeout_add_local(Duration::from_millis(1500), move || {
+        // Generate random face values for non-held dice
+        let mut rng = rand::rng();
+        let current_faces = current_faces(&game_controller);
+        let mut new_faces = [dice_rs::FaceValue::ONE; 5];
+        for i in 0..5 {
+            if ai_holds.is_held(DiceSlot::new(i as u8).unwrap()) {
+                // Keep the held die's current value
+                new_faces[i] = current_faces[i].unwrap_or(dice_rs::FaceValue::ONE);
+            } else {
+                // Generate a random value 1-6
+                let value = rng.random_range(1..=6);
+                new_faces[i] = dice_rs::FaceValue::new(value).unwrap_or(dice_rs::FaceValue::ONE);
+            }
+        }
+
+        // Update the dice view with the new faces
+        let face_options = [
+            Some(new_faces[0]),
+            Some(new_faces[1]),
+            Some(new_faces[2]),
+            Some(new_faces[3]),
+            Some(new_faces[4]),
+        ];
+        dice_view.clear_rolling();
+        dice_view.update_faces(&face_options);
+
+        // Forward to game controller
+        if let Some(ref controller) = *game_controller.borrow() {
+            if let Ok(dice) = DiceSet::from_values([
+                new_faces[0].get(),
+                new_faces[1].get(),
+                new_faces[2].get(),
+                new_faces[3].get(),
+                new_faces[4].get(),
+            ]) {
+                let _ = controller.dice_stable(dice);
+            }
+            // Update turn panel immediately
+            if let Ok(state) = controller.state() {
+                if state.phase() == crate::models::turn_phase::TurnPhase::Holding {
+                    turn_panel.set_roll_complete(state.rolls_used());
+                }
+            }
+        }
+
+        status_label.set_label(UiMessage::roll_complete().as_str());
+        glib::ControlFlow::Break
+    });
 }
 
 /// Convert face values from a roll event to a `DiceSet`.

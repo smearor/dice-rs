@@ -1,7 +1,10 @@
+pub mod ai_action;
 pub mod celebration_detector;
+pub mod controller_event;
 pub mod dice_service;
 pub mod event_bridge;
 pub mod game_controller;
+pub mod game_event;
 pub mod highscore_store;
 pub mod led_color_assignment;
 pub mod led_effect;
@@ -11,12 +14,13 @@ pub mod roll_detector;
 pub mod settings_store;
 pub mod slot_mapping;
 
+pub use ai_action::AiAction;
 pub use celebration_detector::CelebrationDetector;
+pub use controller_event::ControllerEvent;
 pub use dice_service::DiceService;
 pub use event_bridge::EventBridge;
-pub use event_bridge::GameEvent;
-pub use game_controller::ControllerEvent;
 pub use game_controller::GameController;
+pub use game_event::GameEvent;
 pub use highscore_store::HighscoreStore;
 pub use led_color_assignment::LedColorAssignment;
 pub use led_effect::LedEffect;

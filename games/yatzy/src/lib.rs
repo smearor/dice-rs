@@ -51,6 +51,7 @@ pub use rules::CrossOutAdvisor;
 pub use rules::CrossOutRecommendation;
 pub use rules::calculate_score;
 pub use rules::is_valid;
+pub use services::AiAction;
 pub use services::CelebrationDetector;
 pub use services::ControllerEvent;
 pub use services::DiceService;
