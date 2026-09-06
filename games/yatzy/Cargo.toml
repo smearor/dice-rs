@@ -10,7 +10,7 @@ homepage.workspace = true
 description = "Yatzy (Kniffel) game for GoDice, built with GTK 4 and dice-rs"
 keywords = ["bluetooth", "ble", "dice", "godice", "yatzy"]
 categories = ["games", "hardware-support"]
-readme = "../../README.md"
+readme = "README.md"
 
 [lib]
 name = "yatzy"
