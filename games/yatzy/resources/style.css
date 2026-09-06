@@ -156,7 +156,9 @@
 .scorecard-row {
   padding: 4px 8px;
   border-radius: 4px;
-  transition: background-color 150ms ease;
+  border: 3px solid transparent;
+  background-color: alpha(@theme_fg_color, 0.04);
+  transition: background-color 150ms ease, border-color 150ms ease;
 }
 
 .scorecard-row.clickable:hover {
@@ -165,7 +167,8 @@
 }
 
 .scorecard-row.recently-entered {
-  background-color: alpha(@accent_color, 0.12);
+  background-color: alpha(@accent_color, 0.30);
+  border-width: 5px;
   border-radius: 4px;
 }
 
@@ -179,7 +182,8 @@
 }
 
 .scorecard-row.active {
-  background-color: alpha(@accent_color, 0.05);
+  background-color: alpha(@accent_color, 0.15);
+  border-width: 5px;
   border-radius: 4px;
 }
 
@@ -189,12 +193,16 @@
 }
 
 .scorecard-player-name.active {
-  color: @accent_color;
+  text-decoration: underline;
+  font-size: 1.15em;
+  font-weight: 800;
+  background-color: alpha(@accent_color, 0.12);
+  border-radius: 4px;
 }
 
 .scorecard-score.active {
-  font-weight: 700;
-  color: @accent_color;
+  font-weight: 800;
+  font-size: 1.1em;
 }
 
 .scorecard-grand-total {
@@ -211,7 +219,6 @@
 
 .scorecard-score {
   font-weight: bold;
-  color: @accent_color;
   min-width: 40px;
 }
 
@@ -221,6 +228,12 @@
   padding: 8px 0 4px 0;
   color: @theme_fg_color;
   border-bottom: 1px solid alpha(@theme_fg_color, 0.2);
+}
+
+.scorecard-row-separator {
+  min-height: 1px;
+  margin-top: 2px;
+  border-top: 1px solid alpha(@theme_fg_color, 0.07);
 }
 
 .scorecard-bonus-row {
@@ -238,28 +251,40 @@
 
 /* Turn panel */
 .turn-panel {
-  padding: 12px;
+  padding: 4px 12px;
   border-radius: 8px;
   background-color: alpha(@theme_base_color, 0.5);
 }
 
 .turn-instruction {
   font-size: 1.05em;
-  padding: 6px 0;
+  padding: 2px 0;
 }
 
 .roll-button {
-  min-width: 160px;
-  min-height: 44px;
+  min-width: 120px;
+  min-height: 120px;
+  padding: 12px;
   font-size: 1.1em;
   font-weight: bold;
-  border-radius: 8px;
+  border-radius: 12px;
+}
+
+.roll-button-player {
+  font-size: 0.9em;
+  font-weight: normal;
+  opacity: 0.8;
+}
+
+.roll-button-label {
+  font-size: 1.1em;
+  font-weight: bold;
 }
 
 .roll-counter {
-  font-size: 0.9em;
+  font-size: 0.85em;
   color: alpha(@theme_fg_color, 0.7);
-  padding: 4px 0;
+  padding: 0;
 }
 
 /* Setup screen */
@@ -517,8 +542,11 @@
   min-width: 150px;
 }
 
-.player-color-dropdown {
-  min-width: 100px;
+.player-color-button {
+  min-width: 48px;
+  min-height: 36px;
+  padding: 2px;
+  border-radius: 6px;
 }
 
 .player-type-dropdown {

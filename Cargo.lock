@@ -3732,6 +3732,7 @@ dependencies = [
  "gtk4",
  "i18n-embed",
  "i18n-embed-fl",
+ "rand 0.9.5",
  "rust-embed",
  "serde",
  "serde_json",

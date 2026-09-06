@@ -18,76 +18,16 @@ use crate::rules::cross_out::CrossOutRecommendation;
 use crate::rules::scoring::calculate_score;
 use crate::rules::validation::is_valid;
 use crate::rules::validation::must_cross_out;
+use crate::services::ai_action::AiAction;
 use crate::services::celebration_detector::CelebrationDetector;
+use crate::services::controller_event::ControllerEvent;
 use crate::services::led_color_assignment::LedColorAssignment;
-use crate::services::led_effect::LedEffect;
+use crate::strategy::AiDecision;
+use crate::strategy::ComputerAi;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::sync::broadcast;
 use tracing::debug;
-
-/// Events emitted by the `GameController` for the UI to react to.
-///
-/// These events represent state changes that the UI needs to visualize.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ControllerEvent {
-    /// The game status changed (e.g. Playing → GameOver).
-    StatusChanged {
-        /// The new game status.
-        status: GameStatus,
-    },
-    /// A new player's turn started.
-    TurnStarted {
-        /// The index of the player whose turn it is.
-        player_index: usize,
-    },
-    /// The turn phase changed.
-    PhaseChanged {
-        /// The new turn phase.
-        phase: TurnPhase,
-    },
-    /// A roll was completed and dice values are available.
-    RollCompleted {
-        /// The final dice values.
-        dice: DiceSet,
-    },
-    /// A score was entered for a player.
-    ScoreEntered {
-        /// The player index.
-        player_index: usize,
-        /// The category that was scored.
-        category: ScoreCategory,
-        /// The score that was entered.
-        score: Score,
-    },
-    /// A category was crossed out for a player.
-    CategoryCrossedOut {
-        /// The player index.
-        player_index: usize,
-        /// The category that was crossed out.
-        category: ScoreCategory,
-    },
-    /// The game is over and standings are available.
-    GameOver {
-        /// The final standings, ranked by score.
-        standings: Vec<StandingEntry>,
-    },
-    /// A cross-out recommendation was generated.
-    CrossOutRecommended {
-        /// The recommended category to cross out.
-        recommendation: CrossOutRecommendation,
-    },
-    /// A turn transition occurred (pass-and-play in multi-player mode).
-    TurnTransition {
-        /// The transition data for the next player's turn.
-        transition: TurnTransition,
-    },
-    /// A celebration effect should be applied for a special roll.
-    Celebration {
-        /// The LED effect to apply.
-        effect: LedEffect,
-    },
-}
 
 /// The game controller orchestrates the game flow.
 ///
@@ -100,6 +40,8 @@ pub struct GameController {
     state: Arc<Mutex<GameState>>,
     /// The cross-out advisor.
     advisor: CrossOutAdvisor,
+    /// The computer AI decision engine.
+    computer_ai: ComputerAi,
     /// LED color assignment for players.
     led_assignment: LedColorAssignment,
     /// Broadcast channel for controller events.
@@ -115,6 +57,7 @@ impl GameController {
         Ok(Self {
             state: Arc::new(Mutex::new(state)),
             advisor: CrossOutAdvisor::new(),
+            computer_ai: ComputerAi::new(),
             led_assignment,
             event_sender,
         })
@@ -128,6 +71,7 @@ impl GameController {
         Ok(Self {
             state: Arc::new(Mutex::new(state)),
             advisor: CrossOutAdvisor::new(),
+            computer_ai: ComputerAi::new(),
             led_assignment,
             event_sender,
         })
@@ -140,6 +84,7 @@ impl GameController {
         Self {
             state: Arc::new(Mutex::new(state)),
             advisor: CrossOutAdvisor::new(),
+            computer_ai: ComputerAi::new(),
             led_assignment,
             event_sender,
         }
@@ -390,6 +335,49 @@ impl GameController {
         }
         Ok(compute_standings(state.players().to_vec()))
     }
+
+    /// Determine the next AI action if the current player is a computer.
+    ///
+    /// Returns `Ok(None)` if the current player is human, the game is
+    /// over, or no action is needed at the current phase.
+    ///
+    /// The UI should call this after each state transition (turn start,
+    /// dice becoming stable, forced scoring) and execute the returned
+    /// action with a small delay for visual feedback.
+    pub fn ai_action(&self) -> Result<Option<AiAction>> {
+        let state = self.state.lock().map_err(|_| YatzyError::LockPoisoned)?;
+
+        if state.status() != GameStatus::Playing {
+            return Ok(None);
+        }
+
+        let current_player = state.current_player();
+        if !current_player.is_computer() {
+            return Ok(None);
+        }
+
+        match state.phase() {
+            TurnPhase::AwaitingRoll => Ok(Some(AiAction::Roll)),
+            TurnPhase::Holding => {
+                let decision = self.computer_ai.decide(state.dice_set(), current_player.scorecard(), state.rolls_used())?;
+                Ok(Some(self.decision_to_ai_action(decision)))
+            }
+            TurnPhase::Scoring => {
+                let decision = self.computer_ai.decide(state.dice_set(), current_player.scorecard(), state.rolls_used())?;
+                Ok(Some(self.decision_to_ai_action(decision)))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    /// Convert an `AiDecision` into an `AiAction`.
+    fn decision_to_ai_action(&self, decision: AiDecision) -> AiAction {
+        match decision {
+            AiDecision::RollAgain { holds } => AiAction::RollWithHolds { holds },
+            AiDecision::EnterScore { category, score } => AiAction::EnterScore { category, score },
+            AiDecision::CrossOut { category } => AiAction::CrossOut { category },
+        }
+    }
 }
 
 #[cfg(test)]
@@ -614,5 +602,75 @@ mod tests {
         let dice = DiceSet::from_values([1, 2, 3, 5, 6]).unwrap();
         let events = controller.dice_stable(dice).unwrap();
         assert!(!events.iter().any(|e| matches!(e, ControllerEvent::Celebration { .. })));
+    }
+
+    fn make_computer_players(count: usize) -> Vec<Player> {
+        (0..count)
+            .map(|i| {
+                Player::new(
+                    PlayerName::new(format!("Computer {i}")).unwrap(),
+                    PlayerColor::DEFAULTS[i % PlayerColor::DEFAULTS.len()],
+                    PlayerType::Computer,
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn ai_action_returns_none_for_human_player() {
+        let controller = GameController::new(make_players(1)).unwrap();
+        let action = controller.ai_action().unwrap();
+        assert!(action.is_none());
+    }
+
+    #[test]
+    fn ai_action_returns_roll_in_awaiting_roll() {
+        let controller = GameController::new(make_computer_players(1)).unwrap();
+        let action = controller.ai_action().unwrap();
+        assert_eq!(action, Some(AiAction::Roll));
+    }
+
+    #[test]
+    fn ai_action_returns_enter_score_or_crossout_in_scoring() {
+        let controller = GameController::new(make_computer_players(1)).unwrap();
+        controller.execute(TurnAction::Roll).unwrap();
+        let dice = DiceSet::from_values([1, 2, 3, 4, 5]).unwrap();
+        controller.dice_stable(dice).unwrap();
+        // After dice_stable, phase is Holding or Scoring
+        let action = controller.ai_action().unwrap();
+        assert!(action.is_some());
+        assert!(matches!(
+            action,
+            Some(AiAction::RollWithHolds { .. }) | Some(AiAction::EnterScore { .. }) | Some(AiAction::CrossOut { .. })
+        ));
+    }
+
+    #[test]
+    fn ai_action_returns_none_when_game_over() {
+        let controller = GameController::new(make_computer_players(1)).unwrap();
+        // Fill all categories to end the game
+        for cat in ScoreCategory::ALL {
+            let _ = controller.execute(TurnAction::EnterScore {
+                category: cat,
+                score: Score::new(0),
+            });
+        }
+        let action = controller.ai_action().unwrap();
+        assert!(action.is_none());
+    }
+
+    #[test]
+    fn ai_action_roll_with_holds_after_first_roll() {
+        let controller = GameController::new(make_computer_players(1)).unwrap();
+        controller.execute(TurnAction::Roll).unwrap();
+        // Roll dice that have a pair so AI might want to re-roll
+        let dice = DiceSet::from_values([1, 1, 3, 4, 6]).unwrap();
+        controller.dice_stable(dice).unwrap();
+        let action = controller.ai_action().unwrap();
+        // AI should either roll again with holds or enter a score
+        assert!(matches!(
+            action,
+            Some(AiAction::RollWithHolds { .. }) | Some(AiAction::EnterScore { .. }) | Some(AiAction::CrossOut { .. })
+        ));
     }
 }

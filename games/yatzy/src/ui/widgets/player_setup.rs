@@ -34,8 +34,8 @@ struct PlayerRow {
     box_widget: gtk4::Box,
     /// The name entry field.
     name_entry: gtk4::Entry,
-    /// The color dropdown.
-    color_dropdown: gtk4::DropDown,
+    /// The color picker button.
+    color_button: gtk4::ColorButton,
     /// The type dropdown (Human/Computer).
     type_dropdown: gtk4::DropDown,
     /// The remove button.
@@ -51,18 +51,17 @@ impl PlayerRow {
             .hexpand(true)
             .build();
 
-        let color_model = gtk4::StringList::new(&[
-            &i18n::get("player-color-red"),
-            &i18n::get("player-color-green"),
-            &i18n::get("player-color-blue"),
-            &i18n::get("player-color-yellow"),
-            &i18n::get("player-color-orange"),
-            &i18n::get("player-color-purple"),
-        ]);
-        let color_dropdown = gtk4::DropDown::builder()
-            .model(&color_model)
-            .selected(index as u32 % 6)
-            .css_classes(vec!["player-color-dropdown"])
+        let default_color = PlayerColor::DEFAULTS[index % PlayerColor::DEFAULTS.len()];
+        let rgba = gtk4::gdk::RGBA::new(
+            default_color.led_color().r as f32 / 255.0,
+            default_color.led_color().g as f32 / 255.0,
+            default_color.led_color().b as f32 / 255.0,
+            1.0,
+        );
+        let color_button = gtk4::ColorButton::builder()
+            .rgba(&rgba)
+            .css_classes(vec!["player-color-button"])
+            .tooltip_text(&i18n::get("player-color-tooltip"))
             .build();
 
         let type_model = gtk4::StringList::new(&[&i18n::get("player-type-human"), &i18n::get("player-type-computer")]);
@@ -86,14 +85,14 @@ impl PlayerRow {
             .build();
 
         box_widget.append(&name_entry);
-        box_widget.append(&color_dropdown);
+        box_widget.append(&color_button);
         box_widget.append(&type_dropdown);
         box_widget.append(&remove_button);
 
         Self {
             box_widget,
             name_entry,
-            color_dropdown,
+            color_button,
             type_dropdown,
             remove_button,
         }
@@ -105,10 +104,14 @@ impl PlayerRow {
         PlayerName::new(text)
     }
 
-    /// Get the configured player color from the dropdown.
+    /// Get the configured player color from the color button.
     fn player_color(&self) -> PlayerColor {
-        let index = self.color_dropdown.selected() as usize;
-        PlayerColor::DEFAULTS[index % PlayerColor::DEFAULTS.len()]
+        let rgba = self.color_button.rgba();
+        PlayerColor::new(dice_rs::LedColor::new(
+            (rgba.red() * 255.0).round() as u8,
+            (rgba.green() * 255.0).round() as u8,
+            (rgba.blue() * 255.0).round() as u8,
+        ))
     }
 
     /// Get the configured player type from the dropdown.
@@ -264,11 +267,13 @@ impl PlayerSetupWidget {
         for (index, entry) in players.iter().enumerate() {
             let row = PlayerRow::new(index);
             row.name_entry.set_text(entry.name().as_str());
-            let color_index = PlayerColor::DEFAULTS
-                .iter()
-                .position(|c| *c == entry.color())
-                .unwrap_or(index % PlayerColor::DEFAULTS.len());
-            row.color_dropdown.set_selected(color_index as u32);
+            let rgba = gtk4::gdk::RGBA::new(
+                entry.color().led_color().r as f32 / 255.0,
+                entry.color().led_color().g as f32 / 255.0,
+                entry.color().led_color().b as f32 / 255.0,
+                1.0,
+            );
+            row.color_button.set_rgba(&rgba);
             let type_index = if entry.player_type() == PlayerType::Human { 0 } else { 1 };
             row.type_dropdown.set_selected(type_index);
             self.rows_box.append(&row.box_widget);

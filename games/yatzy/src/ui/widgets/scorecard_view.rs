@@ -31,6 +31,8 @@ pub struct ScorecardView {
     last_entered: Rc<RefCell<Option<(usize, ScoreCategory)>>>,
     /// Callback invoked when a category is clicked.
     on_category_selected: Rc<RefCell<Option<CategorySelectedCallback>>>,
+    /// CSS provider for dynamic player column colors.
+    css_provider: gtk4::CssProvider,
 }
 
 impl ScorecardView {
@@ -53,6 +55,9 @@ impl ScorecardView {
 
         container.append(&grid);
 
+        let css_provider = gtk4::CssProvider::new();
+        gtk4::style_context_add_provider_for_display(&gtk4::gdk::Display::default().unwrap(), &css_provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
+
         Self {
             container,
             grid,
@@ -60,6 +65,7 @@ impl ScorecardView {
             active_player: Rc::new(RefCell::new(0)),
             last_entered: Rc::new(RefCell::new(None)),
             on_category_selected: Rc::new(RefCell::new(None)),
+            css_provider,
         }
     }
 
@@ -126,10 +132,13 @@ impl ScorecardView {
             self.grid.remove(&child);
         }
 
+        // Generate dynamic CSS for player column colors
+        self.update_player_color_css(players);
+
         let num_cols = self.num_columns(players);
         let mut row: i32 = 0;
 
-        // Player name header row
+        // Player header row: name + grand total score
         row = self.add_player_header_row(row, players, active_player);
 
         // Upper section header
@@ -168,25 +177,41 @@ impl ScorecardView {
         self.add_summary_row(row, &i18n::get("scorecard-total"), players, Scorecard::grand_total, num_cols, true);
     }
 
-    /// Add the player name header row.
+    /// Add the player header row with name and grand total score.
     fn add_player_header_row(&self, row: i32, players: &[Player], active_player: usize) -> i32 {
         // Empty cell above category labels
         let spacer = gtk4::Label::builder().build();
         self.grid.attach(&spacer, 0, row, 1, 1);
 
         for (i, player) in players.iter().enumerate() {
+            let card = gtk4::Box::builder()
+                .orientation(gtk4::Orientation::Vertical)
+                .css_classes(vec!["player-card", &format!("player-color-{i}")])
+                .spacing(2)
+                .halign(gtk4::Align::Center)
+                .build();
+
             let name_label = gtk4::Label::builder()
                 .label(player.name().as_str())
-                .css_classes(vec!["scorecard-player-name"])
+                .css_classes(vec!["scorecard-player-name", &format!("player-color-{i}")])
                 .halign(gtk4::Align::Center)
-                .hexpand(true)
+                .build();
+
+            let total = player.scorecard().grand_total().get();
+            let score_label = gtk4::Label::builder()
+                .label(&total.to_string())
+                .css_classes(vec!["player-score", &format!("player-color-{i}")])
+                .halign(gtk4::Align::Center)
                 .build();
 
             if i == active_player {
                 name_label.add_css_class("active");
+                card.add_css_class("active");
             }
 
-            self.grid.attach(&name_label, (i + 1) as i32, row, 1, 1);
+            card.append(&name_label);
+            card.append(&score_label);
+            self.grid.attach(&card, (i + 1) as i32, row, 1, 1);
         }
 
         row + 1
@@ -206,7 +231,7 @@ impl ScorecardView {
     }
 
     /// Add a category row with label and per-player scores.
-    fn add_category_row(&self, row: i32, players: &[Player], active_player: usize, category: ScoreCategory) -> i32 {
+    fn add_category_row(&self, mut row: i32, players: &[Player], active_player: usize, category: ScoreCategory) -> i32 {
         // Category label — left-aligned, no hexpand so player columns start right after
         let category_label = gtk4::Label::builder()
             .label(category.to_string())
@@ -229,7 +254,7 @@ impl ScorecardView {
 
             let cell_box = gtk4::Box::builder()
                 .orientation(gtk4::Orientation::Horizontal)
-                .css_classes(vec!["scorecard-row"])
+                .css_classes(vec!["scorecard-row", &format!("player-color-{i}")])
                 .spacing(4)
                 .halign(gtk4::Align::Center)
                 .hexpand(true)
@@ -282,6 +307,16 @@ impl ScorecardView {
             self.grid.attach(&cell_box, (i + 1) as i32, row, 1, 1);
         }
 
+        // Thin separator line spanning all columns
+        row += 1;
+        let num_cols = self.num_columns(players);
+        let separator = gtk4::Box::builder()
+            .css_classes(vec!["scorecard-row-separator"])
+            .hexpand(true)
+            .halign(gtk4::Align::Fill)
+            .build();
+        self.grid.attach(&separator, 0, row, num_cols, 1);
+
         row + 1
     }
 
@@ -308,7 +343,7 @@ impl ScorecardView {
 
             let score_widget = gtk4::Label::builder()
                 .label(score.get().to_string())
-                .css_classes(vec!["scorecard-score"])
+                .css_classes(vec!["scorecard-score", &format!("player-color-{i}")])
                 .halign(gtk4::Align::Center)
                 .hexpand(true)
                 .build();
@@ -322,6 +357,30 @@ impl ScorecardView {
 
         let _ = num_cols;
         row + 1
+    }
+
+    /// Generate dynamic CSS for player column colors.
+    ///
+    /// Each player gets a `player-color-N` CSS class that sets:
+    /// - The border color for score cells in their column
+    /// - The text color for their name label
+    ///
+    /// Colors are brightened by blending toward white to ensure
+    /// visibility in dark mode themes.
+    fn update_player_color_css(&self, players: &[Player]) {
+        let mut css = String::new();
+        for (i, player) in players.iter().enumerate() {
+            let color = player.color().led_color();
+            let brighten = |c: u8| -> u8 { ((c as f32 * 0.65) + (255.0 * 0.35)).round() as u8 };
+            let r = brighten(color.r);
+            let g = brighten(color.g);
+            let b = brighten(color.b);
+            let hex = format!("#{:02X}{:02X}{:02X}", r, g, b);
+            css.push_str(&format!(
+                ".player-color-{i} {{ border-color: {hex}; }}\n.scorecard-player-name.player-color-{i} {{ color: {hex}; }}\n"
+            ));
+        }
+        self.css_provider.load_from_data(&css);
     }
 
     /// Get the root widget.

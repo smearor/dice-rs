@@ -54,12 +54,7 @@ player-add = + Add player
 player-start = Start game
 player-remove-tooltip = Remove player
 player-default-name = Player { $index }
-player-color-red = Red
-player-color-green = Green
-player-color-blue = Blue
-player-color-yellow = Yellow
-player-color-orange = Orange
-player-color-purple = Purple
+player-color-tooltip = Choose player color
 player-type-human = Human
 player-type-computer = Computer
 player-added = Player added.
@@ -75,7 +70,7 @@ roll-button-game-over = Game over
 
 # Roll count display
 roll-count = Roll { $current }/3
-roll-count-remaining = Roll { $current }/3 — { $remaining } rolls left
+roll-count-remaining = Roll { $current }/3
 roll-count-zero = Roll 0/3
 
 # UI status messages
@@ -209,3 +204,10 @@ info-docs = docs.rs Documentation
 info-particula = Particula Tech - GoDice
 info-license = Licensed under the MIT License
 info-close = Close
+
+# Computer AI
+ai-thinking = Computer is thinking...
+ai-rolling = Computer rolls the dice.
+ai-holding = Computer holds { $count } dice.
+ai-scored = Computer entered { $category } ({ $score } points).
+ai-crossed-out = Computer crossed out { $category }.
