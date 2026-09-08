@@ -40,7 +40,7 @@ rust-embed = "8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 smallvec = "1"
-tabled = "0.21"
+tabled = "0.22"
 thiserror = "2"
 tokio = { version = "1", features = ["sync", "rt", "rt-multi-thread", "time", "macros", "signal", "io-std", "io-util"] }
 toml = "1.1"
