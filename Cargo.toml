@@ -23,7 +23,7 @@ bytemuck = { version = "1", features = ["derive"] }
 btleplug = "0.13"
 cairo-rs = "0.22"
 clap = { version = "4", features = ["derive"] }
-dirs = "6"
+dirs = "7"
 fluent-bundle = "0.16"
 futures = "0.3"
 gl_loader = "0.1"
