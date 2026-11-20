@@ -4,10 +4,8 @@ use cairo::Context;
 use cairo::Format;
 use cairo::ImageSurface;
 use dice_rs::model::dice::DiceType;
-use gtk4::gdk::MemoryFormat;
-use gtk4::gdk::MemoryTexture;
-use gtk4::glib::Bytes;
 use gtk4::prelude::*;
+use smearor_commons_drawing::pixel_buffer_from_surface;
 
 /// Icon size in pixels (square).
 const ICON_SIZE: i32 = 80;
@@ -499,11 +497,9 @@ pub fn create_icon(dice_type: DiceType) -> gtk4::Image {
     // Drop the context before accessing surface data (it holds a non-exclusive borrow).
     drop(cr);
 
-    // Convert surface to pixel data
-    let data = surface.data().expect("failed to get surface data");
-    let bytes = Bytes::from(&data.to_vec());
-    let rowstride = (ICON_SIZE * 4) as usize;
-    let texture = MemoryTexture::new(ICON_SIZE, ICON_SIZE, MemoryFormat::B8g8r8a8, &bytes, rowstride);
+    // ARgb32 pixels upload byte-exact as premultiplied BGRA.
+    let buffer = pixel_buffer_from_surface(&mut surface).expect("failed to read surface pixels");
+    let texture = buffer.to_memory_texture();
 
     let image = gtk4::Image::from_paintable(Some(&texture));
     let pixel_size = match dice_type {

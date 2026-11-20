@@ -36,10 +36,16 @@ impl DiceTypeSelector {
         let factory = gtk4::SignalListItemFactory::new();
         let types_for_setup = dice_types.clone();
         factory.connect_setup(move |_item, list_item| {
+            let Some(list_item) = list_item.downcast_ref::<gtk4::ListItem>() else {
+                return;
+            };
             let overlay = gtk4::Overlay::builder().css_classes(vec!["dice-type-item"]).build();
             list_item.set_child(Some(&overlay));
         });
         factory.connect_bind(move |_item, list_item| {
+            let Some(list_item) = list_item.downcast_ref::<gtk4::ListItem>() else {
+                return;
+            };
             let position = list_item.position() as usize;
             let dice_type = types_for_setup[position % types_for_setup.len()];
             let icon = create_icon(dice_type);
