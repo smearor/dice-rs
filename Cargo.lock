@@ -469,9 +469,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.11.2"
+version = "1.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33ef9e3e8154a45c7a95cff4c1299702106ad94062d7bb85fdc5d3a5afd91d45"
+checksum = "02f0e023adb368345ce0ca6cdfc0f24a06554468d0e8503e14a0841de79bfa69"
 dependencies = [
  "find-msvc-tools",
  "shlex",
@@ -737,7 +737,9 @@ dependencies = [
  "miette",
  "serde",
  "smearor-commons-buffer",
+ "smearor-commons-color",
  "smearor-commons-drawing",
+ "smearor-commons-geometry",
  "thiserror 2.0.21",
  "tokio",
  "toml 1.2.1+spec-1.1.0",
@@ -1032,9 +1034,9 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "form_urlencoded"
-version = "1.2.2"
+version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
+checksum = "afa489199eaffb1211795df1c6236ce1ad0d41a6fa45250add73e3b02420f06e"
 dependencies = [
  "percent-encoding",
 ]
@@ -2857,7 +2859,7 @@ checksum = "3244542535d5de959d90ec55d1b5ff0fd2bb7b1310223907d5f11932847f7b59"
 [[package]]
 name = "smearor-commons-buffer"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#0b3d5bb73fa297c0e1eb9210260279ed1030e4e9"
+source = "git+https://github.com/smearor/smearor-commons.git#c93f00d78f1cfd881319542f299b69112d69866c"
 dependencies = [
  "gtk4",
  "serde",
@@ -2868,7 +2870,7 @@ dependencies = [
 [[package]]
 name = "smearor-commons-color"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#0b3d5bb73fa297c0e1eb9210260279ed1030e4e9"
+source = "git+https://github.com/smearor/smearor-commons.git#c93f00d78f1cfd881319542f299b69112d69866c"
 dependencies = [
  "cairo-rs",
  "serde",
@@ -2878,7 +2880,7 @@ dependencies = [
 [[package]]
 name = "smearor-commons-drawing"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#0b3d5bb73fa297c0e1eb9210260279ed1030e4e9"
+source = "git+https://github.com/smearor/smearor-commons.git#c93f00d78f1cfd881319542f299b69112d69866c"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -2895,7 +2897,7 @@ dependencies = [
 [[package]]
 name = "smearor-commons-font"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#0b3d5bb73fa297c0e1eb9210260279ed1030e4e9"
+source = "git+https://github.com/smearor/smearor-commons.git#c93f00d78f1cfd881319542f299b69112d69866c"
 dependencies = [
  "ab_glyph",
  "serde",
@@ -2906,7 +2908,7 @@ dependencies = [
 [[package]]
 name = "smearor-commons-geometry"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#0b3d5bb73fa297c0e1eb9210260279ed1030e4e9"
+source = "git+https://github.com/smearor/smearor-commons.git#c93f00d78f1cfd881319542f299b69112d69866c"
 dependencies = [
  "ab_glyph",
  "serde",
@@ -3557,9 +3559,9 @@ checksum = "ca718471876992059f251e33aafc334346ada08042b7661dd1fe313a9bced557"
 
 [[package]]
 name = "url"
-version = "2.5.8"
+version = "2.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff67a8a4397373c3ef660812acab3268222035010ab8680ec4215f38ba3d0eed"
+checksum = "f00cd2407bb42c0ef17be88d4cf020f5cceffd121665bac9b8b9493a369b3b1a"
 dependencies = [
  "form_urlencoded",
  "idna",

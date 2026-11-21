@@ -50,4 +50,6 @@ typed-builder = "0.23"
 unic-langid = "0.9"
 uuid = "1"
 smearor-commons-buffer = { git = "https://github.com/smearor/smearor-commons.git", features = ["gtk4"] }
+smearor-commons-color = { git = "https://github.com/smearor/smearor-commons.git", features = ["cairo"] }
 smearor-commons-drawing = { git = "https://github.com/smearor/smearor-commons.git", features = ["cairo"] }
+smearor-commons-geometry = { git = "https://github.com/smearor/smearor-commons.git" }

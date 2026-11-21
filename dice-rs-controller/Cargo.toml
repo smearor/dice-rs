@@ -27,7 +27,9 @@ gtk4 = { workspace = true }
 miette = { workspace = true }
 serde = { workspace = true }
 smearor-commons-buffer = { workspace = true }
+smearor-commons-color = { workspace = true }
 smearor-commons-drawing = { workspace = true }
+smearor-commons-geometry = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 toml = { workspace = true }
